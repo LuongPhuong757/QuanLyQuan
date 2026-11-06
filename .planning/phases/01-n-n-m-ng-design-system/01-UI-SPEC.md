@@ -1,7 +1,8 @@
 ---
 phase: 1
 slug: nen-mong-design-system
-status: draft
+status: approved
+reviewed_at: 2026-11-06
 shadcn_initialized: false
 preset: none
 created: 2026-11-06
@@ -41,6 +42,7 @@ Bội số của 4. Dùng token `--sp-*` đã có.
 | xl (`--sp-8`) | 32px | khoảng cách bố cục ≥ 900px |
 | 2xl (`--sp-12`) | 48px | ngắt khối lớn (trang `/__ui`, bố cục ghép) |
 | 3xl | 64px | chỉ cho chiều cao nút chính (không dùng làm khoảng cách) |
+| nội bộ (`--sp-3/5/7/9/10`) | 12 / 20 / 28 / 36 / 40px | chỉ bên trong component chung, xem ghi chú dưới |
 
 Các token `--sp-3` 12, `--sp-5` 20, `--sp-7` 28, `--sp-9` 36, `--sp-10` 40 là **nội bộ component** (bội 4, dùng bên trong component chung khi cần); KHÔNG dùng làm khoảng cách bố cục trên `/__ui` hay màn ghép — ở đó chỉ dùng 4/8/16/24/32/48/64 (ngắt khối lớn dùng 48, không dùng 40).
 
@@ -67,7 +69,7 @@ Chỉ dùng token `--fs-*`, `--fw-*`, `--lh-*`. KHÔNG có cỡ < 16px ở bất
 
 - Chốt **4 cỡ** (16 / 18 / 24 / 32) và **2 độ đậm** (400, 600) làm hợp đồng cho component phase 1. Nút: 18px / 600.
 - Cỡ 20 / 28 / 40 (`--fs-base/lg/2xl`) và độ đậm 500 tồn tại trong token cho màn nghiệp vụ phase sau; component chung phase 1 KHÔNG dùng. Độ đậm 500 vẫn được tải woff2 để `--fw-medium` không rơi về 400 (Pitfall 2 của RESEARCH).
-- Không xuống dòng (`white-space: nowrap`, DESIGN-SYSTEM §4.8) trong component: nhãn nút, chip, tiêu đề header, nhãn điều hướng, CountBadge. Nội dung tự do (tên món, ghi chú, mô tả EmptyState) được xuống dòng, không cắt "…".
+- Không xuống dòng (`white-space: nowrap`, DESIGN-SYSTEM §4.8) trong component: nhãn nút, chip, tiêu đề header (trừ ô tên quán trong `AppHeader` — được xuống tối đa 2 dòng, KHÔNG gắn `data-nowrap`), nhãn điều hướng, CountBadge. Nội dung tự do (tên món, ghi chú, mô tả EmptyState) được xuống dòng, không cắt "…".
 - Số tiền dùng `font-variant-numeric: tabular-nums` (đề xuất mặc định).
 
 ---
@@ -199,13 +201,63 @@ Gói npm mới (devDependencies `jsdom@26.1.0`, `@testing-library/*`, `playwrigh
 
 ---
 
+## UI Considerations
+
+> Sinh từ ui-consideration-probe (75 mục + 6 mục bổ sung sau khi rà loại: overflow cho E1/E8, long-text cho E6/E7/E13). Chủ repo chốt "theo spec" ngày 2026-11-06. Chữ của trạng thái trống/lỗi nằm ở `## Copywriting Contract`, phần này không chép lại. `explicit` = tiêu chí đo được; `backstop` = `{ statement, verification: backstop }`, kiểm bằng mắt hoặc bằng script trên `/__ui` + `/__ui/overflow` lúc verify.
+
+**Chung cho mọi component (áp cho các mục loading/error/long-text/overflow dưới đây nếu không ghi riêng):**
+- long-text (explicit): chuỗi "xấu nhất" (D-13) trên `/__ui/overflow` ở 360/390/1180/1440 không gây cuộn ngang trang; phần tử `data-nowrap` không xuống dòng và không tràn khỏi khung; nội dung tự do xuống dòng, không cắt "…" (trừ tên quán clamp 2 dòng).
+- overflow (explicit): script kiểm tràn báo 0 lỗi ở 360 và 390px; chỉ phần tử `data-scroller` được cuộn ngang.
+
+| Element | Trạng thái | Kết luận |
+|---|---|---|
+| E1 Button | loading | backstop — khi đang gửi, nút ở trạng thái bị chặn (`aria-disabled`) kèm Spinner 16 + chữ, không đổi chiều cao 52/64 |
+| E1 Button | error / blocked | explicit — bị chặn: viền đứt + ⚠ + lý do, bấm gọi `onBlockedClick`, không gọi `onClick` (có test) |
+| E1 Button | overflow / long-text | explicit — nhãn dài nhất trên `/__ui/overflow` không tràn ở 360px (nowrap; màn tự rút gọn nhãn) |
+| E2 Ô nhập | error | explicit — lỗi = viền `--color-danger` + icon + chữ đỏ dưới ô, liên kết `aria-describedby` |
+| E2 Ô nhập | empty / partial | explicit — nhãn luôn TRÊN ô (không dùng placeholder thay nhãn); MoneyInput rỗng không hiện "0đ" |
+| E2 Ô nhập | loading | backstop — ô bị khoá khi gửi form, giữ nguyên chiều cao |
+| E2 Ô nhập | long-text / overflow | xem Chung; Textarea cao dần, không cuộn ngang |
+| E3 Stepper | error (mốc min/max) | explicit — nút chạm mốc có `aria-disabled`, bấm không đổi giá trị |
+| E3 Stepper | loading / long-text | backstop — giá trị 3 chữ số vẫn vừa ô giữa, không đẩy nút |
+| E4 AppHeader | long-text | explicit — tên quán ≤ 2 dòng (clamp), header vẫn cao 64 ở 360px |
+| E4 AppHeader | empty / loading | backstop — chưa có logo: chỉ hiện tên quán; chưa tải tên: Skeleton một dòng |
+| E4 AppHeader | populated / overflow | explicit — CountBadge "99+" không đẩy nút Đăng xuất ra khỏi màn 360px |
+| E5 NavBar | zero-one-many / overflow | explicit — < 900: nhiều mục thì cuộn ngang (`data-scroller`), mỗi mục ≥ 72; 1 mục vẫn đúng bố cục |
+| E5 NavBar | populated / partial | explicit — mục đang mở = accent + vạch 4px + `aria-current="page"` |
+| E5 NavBar | empty / loading / error | backstop — NavBar không tự tải dữ liệu; màn truyền mục, không có mục thì không hiện thanh |
+| E6 Strip | populated / zero-one-many | explicit — Strip chỉ hiện khi có việc cần làm; hàng chip bên trong cuộn ngang |
+| E6 Strip | long-text / overflow | xem Chung; chữ xuống dòng, hành động vẫn ≥ 48 |
+| E6 Strip | empty / loading / error | backstop — không có dữ liệu thì không hiện Strip (không có Strip rỗng) |
+| E7 Chip / ChipRow | zero-one-many / overflow | explicit — ChipRow cuộn ngang `data-scroller`, chip cắt ngang mép để gợi cuộn |
+| E7 Chip / ChipRow | populated / partial | explicit — chip chọn: nền primary + `aria-pressed="true"`; số đếm dùng CountBadge |
+| E7 Chip / ChipRow | empty / loading / error / long-text | backstop — 0 chip thì ẩn hàng; nhãn chip dài vẫn nowrap trong hàng cuộn |
+| E8 Dialog / Sheet | overflow / long-text | explicit — nội dung dài cuộn bên trong, footer dính đáy, `max-height: 90dvh`, đỉnh không bị cắt trên iPhone |
+| E8 Dialog / Sheet | loading / error | backstop — nút xác nhận vào trạng thái bị chặn khi gửi; lỗi hiện trong hộp (không đóng hộp) |
+| E8 Dialog / Sheet | (chồng) | explicit — tối đa 2 tầng; Esc/✕ đóng tầng trên cùng; trả focus; khoá cuộn ref-count |
+| E9 Menu ⋯ | populated / zero-one-many | explicit — mục nguy hiểm đặt cuối, có đường kẻ; mở bằng chạm, đóng khi bấm ngoài/Esc/chọn |
+| E9 Menu ⋯ | overflow / long-text | explicit — panel không tràn mép màn 360px (tự lật/neo lại); chữ mục dài xuống dòng |
+| E9 Menu ⋯ | empty / loading / error / partial | backstop — không có mục thì không hiện nút ⋯ |
+| E10 Toast | error | explicit — lỗi `role="alert"`, ở lại 8s, có ✕ 48 |
+| E10 Toast | loading / long-text | explicit — tối đa 3 toast, không che nút chính; chữ dài xuống dòng trong rộng tối đa 480 |
+| E11 Empty/Loading/Error | empty | explicit — EmptyState đúng 2 biến thể (có/không nút), không còn `{...}` |
+| E11 Empty/Loading/Error | loading | explicit — Skeleton giữ đúng chiều cao nội dung (không nhảy bố cục); Spinner có chữ "Đang tải…" |
+| E11 Empty/Loading/Error | error | explicit — ErrorState luôn có nút "Thử lại" |
+| E11 Empty/Loading/Error | populated / partial / zero-one-many / overflow / long-text | backstop — kiểm trên `/__ui/overflow` |
+| E12 Thanh thử màu `/__ui` | error | explicit — mã hex sai hoặc chữ trắng < 4.5:1 thì chặn "Áp dụng màu" và hiện lý do |
+| E12 Thanh thử màu `/__ui` | empty / partial / loading | backstop — ô rỗng giữ màu mặc định; preset áp ngay |
+| E12 Thanh thử màu `/__ui` | overflow / long-text | xem Chung; 10 ô màu xuống hàng ở 360px |
+| E13 `/__ui/overflow` | mọi trạng thái | explicit — trang có đủ mọi component với chuỗi xấu nhất + biến thể rỗng/1/nhiều; script đo tràn chạy được ở 4 bề rộng |
+
+---
+
 ## Checker Sign-Off
 
-- [ ] Dimension 1 Copywriting: PASS
-- [ ] Dimension 2 Visuals: PASS
-- [ ] Dimension 3 Color: PASS
-- [ ] Dimension 4 Typography: PASS
-- [ ] Dimension 5 Spacing: PASS
-- [ ] Dimension 6 Registry Safety: PASS
+- [x] Dimension 1 Copywriting: PASS
+- [x] Dimension 2 Visuals: PASS
+- [x] Dimension 3 Color: PASS
+- [x] Dimension 4 Typography: PASS
+- [x] Dimension 5 Spacing: FLAG (chấp nhận — token 12/20/28/36/40 khoá bởi DESIGN-SYSTEM §3, chỉ dùng nội bộ component)
+- [x] Dimension 6 Registry Safety: PASS
 
-**Approval:** pending
+**Approval:** approved 2026-11-06 (sau 1 vòng sửa)
