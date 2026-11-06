@@ -1,0 +1,32 @@
+/* Bố cục riêng trang /__ui. Chỉ dùng token — mẫu cho cách viết CSS màn mới. */
+.uis {
+  min-height: 100dvh;
+  background: var(--bg-page);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-normal);
+  padding: var(--sp-6) var(--sp-4) var(--sp-10);
+  max-width: 1080px;
+  margin: 0 auto;
+}
+.uis__h1 { font-size: var(--fs-xl); line-height: var(--lh-tight); margin: 0 0 var(--sp-2); }
+.uis__lead { color: var(--text-muted); margin: 0; }
+.uis__sec { margin-top: var(--sp-8); display: flex; flex-direction: column; gap: var(--sp-4); }
+.uis__h2 { font-size: var(--fs-md); margin: 0; padding-top: var(--sp-6); border-top: 1px solid var(--border); }
+.uis__row { display: flex; flex-wrap: wrap; gap: var(--sp-3); align-items: center; }
+.uis__row--end { align-items: flex-end; }
+.uis__grid { display: grid; gap: var(--sp-4); grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.uis__note { margin: 0; color: var(--text-muted); }
+.uis__tables { display: grid; gap: var(--sp-3); grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+.uis__tables .ui-card { display: flex; flex-direction: column; gap: var(--sp-1); min-height: 132px; }
+.uis__tname { font-size: var(--fs-sm); font-weight: var(--fw-bold); line-height: var(--lh-tight); white-space: nowrap; }
+.uis__tname--muted { color: var(--text-muted); }
+.uis__money { white-space: nowrap; font-size: var(--fs-base); font-weight: var(--fw-bold); font-variant-numeric: tabular-nums; }
+.uis__meta { font-size: var(--fs-xs); color: var(--text-muted); }
+.uis__total { background: var(--bg-muted); border-radius: var(--r-md); padding: var(--sp-4); display: flex; flex-direction: column; }
+.uis__total span { font-size: var(--fs-xs); color: var(--text-muted); }
+.uis__total b { font-size: var(--fs-xl); line-height: var(--lh-tight); font-variant-numeric: tabular-nums; }
+.uis__state { display: flex; align-items: center; gap: var(--sp-1); font-size: var(--fs-xs); font-weight: var(--fw-bold); color: var(--color-primary-hover); white-space: nowrap; }
+.uis__state svg { width: var(--icon-sm); height: var(--icon-sm); }
+.uis__state--muted { color: var(--text-muted); }

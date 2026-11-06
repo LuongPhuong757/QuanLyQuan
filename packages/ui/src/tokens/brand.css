@@ -1,0 +1,11 @@
+/*
+ * MẶC ĐỊNH THƯƠNG HIỆU. Lúc chạy, app lấy cài đặt của quán rồi ghi đè --brand-* trên :root
+ * (DESIGN-SYSTEM.md §5) — một bản build cho mọi quán. Dùng applyBrand() trong src/brand.ts,
+ * đừng set tay: hàm đó chặn màu không đạt tương phản AA.
+ */
+:root {
+  --brand-primary: var(--blue-600);
+  --brand-primary-hover: var(--blue-700);
+  --brand-on-primary: var(--white);
+  --brand-primary-tint: var(--blue-50);
+}

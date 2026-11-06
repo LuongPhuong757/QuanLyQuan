@@ -25,6 +25,11 @@ import { GuestQrBanner } from './components/GuestQrBanner.tsx';
 // 2/3 số role tải thừa. Bù lại bằng `PREFETCH_BY_ROLE` phía dưới.
 //
 // Các trang đều `export function` (không phải default) nên phải map `.then` sang `{ default }`.
+// Trang mẫu Design System — chỉ có ở máy dev, bản build thật không chứa route này.
+// Bọc trong điều kiện DEV để Vite bỏ hẳn chunk khỏi bản build, không chỉ ẩn route.
+const UiShowcasePage = import.meta.env.DEV
+  ? lazy(() => import('./pages/UiShowcasePage.tsx').then((m) => ({ default: m.UiShowcasePage })))
+  : null;
 const LoginPage = lazy(() => import('./pages/LoginPage.tsx').then((m) => ({ default: m.LoginPage })));
 const PrintBridgePage = lazy(() =>
   import('./pages/PrintBridgePage.tsx').then((m) => ({ default: m.PrintBridgePage })),
@@ -157,6 +162,8 @@ export function App() {
               đăng nhập bằng tài khoản nhân viên nghĩa là tài khoản đó mở vĩnh viễn trên một máy
               ai cũng chạm được, và mọi thao tác của máy mang tên người ấy trong nhật ký. */}
           <Route path="/print-bridge" element={<PrintBridgePage />} />
+
+          {UiShowcasePage && <Route path="/__ui" element={<UiShowcasePage />} />}
 
           <Route element={<ProtectedShell />}>
             <Route path="/" element={<HomeRedirect />} />

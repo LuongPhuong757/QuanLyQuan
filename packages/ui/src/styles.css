@@ -1,0 +1,3 @@
+/* Điểm vào duy nhất cho app: token + CSS component. import '@order/ui/styles.css' một lần ở main.tsx. */
+@import './tokens/index.css';
+@import './components/components.css';

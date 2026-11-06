@@ -1,0 +1,95 @@
+/*
+ * TẦNG 1 — PRIMITIVE: giá trị thô. Component KHÔNG dùng trực tiếp file này, chỉ dùng semantic.css.
+ * Nguồn: docs/DESIGN-SYSTEM.md §3 (hướng A "Xanh tin cậy", chốt 2026-11-06).
+ * Tên biến trùng với variables trong bản vẽ — đổi một bên phải đổi bên kia (§4 luật 5).
+ */
+:root {
+  /* Xanh thương hiệu */
+  --blue-50: #E6EFFC;
+  --blue-600: #0057D9;
+  --blue-700: #0047B3;
+
+  /* Trạng thái — mọi màu đậm đều ≥ 4.5:1 với chữ trắng (tính theo WCAG) */
+  --green-50: #E3F4EC;
+  --green-700: #047857;
+  --red-50: #FBE7E7;
+  --red-700: #C81E1E;
+  --orange-50: #FDF0E8;
+  --orange-700: #C2410C;
+  --yellow-50: #FFF6CC;
+  --purple-50: #F1EBFF;
+  --purple-700: #6D28D9; /* 7.1:1 với chữ trắng */
+
+  /* Xám */
+  --white: #FFFFFF;
+  --gray-50: #F5F7FA;
+  --gray-100: #EEF1F4;
+  --gray-200: #E5E5E5;
+  --gray-500: #8A8A8A; /* 3.45:1 — chỉ cho viền ô nhập (WCAG 1.4.11), KHÔNG dùng làm chữ */
+  --gray-600: #525252;
+  --gray-950: #0A0A0A;
+
+  /* Chữ — sàn 16px vì người dùng lớn tuổi, dùng điện thoại. KHÔNG thêm cỡ < 16. */
+  --fs-xs: 16px;
+  --fs-sm: 18px;
+  --fs-base: 20px;
+  --fs-md: 24px;
+  --fs-lg: 28px;
+  --fs-xl: 32px;
+  --fs-2xl: 40px;
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-bold: 600;
+  --lh-tight: 1.3;
+  --lh-normal: 1.6;
+
+  /* Khoảng cách — bước 4px */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-7: 28px;
+  --sp-8: 32px;
+  --sp-9: 36px;
+  --sp-10: 40px;
+
+  /* Bo góc — bớt tròn hơn KiotViet cho đỡ phí chỗ trên điện thoại */
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-pill: 9999px;
+
+  /* Bóng pha xanh navy */
+  --shadow-sm: 0 1px 2px rgba(0, 41, 87, 0.08);
+  --shadow-md: 0 4px 12px rgba(0, 41, 87, 0.1);
+  --shadow-lg: 0 12px 32px rgba(0, 41, 87, 0.14); /* chỉ hộp thoại */
+
+  /* Kích thước */
+  --tap-min: 48px;
+  --control-h: 52px;
+  --control-h-lg: 64px;
+
+  /* Icon (Lucide, nét 2px) */
+  --icon-xs: 16px; /* trong nhãn trạng thái */
+  --icon-sm: 18px; /* cạnh chữ phụ */
+  --icon-md: 24px; /* nút, điều hướng */
+
+  /* Chuyển động */
+  --dur-fast: 120ms;
+  --dur-normal: 220ms;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Lớp */
+  --z-header: 100;
+  --z-dialog: 1000;
+  --z-toast: 1100;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 0ms;
+    --dur-normal: 0ms;
+  }
+}

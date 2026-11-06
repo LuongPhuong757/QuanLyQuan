@@ -1,0 +1,202 @@
+/*
+ * CSS component. Mọi giá trị là var(--…) semantic — không hex, không px trần trừ viền 1–2px.
+ * Tiền tố .ui- để không đụng class cũ trong apps/web/styles.css lúc chuyển dần từng màn.
+ * Biến thể viết dạng .ui-btn--x (cùng specificity với .ui-btn) → hết chuyện `button.secondary`
+ * đè class trần (bài học Bà Lùn, CLAUDE.md §5 CSS).
+ */
+
+/* ---------- Button ---------- */
+.ui-btn {
+  font: inherit;
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-tight);
+  min-height: var(--control-h);
+  min-width: var(--tap-min);
+  padding: var(--sp-2) var(--sp-6);
+  border-radius: var(--r-md);
+  border: 1.5px solid transparent;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  cursor: pointer;
+  text-align: center;
+  white-space: nowrap; /* luật 8: nhãn nút không xuống dòng */
+  transition: background-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
+  -webkit-tap-highlight-color: transparent;
+}
+.ui-btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.ui-btn__label { display: inline-flex; align-items: center; gap: var(--sp-2); }
+.ui-btn svg { width: var(--icon-md); height: var(--icon-md); flex: none; }
+/* Lý do nút bị chặn — hiện THÀNH CHỮ trên nút, không giấu trong tooltip (DESIGN-SYSTEM §8) */
+.ui-btn__reason {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  color: var(--color-warning);
+}
+.ui-btn__reason svg { width: var(--icon-sm); height: var(--icon-sm); }
+
+.ui-btn--primary { background: var(--color-primary); color: var(--color-on-primary); }
+.ui-btn--primary:hover { background: var(--color-primary-hover); }
+.ui-btn--secondary { background: var(--bg-surface); color: var(--color-primary); border-color: var(--color-primary); }
+.ui-btn--secondary:hover { background: var(--color-primary-tint); }
+.ui-btn--ghost { background: var(--bg-muted); color: var(--text); }
+/* Huỷ dạng viền: hành động phá huỷ không nên là khối đỏ to nhất màn */
+.ui-btn--danger { background: var(--bg-surface); color: var(--color-danger); border-color: var(--color-danger); }
+.ui-btn--danger:hover { background: var(--color-danger-tint); }
+
+.ui-btn--lg { min-height: var(--control-h-lg); font-size: var(--fs-base); padding-inline: var(--sp-8); }
+.ui-btn--block { width: 100%; }
+
+/* Bị chặn: KHÔNG dùng `disabled` (người dùng không biết vì sao nút "chết").
+   Nút vẫn bấm được; màn tự xử lý (vd cuộn tới ô còn thiếu). aria-disabled cho trình đọc màn hình. */
+.ui-btn[aria-disabled='true'] {
+  background: var(--bg-muted);
+  color: var(--text);
+  border: 2px dashed var(--border-input); /* viền ĐỨT — nhìn khác hẳn nút phụ */
+  cursor: not-allowed;
+}
+
+/* ---------- Field (nhãn + ô + gợi ý/lỗi) ---------- */
+.ui-field { display: flex; flex-direction: column; gap: var(--sp-2); min-width: 0; }
+/* Nhãn đặt TRÊN ô — không chỉ dựa vào placeholder (mất khi gõ) */
+.ui-field__label { font-size: var(--fs-xs); font-weight: var(--fw-medium); color: var(--text); }
+.ui-field__hint { font-size: var(--fs-xs); color: var(--text-muted); }
+.ui-field__error { display: flex; align-items: center; gap: var(--sp-1); font-size: var(--fs-xs); font-weight: var(--fw-medium); color: var(--color-danger); }
+.ui-field__error svg { width: var(--icon-sm); height: var(--icon-sm); flex: none; }
+
+/* ---------- Input / Select / Textarea ---------- */
+.ui-input {
+  font: inherit;
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm); /* ≥ 16px còn tránh iOS tự zoom khi chạm ô */
+  color: var(--text);
+  background: var(--bg-surface);
+  min-height: var(--control-h);
+  width: 100%;
+  padding: 0 var(--sp-4);
+  border: 1.5px solid var(--border-input);
+  border-radius: var(--r-md);
+  transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
+}
+.ui-input::placeholder { color: var(--text-muted); }
+.ui-input:focus { outline: none; border-color: var(--color-primary); box-shadow: var(--focus-ring); }
+.ui-input[aria-invalid='true'] { border-color: var(--color-danger); }
+textarea.ui-input { padding: var(--sp-3) var(--sp-4); min-height: calc(var(--control-h) * 2); line-height: var(--lh-normal); resize: vertical; }
+select.ui-input {
+  appearance: none;
+  padding-right: var(--sp-10);
+  /* mũi tên ▾ vẽ bằng gradient để không phụ thuộc icon font */
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--text) 50%),
+    linear-gradient(135deg, var(--text) 50%, transparent 50%);
+  background-position: calc(100% - 22px) 50%, calc(100% - 16px) 50%;
+  background-size: 6px 6px;
+  background-repeat: no-repeat;
+}
+
+/* Ô có hậu tố (vd "đ") */
+.ui-input-wrap { position: relative; display: block; }
+.ui-input--suffixed { padding-right: var(--sp-10); text-align: right; font-weight: var(--fw-bold); font-variant-numeric: tabular-nums; }
+.ui-input-wrap__suffix { position: absolute; right: var(--sp-4); top: 50%; transform: translateY(-50%); color: var(--text-muted); font-weight: var(--fw-bold); pointer-events: none; }
+
+/* ---------- Stepper − 1 + ---------- */
+.ui-stepper { display: inline-flex; align-items: stretch; height: var(--control-h); border: 1.5px solid var(--border-input); border-radius: var(--r-md); overflow: hidden; background: var(--bg-surface); }
+.ui-stepper--block { display: flex; width: 100%; }
+.ui-stepper__btn { width: 56px; flex: none; border: 0; background: var(--bg-muted); color: var(--text); display: grid; place-items: center; cursor: pointer; }
+.ui-stepper__btn:focus-visible { outline: none; box-shadow: inset var(--focus-ring); }
+.ui-stepper__btn[aria-disabled='true'] { color: var(--text-muted); cursor: not-allowed; }
+.ui-stepper__btn svg { width: var(--icon-md); height: var(--icon-md); }
+.ui-stepper__value { min-width: 56px; flex: 1; display: grid; place-items: center; font-size: var(--fs-base); font-weight: var(--fw-bold); font-variant-numeric: tabular-nums; }
+
+/* ---------- Card ---------- */
+.ui-card {
+  background: var(--bg-surface);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-sm);
+  padding: var(--sp-4);
+  border: 2px solid transparent;
+}
+.ui-card--selected { border-color: var(--color-primary); box-shadow: var(--shadow-md); }
+.ui-card--dashed { background: transparent; box-shadow: none; border: 2px dashed var(--border-input); }
+button.ui-card { font: inherit; color: inherit; text-align: left; cursor: pointer; width: 100%; }
+button.ui-card:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+/* ---------- Badge ---------- */
+/* Luôn có chữ, không chỉ dựa vào màu (người mù màu, màn hình ngoài nắng) */
+.ui-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-normal);
+  padding: 0 var(--sp-3);
+  border-radius: var(--r-pill);
+  white-space: nowrap;
+}
+.ui-badge--info { background: var(--color-primary-tint); color: var(--color-primary-hover); }
+.ui-badge--success { background: var(--color-success-tint); color: var(--color-success); }
+.ui-badge--danger { background: var(--color-danger-tint); color: var(--color-danger); }
+.ui-badge--warning { background: var(--color-warning-tint); color: var(--color-warning); }
+.ui-badge--qr { background: var(--color-qr-tint); color: var(--color-qr); }
+.ui-badge--muted { background: var(--bg-muted); color: var(--text-muted); }
+.ui-badge svg { width: var(--icon-xs); height: var(--icon-xs); flex: none; }
+
+/* ---------- Dialog ---------- */
+/* flex-direction: row tường minh — bẫy .ncc-ui (flex column) cắt đỉnh hộp thoại, CLAUDE.md §5 */
+.ui-dialog__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-dialog);
+  background: var(--bg-overlay);
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end; /* điện thoại: bảng trượt từ đáy */
+  justify-content: center;
+}
+.ui-dialog {
+  background: var(--bg-surface);
+  color: var(--text);
+  font-family: var(--font-sans);
+  width: 100%;
+  max-height: 92dvh; /* dvh, KHÔNG vh — vh trôi mất đỉnh trên iPhone */
+  overflow: auto;
+  overscroll-behavior: contain;
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+  box-shadow: var(--shadow-lg);
+  padding: var(--sp-3) var(--sp-5) calc(var(--sp-6) + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+.ui-dialog__grab { width: var(--tap-min); height: 5px; border-radius: var(--r-pill); background: var(--border-input); margin: 0 auto; }
+.ui-dialog__head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+.ui-dialog__title { margin: 0; font-size: var(--fs-md); font-weight: var(--fw-bold); line-height: var(--lh-tight); }
+.ui-dialog__close {
+  width: var(--tap-min);
+  height: var(--tap-min);
+  flex: none;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  color: var(--text);
+  cursor: pointer;
+}
+.ui-dialog__close:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.ui-dialog__close { display: grid; place-items: center; }
+.ui-dialog__close svg { width: var(--icon-md); height: var(--icon-md); }
+.ui-dialog__footer { display: flex; gap: var(--sp-3); }
+.ui-dialog__footer > * { flex: 1; }
+
+@media (min-width: 640px) {
+  .ui-dialog__overlay { align-items: center; padding: var(--sp-6); }
+  .ui-dialog { max-width: 560px; border-radius: var(--r-lg); padding-bottom: var(--sp-6); }
+  .ui-dialog__grab { display: none; }
+}
