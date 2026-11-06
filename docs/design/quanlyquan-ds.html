@@ -1,0 +1,746 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QuanLyQuan — Design System v0.2</title>
+<!-- Bản vẽ duyệt: font + icon gọi CDN cho tiện xem. Code thật tự host font, icon dùng lucide-react (DESIGN-SYSTEM.md §3). -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<style>
+/* ===== Token — trùng tên với packages/ui ===== */
+:root{
+  --color-primary:#0057D9; --color-primary-hover:#0047B3; --color-on-primary:#FFFFFF; --color-primary-tint:#E6EFFC;
+  --color-success:#047857; --color-success-tint:#E3F4EC;
+  --color-danger:#C81E1E; --color-danger-tint:#FBE7E7;
+  --color-warning:#C2410C; --color-warning-tint:#FDF0E8;
+  --color-note-tint:#FFF6CC;
+  --bg-page:#F5F7FA; --bg-surface:#FFFFFF; --bg-muted:#EEF1F4; --bg-overlay:rgba(10,10,10,.45); --bg-inverse:#0A0A0A;
+  --text:#0A0A0A; --text-muted:#525252; --text-inverse:#FFFFFF;
+  --border:#E5E5E5; --border-input:#8A8A8A;
+  --font:'Be Vietnam Pro', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --fs-xs:16px; --fs-sm:18px; --fs-base:20px; --fs-md:24px; --fs-lg:28px; --fs-xl:32px; --fs-2xl:40px;
+  --fw-regular:400; --fw-medium:500; --fw-bold:600;
+  --lh-tight:1.3; --lh-normal:1.6;
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:20px; --sp-6:24px; --sp-8:32px; --sp-10:40px;
+  --r-sm:8px; --r-md:12px; --r-lg:16px; --r-pill:9999px;
+  --shadow-sm:0 1px 2px rgba(0,41,87,.08); --shadow-md:0 4px 12px rgba(0,41,87,.10); --shadow-lg:0 12px 32px rgba(0,41,87,.14);
+  --focus-ring:0 0 0 3px rgba(0,87,217,.4);
+  --tap-min:48px; --control-h:52px; --control-h-lg:64px;
+  --icon:24px;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--font);font-size:var(--fs-sm);line-height:var(--lh-normal);color:var(--text);background:var(--bg-page)}
+.lucide{width:var(--icon);height:var(--icon);stroke-width:2;flex:none}
+.wrap{max-width:1360px;margin:0 auto;padding:var(--sp-10) var(--sp-6)}
+h1{font-size:var(--fs-2xl);line-height:var(--lh-tight);margin:0 0 var(--sp-2)}
+h2{font-size:var(--fs-lg);line-height:var(--lh-tight);margin:var(--sp-10) 0 var(--sp-4);padding-top:var(--sp-6);border-top:1px solid var(--border)}
+.lead{color:var(--text-muted);margin:0;max-width:70ch}
+.grid{display:grid;gap:var(--sp-4)}
+.panel{background:var(--bg-surface);border-radius:var(--r-lg);box-shadow:var(--shadow-sm);padding:var(--sp-6)}
+.row{display:flex;flex-wrap:wrap;gap:var(--sp-3);align-items:center}
+.annot{font-size:var(--fs-xs);color:var(--text-muted);border-left:3px solid var(--color-primary);padding-left:var(--sp-3);margin:0}
+.rules{margin:0;padding-left:var(--sp-6);display:flex;flex-direction:column;gap:var(--sp-2)}
+.rules b{color:var(--text)}
+.changelog{background:var(--color-primary-tint);border-radius:var(--r-lg);padding:var(--sp-4) var(--sp-6);margin-top:var(--sp-6)}
+.changelog ul{margin:var(--sp-2) 0 0;padding-left:var(--sp-6)}
+
+/* swatches + scale */
+.sw-grid{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
+.sw{border-radius:var(--r-md);overflow:hidden;background:var(--bg-surface);box-shadow:var(--shadow-sm)}
+.sw i{display:block;height:64px}
+.sw div{padding:var(--sp-3) var(--sp-4);font-size:var(--fs-xs)}
+.sw b{display:block}
+.sw span{color:var(--text-muted)}
+.type-row{display:flex;align-items:baseline;gap:var(--sp-6);padding:var(--sp-2) 0;border-bottom:1px solid var(--border)}
+.type-row code{width:150px;flex:none;font-size:var(--fs-xs);color:var(--text-muted)}
+.icons{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:var(--sp-3)}
+.icons div{display:flex;flex-direction:column;align-items:center;gap:var(--sp-1);padding:var(--sp-3);border-radius:var(--r-md);background:var(--bg-muted);font-size:var(--fs-xs);color:var(--text-muted)}
+.icons .lucide{color:var(--text)}
+
+/* ===================== COMPONENT ===================== */
+/* Luật chống vỡ chữ: nhãn nút, chip, tiêu đề, tên bàn, nhãn điều hướng KHÔNG xuống dòng.
+   Nhãn phải được viết đủ ngắn để vừa ở 360px — nowrap không phải để giấu chữ. */
+.btn,.chip,.badge,.tab,.navi,.topbar h4,.tname,.tmoney,.tstate,.tmeta,.pay,.sheet-h h4,.mhead h4{white-space:nowrap}
+.btn{font:inherit;font-size:var(--fs-sm);font-weight:var(--fw-bold);line-height:1.2;min-height:var(--control-h);padding:0 var(--sp-5);border-radius:var(--r-md);border:1.5px solid transparent;display:inline-flex;align-items:center;justify-content:center;gap:var(--sp-2);cursor:pointer}
+.btn-primary{background:var(--color-primary);color:var(--color-on-primary)}
+.btn-secondary{background:var(--bg-surface);color:var(--color-primary);border-color:var(--color-primary)}
+.btn-ghost{background:var(--bg-muted);color:var(--text)}
+.btn-danger{background:var(--bg-surface);color:var(--color-danger);border-color:var(--color-danger)}
+.btn-lg{min-height:var(--control-h-lg);font-size:var(--fs-base)}
+.btn-block{width:100%}
+.btn-focus{box-shadow:var(--focus-ring)}
+/* Bị chặn: viền ĐỨT + ⚠ + lý do — nhìn khác hẳn nút phụ */
+.btn-blocked{background:var(--bg-muted);color:var(--text);border:2px dashed var(--border-input);flex-direction:column;gap:0;padding:var(--sp-2) var(--sp-5)}
+.btn-blocked .why{display:inline-flex;align-items:center;gap:var(--sp-1);font-size:var(--fs-xs);font-weight:var(--fw-medium);color:var(--color-warning)}
+.btn-blocked .why .lucide{--icon:18px}
+
+.field{display:flex;flex-direction:column;gap:var(--sp-2);min-width:220px;flex:1}
+.field label,.field>.lbl{font-size:var(--fs-xs);font-weight:var(--fw-medium)}
+.input{font:inherit;font-size:var(--fs-sm);height:var(--control-h);padding:0 var(--sp-4);border:1.5px solid var(--border-input);border-radius:var(--r-md);background:var(--bg-surface);color:var(--text);width:100%}
+.input.is-focus{border-color:var(--color-primary);box-shadow:var(--focus-ring);outline:none}
+.input.is-error{border-color:var(--color-danger)}
+.money-in{position:relative}
+.money-in .input{padding-right:var(--sp-10);text-align:right;font-weight:var(--fw-bold);font-variant-numeric:tabular-nums}
+.money-in span{position:absolute;right:var(--sp-4);top:50%;transform:translateY(-50%);color:var(--text-muted);font-weight:var(--fw-bold)}
+.hint{font-size:var(--fs-xs);color:var(--text-muted)}
+.err{font-size:var(--fs-xs);color:var(--color-danger);font-weight:var(--fw-medium);display:flex;align-items:center;gap:var(--sp-1)}
+.err .lucide{--icon:18px}
+/* Stepper số lượng: − 1 +, không gõ số */
+.stepper{display:inline-flex;align-items:stretch;border:1.5px solid var(--border-input);border-radius:var(--r-md);overflow:hidden;height:var(--control-h);background:var(--bg-surface)}
+.stepper button{width:56px;border:0;background:var(--bg-muted);display:grid;place-items:center;color:var(--text);cursor:pointer}
+.stepper output{min-width:56px;display:grid;place-items:center;font-size:var(--fs-base);font-weight:var(--fw-bold);font-variant-numeric:tabular-nums}
+.stepper.wide{display:flex;width:100%}
+.stepper.wide output{flex:1}
+/* Công tắc */
+.switch-row{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);min-height:var(--tap-min)}
+.switch-row .t{display:flex;align-items:center;gap:var(--sp-2);font-weight:var(--fw-medium)}
+.switch{width:56px;height:32px;border-radius:var(--r-pill);background:var(--border-input);position:relative;flex:none}
+.switch::after{content:"";position:absolute;top:3px;left:3px;width:26px;height:26px;border-radius:50%;background:#fff;box-shadow:var(--shadow-sm)}
+.switch.on{background:var(--color-primary)}
+.switch.on::after{left:27px}
+
+.badge{display:inline-flex;align-items:center;gap:var(--sp-1);font-size:var(--fs-xs);font-weight:var(--fw-bold);padding:0 var(--sp-3);border-radius:var(--r-pill);line-height:1.75}
+.badge .lucide{--icon:16px}
+.b-info{background:var(--color-primary-tint);color:var(--color-primary-hover)}
+.b-success{background:var(--color-success-tint);color:var(--color-success)}
+.b-danger{background:var(--color-danger-tint);color:var(--color-danger)}
+.b-warning{background:var(--color-warning-tint);color:var(--color-warning)}
+.b-muted{background:var(--bg-muted);color:var(--text-muted)}
+.count{display:inline-grid;place-items:center;min-width:28px;height:28px;padding:0 var(--sp-2);border-radius:var(--r-pill);background:var(--bg-muted);color:var(--text);font-size:var(--fs-xs);font-weight:var(--fw-bold);font-variant-numeric:tabular-nums}
+
+/* Toast có Hoàn tác (5 giây) — cho mọi hành động một chạm */
+.toast{display:flex;align-items:center;gap:var(--sp-3);background:var(--bg-inverse);color:var(--text-inverse);border-radius:var(--r-md);padding:var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-4);box-shadow:var(--shadow-lg);position:relative;overflow:hidden}
+.toast .msg{flex:1;min-width:0;font-weight:var(--fw-medium);line-height:1.35}
+.toast .undo{height:48px;padding:0 var(--sp-4);border-radius:var(--r-sm);background:transparent;border:1.5px solid #fff;color:#fff;font:inherit;font-weight:var(--fw-bold);display:inline-flex;align-items:center;gap:var(--sp-2);white-space:nowrap}
+.toast .bar{position:absolute;left:0;bottom:0;height:4px;width:60%;background:#7FB0FF}
+
+/* ===================== KHUNG THIẾT BỊ ===================== */
+.devnav{position:sticky;top:0;z-index:10;background:var(--bg-page);display:flex;flex-wrap:wrap;gap:var(--sp-2);padding:var(--sp-3) 0;margin-bottom:var(--sp-4);border-bottom:1px solid var(--border)}
+.devnav a,.devnav button{height:48px;padding:0 var(--sp-5);border-radius:var(--r-pill);background:var(--bg-surface);border:1.5px solid var(--border);display:inline-flex;align-items:center;gap:var(--sp-2);font:inherit;font-weight:var(--fw-bold);color:var(--text);text-decoration:none;font-size:var(--fs-xs);cursor:pointer}
+.devnav .sep{flex:1}
+.devnav button.on{background:var(--color-primary);border-color:var(--color-primary);color:#fff}
+h3.dev{font-size:var(--fs-md);margin:var(--sp-10) 0 var(--sp-2);scroll-margin-top:90px;display:flex;align-items:center;gap:var(--sp-2)}
+.dev-sub{margin:0 0 var(--sp-5);color:var(--text-muted);font-size:var(--fs-xs);max-width:90ch}
+.phones{display:flex;gap:var(--sp-8);flex-wrap:wrap;align-items:flex-start}
+.phone-col{display:flex;flex-direction:column;gap:var(--sp-3)}
+.phone-col>p{margin:0;max-width:var(--pw);color:var(--text-muted);font-size:var(--fs-xs)}
+.phone-col>b{font-size:var(--fs-sm)}
+.phones{--pw:390px;--ph:844px}
+.phones[data-w="360"]{--pw:360px;--ph:800px}
+.phone{width:var(--pw);height:var(--ph);background:var(--bg-page);border-radius:40px;box-shadow:var(--shadow-lg),0 0 0 10px #1b1f24;position:relative;overflow:hidden;display:flex;flex-direction:column;margin:10px}
+.status{height:44px;flex:none;display:flex;justify-content:space-between;align-items:center;padding:0 28px;font-size:var(--fs-xs);font-weight:var(--fw-bold)}
+.status .r{display:flex;gap:6px}
+.status .lucide{--icon:18px}
+.topbar{flex:none;display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-1) var(--sp-4) var(--sp-3)}
+.topbar h4{margin:0;font-size:var(--fs-md);line-height:var(--lh-tight);margin-right:auto;display:flex;align-items:center;gap:var(--sp-2);min-width:0}
+.topbar h4 small{font-size:var(--fs-xs);font-weight:var(--fw-medium);color:var(--text-muted)}
+.icon-btn{width:48px;height:48px;flex:none;border-radius:var(--r-md);background:var(--bg-surface);border:1px solid var(--border);display:grid;place-items:center;color:var(--text)}
+.scroll{flex:1;overflow:hidden;padding:0 var(--sp-4) var(--sp-4);display:flex;flex-direction:column;gap:var(--sp-3)}
+/* Hàng chip cuộn ngang — không bao giờ gãy dòng */
+.chips{display:flex;gap:var(--sp-2);overflow-x:auto;scrollbar-width:none;margin:0 calc(-1 * var(--sp-4));padding:0 var(--sp-4);flex:none}
+.chip{height:48px;padding:0 var(--sp-2) 0 var(--sp-4);border-radius:var(--r-pill);background:var(--bg-surface);border:1.5px solid var(--border-input);font-weight:var(--fw-bold);display:inline-flex;align-items:center;gap:var(--sp-2);font-size:var(--fs-xs);flex:none}
+.chip.on{background:var(--color-primary);border-color:var(--color-primary);color:#fff}
+.chip.on .count{background:rgba(255,255,255,.22);color:#fff}
+.chip.plain{padding-right:var(--sp-4)}
+.chip .lucide{--icon:20px}
+.dock{flex:none;background:var(--bg-surface);border-top:1px solid var(--border);padding:var(--sp-3) var(--sp-4) 30px;display:flex;flex-direction:column;gap:var(--sp-3);box-shadow:0 -4px 12px rgba(0,41,87,.06)}
+.dock .sum{display:flex;justify-content:space-between;align-items:baseline}
+.dock .sum span{color:var(--text-muted);font-size:var(--fs-xs)}
+.dock .sum b{font-size:var(--fs-md);font-variant-numeric:tabular-nums}
+.dock .acts{display:grid;grid-template-columns:auto 1fr;gap:var(--sp-3)}
+.tabbar{flex:none;height:72px;background:var(--bg-surface);border-top:1px solid var(--border);display:grid;grid-template-columns:repeat(5,1fr)}
+.tab{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:var(--fs-xs);color:var(--text-muted);font-weight:var(--fw-medium);line-height:1.2}
+.tab.on{color:var(--color-primary);font-weight:var(--fw-bold)}
+.home-ind{flex:none;height:22px;background:var(--bg-surface);display:grid;place-items:center}
+.home-ind::after{content:"";width:134px;height:5px;border-radius:3px;background:#1b1f24}
+
+/* ===== Thẻ bàn =====
+   Thứ bậc: SỐ TIỀN to nhất (20) > tên bàn (18). Trạng thái = dải màu cạnh trên + dòng chữ có icon.
+   "Đang chọn" (chỉ iPad/máy tính) = viền dày primary + dấu ✓ góc phải — khác hẳn "đang ăn". */
+.tables{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-3);align-content:start}
+.tcard{position:relative;background:var(--bg-surface);border-radius:var(--r-lg);padding:calc(var(--sp-3) + 6px) var(--sp-3) var(--sp-3);box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:2px;overflow:hidden;border:3px solid transparent;min-width:0}
+.tcard::before{content:"";position:absolute;left:0;right:0;top:0;height:6px;background:var(--strip,transparent)}
+.tname{font-size:var(--fs-sm);font-weight:var(--fw-bold);line-height:var(--lh-tight)}
+.tmoney{font-size:var(--fs-base);font-weight:var(--fw-bold);line-height:var(--lh-tight);font-variant-numeric:tabular-nums}
+.tstate{display:flex;align-items:center;gap:var(--sp-1);font-size:var(--fs-xs);font-weight:var(--fw-bold);color:var(--sc,var(--text-muted));margin-top:var(--sp-1)}
+.tstate .lucide{--icon:18px}
+.tmeta{font-size:var(--fs-xs);color:var(--text-muted)}
+.s-eat{--strip:var(--color-primary);--sc:var(--color-primary-hover)}
+.s-wait{--strip:var(--color-warning);--sc:var(--color-warning)}
+.s-empty{background:transparent;box-shadow:none;border:2px dashed var(--border-input)}
+.s-empty .tname{color:var(--text-muted)}
+.tcard.sel{border-color:var(--color-primary);box-shadow:var(--shadow-md)}
+.tcard.sel::after{content:"";position:absolute;top:14px;right:10px;width:28px;height:28px;border-radius:50%;background:var(--color-primary) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center/18px no-repeat}
+
+/* ===== Chi tiết bàn: dòng món ===== */
+.items{display:flex;flex-direction:column;background:var(--bg-surface);border-radius:var(--r-lg);box-shadow:var(--shadow-sm);overflow:hidden}
+.item{display:flex;align-items:flex-start;gap:var(--sp-3);padding:var(--sp-3) var(--sp-4);border-bottom:1px solid var(--border)}
+.item:last-child{border-bottom:0}
+.item .q{font-weight:var(--fw-bold);flex:none;min-width:32px;color:var(--color-primary-hover);font-variant-numeric:tabular-nums}
+.item .n{flex:1;min-width:0;font-weight:var(--fw-medium);line-height:var(--lh-tight)}
+.item .n small{display:block;font-size:var(--fs-xs);color:var(--text-muted);font-weight:var(--fw-regular);margin-top:2px}
+.item .p{font-variant-numeric:tabular-nums;font-weight:var(--fw-bold);white-space:nowrap}
+.item.open{background:var(--color-primary-tint);flex-wrap:wrap}
+.item-acts{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-2);width:100%}
+.item-acts .stepper{grid-column:1 / -1}
+
+/* ===== Bếp ===== */
+.ticket{background:var(--bg-surface);border-radius:var(--r-lg);box-shadow:var(--shadow-sm);overflow:hidden;align-self:start}
+.ticket-h{display:flex;justify-content:space-between;align-items:center;gap:var(--sp-2);padding:var(--sp-3) var(--sp-4);background:var(--bg-muted);font-weight:var(--fw-bold)}
+.ticket-h .t{font-size:var(--fs-base);white-space:nowrap}
+.ticket.late .ticket-h{background:var(--color-danger-tint)}
+.dish{display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-3) var(--sp-4);border-top:1px solid var(--border)}
+.dish .qty{width:44px;height:44px;flex:none;border-radius:var(--r-sm);background:var(--color-primary-tint);color:var(--color-primary-hover);font-weight:var(--fw-bold);font-size:var(--fs-base);display:grid;place-items:center}
+.dish .info{flex:1;min-width:0}
+.dish .dn{font-size:var(--fs-base);font-weight:var(--fw-bold);line-height:var(--lh-tight)}
+.note{margin-top:var(--sp-1);background:var(--color-note-tint);border-radius:var(--r-sm);padding:2px var(--sp-2);font-size:var(--fs-sm);line-height:1.45}
+.done{width:64px;height:64px;flex:none;border-radius:var(--r-md);background:var(--color-primary);color:#fff;font-weight:var(--fw-bold);font-size:var(--fs-xs);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;line-height:1.1}
+.ticket-f{padding:var(--sp-3) var(--sp-4);border-top:1px solid var(--border)}
+.toast-slot{position:absolute;left:var(--sp-3);right:var(--sp-3);bottom:calc(72px + 22px + var(--sp-3))}
+
+/* ===== Thanh toán ===== */
+.dim{position:absolute;inset:0;background:var(--bg-overlay)}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--bg-surface);border-radius:24px 24px 0 0;box-shadow:var(--shadow-lg);padding:var(--sp-3) var(--sp-4) 30px;display:flex;flex-direction:column;gap:var(--sp-4)}
+.grab{width:48px;height:5px;border-radius:3px;background:var(--border-input);margin:0 auto}
+.sheet-h{display:flex;justify-content:space-between;align-items:center;gap:var(--sp-3)}
+.sheet-h h4{margin:0;font-size:var(--fs-md)}
+.lines{display:flex;flex-direction:column;gap:var(--sp-1)}
+.lines div{display:flex;justify-content:space-between;gap:var(--sp-3);font-variant-numeric:tabular-nums}
+.lines .muted{color:var(--text-muted)}
+.total{background:var(--bg-muted);border-radius:var(--r-md);padding:var(--sp-3) var(--sp-4);display:flex;justify-content:space-between;align-items:baseline;gap:var(--sp-3)}
+.total span{font-size:var(--fs-xs);color:var(--text-muted);font-weight:var(--fw-medium);white-space:nowrap}
+.total b{font-size:var(--fs-xl);line-height:var(--lh-tight);font-variant-numeric:tabular-nums;white-space:nowrap}
+.pay2{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-3)}
+.pay{min-height:88px;border-radius:var(--r-lg);border:2px solid var(--border-input);background:var(--bg-surface);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--sp-1);font-weight:var(--fw-bold);font-size:var(--fs-sm);text-align:center}
+.pay .lucide{--icon:32px}
+.pay.on{border-color:var(--color-primary);background:var(--color-primary-tint);color:var(--color-primary-hover)}
+.steps{display:flex;gap:var(--sp-2);align-items:center;font-size:var(--fs-xs);color:var(--text-muted);font-weight:var(--fw-medium);white-space:nowrap}
+.steps .on{color:var(--color-primary);font-weight:var(--fw-bold)}
+.steps .lucide{--icon:16px}
+.qr{border:1.5px solid var(--border);border-radius:var(--r-md);padding:var(--sp-3) var(--sp-4);display:flex;flex-direction:column;gap:var(--sp-2)}
+.qr-opts{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-2)}
+.qr-opts span{height:52px;border:1.5px solid var(--border-input);border-radius:var(--r-md);display:grid;place-items:center;font-weight:var(--fw-bold);font-size:var(--fs-xs);white-space:nowrap}
+.modal-acts{display:grid;grid-template-columns:auto 1fr;gap:var(--sp-3)}
+
+/* ===== iPad & máy tính ===== */
+.stack{display:flex;flex-direction:column;gap:var(--sp-8)}
+.shot{display:flex;flex-direction:column;gap:var(--sp-2)}
+.shot>b{font-size:var(--fs-sm)}
+.shot>p{margin:0;max-width:90ch;color:var(--text-muted);font-size:var(--fs-xs)}
+.scaler{overflow-x:auto;padding:12px}
+.tablet{width:1180px;height:820px;zoom:.66;border-radius:36px;box-shadow:var(--shadow-lg),0 0 0 16px #1b1f24;background:var(--bg-page);overflow:hidden;display:flex;flex-direction:column;position:relative;margin:16px}
+.tablet.portrait{width:820px;height:1180px;zoom:.5}
+.tablet .status{height:28px;padding:0 24px}
+.desktop{width:1440px;height:900px;zoom:.56;border-radius:12px;box-shadow:var(--shadow-lg),0 0 0 1px #c9ced6;background:var(--bg-page);overflow:hidden;display:flex;flex-direction:column;position:relative}
+.chrome{height:44px;flex:none;background:#E9ECF0;display:flex;align-items:center;gap:var(--sp-3);padding:0 var(--sp-4);border-bottom:1px solid var(--border)}
+.chrome i{width:12px;height:12px;border-radius:50%;background:#C9CED6;display:block}
+.chrome .url{margin-left:var(--sp-4);flex:1;max-width:520px;height:28px;border-radius:var(--r-sm);background:#fff;font-size:var(--fs-xs);color:var(--text-muted);display:flex;align-items:center;padding:0 var(--sp-3)}
+.app{flex:1;display:flex;min-height:0}
+.rail{flex:none;width:104px;background:var(--bg-surface);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:var(--sp-3) var(--sp-2);gap:var(--sp-1)}
+.rail .tab{height:76px;border-radius:var(--r-md)}
+.rail .tab.on{background:var(--color-primary-tint)}
+.logo{height:56px;display:flex;align-items:center;justify-content:center;gap:var(--sp-2);font-weight:var(--fw-bold);color:var(--color-primary);font-size:var(--fs-base);white-space:nowrap}
+.side{flex:none;width:256px;background:var(--bg-surface);border-right:1px solid var(--border);padding:var(--sp-4) var(--sp-3);display:flex;flex-direction:column;gap:var(--sp-1)}
+.side .logo{justify-content:flex-start;padding:0 var(--sp-3);margin-bottom:var(--sp-3)}
+.navi{height:52px;border-radius:var(--r-md);display:flex;align-items:center;gap:var(--sp-3);padding:0 var(--sp-3) 0 var(--sp-4);font-weight:var(--fw-medium);color:var(--text-muted)}
+.navi.on{background:var(--color-primary-tint);color:var(--color-primary-hover);font-weight:var(--fw-bold)}
+.navi .count{margin-left:auto}
+.side .grow{flex:1}
+.side .who{border-top:1px solid var(--border);padding:var(--sp-3);font-size:var(--fs-xs);color:var(--text-muted)}
+.side .who b{display:block;color:var(--text);font-size:var(--fs-sm)}
+.main{flex:1;min-width:0;display:flex;flex-direction:column;position:relative}
+.mhead{flex:none;display:flex;align-items:center;gap:var(--sp-4);padding:var(--sp-4) var(--sp-6)}
+.mhead h4{margin:0;font-size:var(--fs-lg);line-height:var(--lh-tight);display:flex;align-items:center;gap:var(--sp-2)}
+.mhead .chips{margin:0;padding:0;flex:1}
+.mhead .sp{flex:1}
+.mbody{flex:1;min-height:0;display:flex;gap:var(--sp-5);padding:0 var(--sp-6) var(--sp-6)}
+.tables.c3{grid-template-columns:repeat(3,1fr);flex:1}
+.tables.c4{grid-template-columns:repeat(4,1fr);flex:1}
+.wide .tname{font-size:var(--fs-base)}
+.wide .tmoney{font-size:var(--fs-md)}
+.detail{flex:none;width:420px;background:var(--bg-surface);border-radius:var(--r-lg);box-shadow:var(--shadow-md);display:flex;flex-direction:column;overflow:hidden}
+.desktop .detail{width:460px}
+.detail-h{padding:var(--sp-4) var(--sp-5);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3)}
+.detail-h h5{margin:0;font-size:var(--fs-md);white-space:nowrap}
+.detail .items{box-shadow:none;border-radius:0;flex:1}
+.detail .dock{box-shadow:none;padding-bottom:var(--sp-4)}
+.board{flex:1;display:grid;gap:var(--sp-4);align-content:start}
+.board.c2{grid-template-columns:repeat(2,1fr)}
+.board.c3{grid-template-columns:repeat(3,1fr)}
+.board.c4{grid-template-columns:repeat(4,1fr)}
+.modal{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:580px;background:var(--bg-surface);border-radius:var(--r-lg);box-shadow:var(--shadow-lg);padding:var(--sp-6);display:flex;flex-direction:column;gap:var(--sp-4)}
+.modal.wide2{width:880px;display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-6)}
+.modal .col{display:flex;flex-direction:column;gap:var(--sp-4);min-width:0}
+.modal .lines{gap:var(--sp-2)}
+.desktop .toast-slot,.tablet .toast-slot{left:auto;right:var(--sp-6);bottom:var(--sp-6);width:440px}
+
+/* Kết quả tự kiểm (chạy khi mở file với ?check) */
+#check{white-space:pre-wrap;font-size:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>QuanLyQuan, Design System v0.2</h1>
+  <p class="lead">Hướng A "Xanh tin cậy". Người dùng lớn tuổi, cầm điện thoại một tay, đang bận: đọc được ngay, chạm trúng ngay, ít bước.</p>
+
+  <div class="changelog"><b>v0.2 — sửa theo góp ý 8 điểm (2026-11-06)</b>
+    <ul>
+      <li>Chữ không còn gãy dòng: nhãn nút/chip/tiêu đề cấm xuống dòng, chip cuộn ngang + số đếm dạng badge, kiểm tự động ở 360 và 390px.</li>
+      <li>Màn danh sách bàn bỏ thanh đáy; thanh đáy chỉ có trong màn chi tiết một bàn.</li>
+      <li>Màu theo nghĩa: mọi nút hành động = xanh dương. Xanh lá chỉ cho trạng thái "đã xong". Số tiền to hơn tên bàn. "Đang chọn" có dấu ✓ riêng.</li>
+      <li>Emoji → icon Lucide (nét 2px, 24px). Nhãn điều hướng 16px.</li>
+      <li>Bếp: "✓ Xong", thông báo Hoàn tác 5 giây, nút "Xong cả bàn", thêm bản iPad dọc 2 cột.</li>
+      <li>Thanh toán: "Chuyển khoản", bỏ nút ✕ (một lối thoát), thêm "Xuất hoá đơn điện tử" ở bước ②.</li>
+      <li>Nút bị chặn có viền đứt + ⚠. Số lượng dùng nút − 1 +. Ô tiền có hậu tố "đ", mở bàn phím số.</li>
+    </ul>
+  </div>
+
+  <h2>0. Luật bố cục (mới)</h2>
+  <div class="panel">
+    <ol class="rules">
+      <li><b>Không xuống dòng</b> ở nhãn nút, chip, tiêu đề màn, tên bàn, nhãn điều hướng. Nhãn phải ngắn đủ để vừa màn <b>360px</b>; nội dung (tên món, ghi chú) thì được xuống dòng, không cắt "…".</li>
+      <li><b>Kiểm ở 360px và 390px</b> trước khi duyệt mọi màn (nút "Tự kiểm tràn chữ" ở mục 7).</li>
+      <li><b>Màu theo nghĩa:</b> xanh dương = hành động · xanh lá = đã xong (chỉ nhãn/thông báo, không làm màu nút) · đỏ = phá huỷ/trễ · cam = đang chờ.</li>
+      <li><b>Số tiền là chữ to nhất</b> trong thẻ/hộp chứa nó.</li>
+      <li><b>Thanh hành động chỉ hiện khi biết đang thao tác cái gì</b> (đã mở một bàn) và ngữ cảnh hiện rõ ngay trên thanh.</li>
+      <li><b>Thanh cố định đáy</b> → danh sách phía trên có khoảng đệm dưới bằng chiều cao thanh, không che dòng cuối.</li>
+      <li><b>Hành động một chạm</b> (Xong món, Huỷ món) luôn có thông báo <b>Hoàn tác 5 giây</b>.</li>
+      <li><b>Một lối thoát</b> cho mỗi hộp thoại.</li>
+      <li><b>Icon Lucide</b> nét 2px, cỡ 24 (20 trong chip, 16 trong nhãn). Không dùng emoji trong giao diện. Icon luôn đi kèm chữ.</li>
+    </ol>
+  </div>
+
+  <h2>1. Màu</h2>
+  <div class="grid sw-grid">
+    <div class="sw"><i style="background:#0057D9"></i><div><b>--color-primary</b><span>#0057D9 · 6.24:1 · mọi nút hành động</span></div></div>
+    <div class="sw"><i style="background:#0047B3"></i><div><b>--color-primary-hover</b><span>#0047B3 · 8.23:1</span></div></div>
+    <div class="sw"><i style="background:#047857"></i><div><b>--color-success</b><span>#047857 · 5.48:1 · chỉ trạng thái xong</span></div></div>
+    <div class="sw"><i style="background:#C81E1E"></i><div><b>--color-danger</b><span>#C81E1E · 5.74:1 · huỷ, trễ</span></div></div>
+    <div class="sw"><i style="background:#C2410C"></i><div><b>--color-warning</b><span>#C2410C · 5.18:1 · đang chờ</span></div></div>
+    <div class="sw"><i style="background:#0A0A0A"></i><div><b>--text</b><span>#0A0A0A · 19.8:1</span></div></div>
+    <div class="sw"><i style="background:#525252"></i><div><b>--text-muted</b><span>#525252 · 7.81:1</span></div></div>
+    <div class="sw"><i style="background:#8A8A8A"></i><div><b>--border-input</b><span>#8A8A8A · 3.45:1</span></div></div>
+    <div class="sw"><i style="background:#E5E5E5"></i><div><b>--border</b><span>#E5E5E5 · trang trí</span></div></div>
+    <div class="sw"><i style="background:#F5F7FA;border-bottom:1px solid #E5E5E5"></i><div><b>--bg-page</b><span>#F5F7FA</span></div></div>
+    <div class="sw"><i style="background:#EEF1F4"></i><div><b>--bg-muted</b><span>#EEF1F4</span></div></div>
+    <div class="sw"><i style="background:#FFF6CC"></i><div><b>--color-note-tint</b><span>#FFF6CC · nền ghi chú bếp</span></div></div>
+  </div>
+
+  <h2>2. Chữ: Be Vietnam Pro, sàn 16px, không ngoại lệ</h2>
+  <div class="panel">
+    <div class="type-row"><code>--fs-xl 32</code><span style="font-size:32px;font-weight:600">485.000đ · Tổng cần thu</span></div>
+    <div class="type-row"><code>--fs-md 24</code><span style="font-size:24px;font-weight:600">Tiêu đề màn · tiền trong thanh đáy</span></div>
+    <div class="type-row"><code>--fs-base 20</code><span style="font-size:20px;font-weight:600">Tiền trên thẻ bàn · tên món ở bếp</span></div>
+    <div class="type-row"><code>--fs-sm 18 (nền)</code><span style="font-size:18px">Chữ thường, nhãn nút, tên bàn trên điện thoại</span></div>
+    <div class="type-row" style="border:0"><code>--fs-xs 16 (sàn)</code><span style="font-size:16px;color:var(--text-muted)">Thông tin phụ, nhãn điều hướng, chip</span></div>
+  </div>
+
+  <h2>3. Icon: Lucide</h2>
+  <div class="panel icons">
+    <div><i data-lucide="utensils"></i>Bàn</div><div><i data-lucide="chef-hat"></i>Bếp</div><div><i data-lucide="receipt"></i>Lịch sử</div><div><i data-lucide="package"></i>Kho</div><div><i data-lucide="ellipsis"></i>Thêm</div><div><i data-lucide="banknote"></i>Tiền mặt</div><div><i data-lucide="qr-code"></i>Chuyển khoản</div><div><i data-lucide="file-text"></i>Hoá đơn</div><div><i data-lucide="plus"></i>Thêm món</div><div><i data-lucide="check"></i>Xong</div><div><i data-lucide="undo-2"></i>Hoàn tác</div><div><i data-lucide="triangle-alert"></i>Cảnh báo</div><div><i data-lucide="clock"></i>Đang chờ</div><div><i data-lucide="pencil"></i>Ghi chú</div><div><i data-lucide="trash-2"></i>Huỷ</div><div><i data-lucide="list-filter"></i>Lọc</div>
+  </div>
+
+  <h2>4. Nút</h2>
+  <div class="panel grid" style="gap:var(--sp-5)">
+    <div class="row">
+      <button class="btn btn-primary"><i data-lucide="check"></i>Lưu</button>
+      <button class="btn btn-secondary"><i data-lucide="pencil"></i>Sửa</button>
+      <button class="btn btn-ghost">Đóng</button>
+      <button class="btn btn-danger"><i data-lucide="trash-2"></i>Huỷ món</button>
+      <button class="btn btn-primary btn-focus">Đang chọn (focus)</button>
+    </div>
+    <div class="row">
+      <button class="btn btn-primary btn-lg"><i data-lucide="chef-hat"></i>Gửi bếp</button>
+      <button class="btn btn-primary btn-lg">Thanh toán</button>
+      <button class="btn btn-lg btn-blocked">Xác nhận đã thu<span class="why"><i data-lucide="triangle-alert"></i>Chưa chọn tài khoản nhận</span></button>
+    </div>
+    <p class="annot">Chỉ 4 kiểu: <b>chính</b> (xanh dương, mọi hành động), <b>phụ</b> (viền xanh), <b>nhạt</b> (đóng/quay lại), <b>huỷ</b> (viền đỏ). Không có nút xanh lá. Nút bị chặn: viền đứt + ⚠ + lý do, vẫn bấm được (chạm vào thì cuộn tới chỗ còn thiếu).</p>
+  </div>
+
+  <h2>5. Ô nhập</h2>
+  <div class="panel row" style="align-items:flex-start;gap:var(--sp-6)">
+    <div class="field"><label>Tên món</label><input class="input" placeholder="Vd: Bún bò"><span class="hint">Tối đa 60 ký tự</span></div>
+    <div class="field"><label>Giá bán</label><div class="money-in"><input class="input is-focus" inputmode="numeric" value="45.000"><span>đ</span></div><span class="hint">Mở bàn phím số</span></div>
+    <div class="field"><span class="lbl">Số lượng</span><div class="stepper"><button aria-label="Bớt"><i data-lucide="minus"></i></button><output>1</output><button aria-label="Thêm"><i data-lucide="plus"></i></button></div></div>
+    <div class="field"><label>Số điện thoại khách</label><input class="input is-error" inputmode="tel" value="09123"><span class="err"><i data-lucide="triangle-alert"></i>Số điện thoại thiếu chữ số</span></div>
+  </div>
+
+  <h2>6. Nhãn trạng thái · thông báo</h2>
+  <div class="panel grid" style="gap:var(--sp-5)">
+    <div class="row">
+      <span class="badge b-info"><i data-lucide="utensils"></i>Đang ăn</span>
+      <span class="badge b-warning"><i data-lucide="clock"></i>Chờ món 18'</span>
+      <span class="badge b-danger"><i data-lucide="triangle-alert"></i>Trễ 25'</span>
+      <span class="badge b-success"><i data-lucide="check"></i>Đã thu</span>
+      <span class="badge b-muted">Bàn trống</span>
+    </div>
+    <div class="toast" style="max-width:440px"><span class="msg">Đã xong: Trà đá · Bàn 2</span><button class="undo"><i data-lucide="undo-2"></i>Hoàn tác</button><span class="bar"></span></div>
+  </div>
+
+  <!-- ===================== MÀN MẪU ===================== -->
+  <h2>7. Màn mẫu trên 3 loại thiết bị</h2>
+  <p class="lead">Cùng component, cùng token. Màn rộng hơn thì xếp thêm cột, không đổi cách thao tác. Mốc: &lt; 900 điện thoại · ≥ 900 iPad ngang · ≥ 1280 máy tính.</p>
+  <nav class="devnav">
+    <a href="#iphone"><i data-lucide="smartphone"></i>Điện thoại</a><a href="#ipad"><i data-lucide="tablet"></i>iPad</a><a href="#desktop"><i data-lucide="monitor"></i>Máy tính</a>
+    <span class="sep"></span>
+    <button data-w="390" class="on">Rộng 390</button><button data-w="360">Rộng 360</button><button id="run-check">Tự kiểm tràn chữ</button>
+  </nav>
+  <pre id="check" hidden></pre>
+
+  <h3 class="dev" id="iphone"><i data-lucide="smartphone"></i>Điện thoại · <span id="wlabel">390×844</span></h3>
+  <p class="dev-sub">Bấm "Rộng 360" để xem trên máy Android màn hẹp. Danh sách bàn không có thanh đáy: chạm thẻ là mở bàn.</p>
+  <div class="phones" data-w="390">
+
+    <!-- Danh sách bàn -->
+    <div class="phone-col"><b>① Danh sách bàn</b>
+      <div class="phone">
+        <div data-tpl="status"></div>
+        <div class="topbar"><h4>Bàn <small>Ca trưa</small></h4><div class="icon-btn" aria-label="Thêm"><i data-lucide="ellipsis"></i></div></div>
+        <div class="scroll">
+          <div class="chips">
+            <span class="chip on">Tất cả<span class="count">14</span></span><span class="chip">Đang ăn<span class="count">9</span></span><span class="chip">Trống<span class="count">5</span></span><span class="chip plain"><i data-lucide="list-filter"></i>Lọc</span>
+          </div>
+          <div class="tables">
+            <div class="tcard s-eat"><div class="tname">Bàn 1</div><div class="tmoney">485.000đ</div><div class="tstate"><i data-lucide="utensils"></i>Đang ăn</div><div class="tmeta">42 phút</div></div>
+            <div class="tcard s-wait"><div class="tname">Bàn 2</div><div class="tmoney">220.000đ</div><div class="tstate"><i data-lucide="clock"></i>Chờ món</div><div class="tmeta">18 phút</div></div>
+            <div class="tcard s-eat"><div class="tname">Bàn 3</div><div class="tmoney">1.250.000đ</div><div class="tstate"><i data-lucide="utensils"></i>Đang ăn</div><div class="tmeta">1 giờ 05</div></div>
+            <div class="tcard s-empty"><div class="tname">Bàn 4</div><div class="tstate"><i data-lucide="plus"></i>Mở bàn</div></div>
+            <div class="tcard s-eat"><div class="tname">Mang về 1</div><div class="tmoney">96.000đ</div><div class="tstate"><i data-lucide="utensils"></i>Đang làm</div><div class="tmeta">8 phút</div></div>
+            <div class="tcard s-empty"><div class="tname">Bàn 6</div><div class="tstate"><i data-lucide="plus"></i>Mở bàn</div></div>
+          </div>
+        </div>
+        <div data-tpl="tabbar" data-on="0"></div>
+        <div class="home-ind"></div>
+      </div>
+      <p>Số tiền 20px là chữ to nhất thẻ. Trạng thái = dải màu cạnh trên + chữ có icon. Chip cuộn ngang, số đếm dạng badge.</p>
+    </div>
+
+    <!-- Chi tiết bàn -->
+    <div class="phone-col"><b>② Mở Bàn 1</b>
+      <div class="phone">
+        <div data-tpl="status"></div>
+        <div class="topbar"><div class="icon-btn" aria-label="Quay lại"><i data-lucide="chevron-left"></i></div><h4>Bàn 1 <small>42 phút</small></h4><div class="icon-btn" aria-label="Thêm"><i data-lucide="ellipsis"></i></div></div>
+        <div class="scroll">
+          <div class="items">
+            <div class="item"><span class="q">2×</span><span class="n">Bún bò Huế đặc biệt<small>1 tô không hành</small></span><span class="p">130.000</span></div>
+            <div class="item open"><span class="q">1×</span><span class="n">Cơm tấm sườn bì chả</span><span class="p">55.000</span>
+              <div class="item-acts">
+                <div class="stepper wide"><button aria-label="Bớt"><i data-lucide="minus"></i></button><output>1</output><button aria-label="Thêm"><i data-lucide="plus"></i></button></div>
+                <button class="btn btn-ghost"><i data-lucide="pencil"></i>Ghi chú</button><button class="btn btn-danger"><i data-lucide="trash-2"></i>Huỷ</button>
+              </div></div>
+            <div class="item"><span class="q">3×</span><span class="n">Nem rán</span><span class="p">90.000</span></div>
+            <div class="item"><span class="q">1×</span><span class="n">Lẩu thái nhỏ</span><span class="p">190.000</span></div>
+            <div class="item"><span class="q">4×</span><span class="n">Trà đá</span><span class="p">20.000</span></div>
+          </div>
+        </div>
+        <div class="dock">
+          <div class="sum"><span>Tạm tính · Bàn 1</span><b>485.000đ</b></div>
+          <div class="acts"><button class="btn btn-secondary btn-lg"><i data-lucide="plus"></i>Gọi món</button><button class="btn btn-primary btn-lg">Thanh toán</button></div>
+        </div>
+      </div>
+      <p>Thanh đáy chỉ có ở đây, ghi rõ "Bàn 1" và số tiền. Chạm dòng món mở hàng nút − 1 + / Ghi chú / Huỷ (Huỷ có Hoàn tác).</p>
+    </div>
+
+    <!-- Bếp -->
+    <div class="phone-col"><b>③ Bếp</b>
+      <div class="phone">
+        <div data-tpl="status"></div>
+        <div class="topbar"><h4>Bếp <span class="badge b-warning">7 chờ</span></h4><button class="btn btn-ghost" style="min-height:48px;padding:0 var(--sp-3)">Theo bàn<i data-lucide="chevron-down"></i></button></div>
+        <div class="scroll">
+          <div class="ticket late">
+            <div class="ticket-h"><span class="t">Bàn 2</span><span class="badge b-danger"><i data-lucide="triangle-alert"></i>Trễ 25'</span></div>
+            <div class="dish"><div class="qty">2</div><div class="info"><div class="dn">Bún bò Huế đặc biệt</div><div class="note">Một tô không hành, một tô thêm chả cua</div></div><div class="done"><i data-lucide="check"></i>Xong</div></div>
+            <div class="dish"><div class="qty">2</div><div class="info"><div class="dn">Nem rán</div></div><div class="done"><i data-lucide="check"></i>Xong</div></div>
+            <div class="ticket-f"><button class="btn btn-secondary btn-block"><i data-lucide="check"></i>Xong cả bàn</button></div>
+          </div>
+          <div class="ticket">
+            <div class="ticket-h"><span class="t">Bàn 5</span><span class="badge b-warning"><i data-lucide="clock"></i>8'</span></div>
+            <div class="dish"><div class="qty">1</div><div class="info"><div class="dn">Cơm tấm sườn bì chả</div><div class="note">Ít nước mắm</div></div><div class="done"><i data-lucide="check"></i>Xong</div></div>
+          </div>
+        </div>
+        <div class="toast-slot"><div class="toast"><span class="msg">Đã xong: Trà đá · Bàn 2</span><button class="undo"><i data-lucide="undo-2"></i>Hoàn tác</button><span class="bar"></span></div></div>
+        <div data-tpl="tabbar" data-on="1"></div>
+        <div class="home-ind"></div>
+      </div>
+      <p>"✓ Xong" thay "»". Bấm xong → thông báo Hoàn tác 5 giây (thanh chạy ngược). "Xong cả bàn" ở cuối phiếu có từ 2 món.</p>
+    </div>
+
+    <!-- Thanh toán -->
+    <div class="phone-col"><b>④ Thanh toán · bước ①</b>
+      <div class="phone">
+        <div data-tpl="status"></div>
+        <div class="topbar"><div class="icon-btn"><i data-lucide="chevron-left"></i></div><h4>Bàn 1</h4></div>
+        <div class="dim"></div>
+        <div class="sheet">
+          <div class="grab"></div>
+          <div class="sheet-h"><h4>Thanh toán · Bàn 1</h4></div>
+          <div class="steps"><span class="on">① Cách trả</span><i data-lucide="chevron-right"></i><span>② Xác nhận</span></div>
+          <div class="lines">
+            <div><span>6 món</span><span>510.000đ</span></div>
+            <div class="muted"><span>Giảm khách quen</span><span>−25.000đ</span></div>
+          </div>
+          <div class="total"><span>Cần thu</span><b>485.000đ</b></div>
+          <div class="pay2">
+            <div class="pay"><i data-lucide="banknote"></i>Tiền mặt</div>
+            <div class="pay"><i data-lucide="qr-code"></i>Chuyển khoản</div>
+          </div>
+          <button class="btn btn-ghost btn-block"><i data-lucide="chevron-left"></i>Quay lại bàn</button>
+        </div>
+      </div>
+      <p>Một lối thoát duy nhất: "Quay lại bàn" (bỏ ✕). Chạm cách trả là sang bước ② — xem bản iPad.</p>
+    </div>
+  </div>
+
+  <!-- ===================== iPAD ===================== -->
+  <h3 class="dev" id="ipad"><i data-lucide="tablet"></i>iPad ngang · 1180×820</h3>
+  <p class="dev-sub">Thanh dọc trái có nhãn 16px. Order chia đôi: lưới bàn + chi tiết bàn đang chọn (thẻ có dấu ✓). iPad dọc dùng bố cục điện thoại, riêng Bếp có bản 2 cột.</p>
+  <div class="stack">
+
+    <div class="shot"><b>Order</b>
+      <div class="scaler"><div class="tablet wide">
+        <div data-tpl="status"></div>
+        <div class="app">
+          <div data-tpl="rail" data-on="0"></div>
+          <div class="main">
+            <div class="mhead"><h4>Bàn <small class="hint">Ca trưa</small></h4><div class="chips"><span class="chip on">Tất cả<span class="count">14</span></span><span class="chip">Đang ăn<span class="count">9</span></span><span class="chip">Trống<span class="count">5</span></span><span class="chip plain"><i data-lucide="list-filter"></i>Lọc</span></div></div>
+            <div class="mbody">
+              <div class="tables c3">
+                <div class="tcard s-eat sel"><div class="tname">Bàn 1</div><div class="tmoney">485.000đ</div><div class="tstate"><i data-lucide="utensils"></i>Đang ăn</div><div class="tmeta">42 phút</div></div>
+                <div class="tcard s-wait"><div class="tname">Bàn 2</div><div class="tmoney">220.000đ</div><div class="tstate"><i data-lucide="clock"></i>Chờ món</div><div class="tmeta">18 phút</div></div>
+                <div class="tcard s-eat"><div class="tname">Bàn 3</div><div class="tmoney">1.250.000đ</div><div class="tstate"><i data-lucide="utensils"></i>Đang ăn</div><div class="tmeta">1 giờ</div></div>
+                <div class="tcard s-empty"><div class="tname">Bàn 4</div><div class="tstate"><i data-lucide="plus"></i>Mở bàn</div></div>
+                <div class="tcard s-eat"><div class="tname">Bàn 5</div><div class="tmoney">96.000đ</div><div class="tstate"><i data-lucide="utensils"></i>Đang ăn</div><div class="tmeta">8 phút</div></div>
+                <div class="tcard s-empty"><div class="tname">Bàn 6</div><div class="tstate"><i data-lucide="plus"></i>Mở bàn</div></div>
+                <div class="tcard s-eat"><div class="tname">Bàn 7</div><div class="tmoney">340.000đ</div><div class="tstate"><i data-lucide="utensils"></i>Đang ăn</div><div class="tmeta">25 phút</div></div>
+                <div class="tcard s-empty"><div class="tname">Bàn 8</div><div class="tstate"><i data-lucide="plus"></i>Mở bàn</div></div>
+                <div class="tcard s-eat"><div class="tname">Mang về 1</div><div class="tmoney">70.000đ</div><div class="tstate"><i data-lucide="utensils"></i>Đang làm</div><div class="tmeta">3 phút</div></div>
+              </div>
+              <div class="detail">
+                <div class="detail-h"><h5>Bàn 1</h5><span class="badge b-info"><i data-lucide="utensils"></i>Đang ăn · 42 phút</span></div>
+                <div class="items">
+                  <div class="item"><span class="q">2×</span><span class="n">Bún bò Huế đặc biệt<small>1 tô không hành</small></span><span class="p">130.000</span></div>
+                  <div class="item open"><span class="q">1×</span><span class="n">Cơm tấm sườn bì chả</span><span class="p">55.000</span>
+                    <div class="item-acts"><div class="stepper wide"><button><i data-lucide="minus"></i></button><output>1</output><button><i data-lucide="plus"></i></button></div><button class="btn btn-ghost"><i data-lucide="pencil"></i>Ghi chú</button><button class="btn btn-danger"><i data-lucide="trash-2"></i>Huỷ</button></div></div>
+                  <div class="item"><span class="q">3×</span><span class="n">Nem rán</span><span class="p">90.000</span></div>
+                  <div class="item"><span class="q">4×</span><span class="n">Trà đá</span><span class="p">20.000</span></div>
+                </div>
+                <div class="dock">
+                  <div class="sum"><span>Tạm tính · Bàn 1</span><b>485.000đ</b></div>
+                  <div class="acts"><button class="btn btn-secondary btn-lg"><i data-lucide="plus"></i>Gọi món</button><button class="btn btn-primary btn-lg">Thanh toán</button></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div></div>
+      <p>"Đang chọn" = viền dày + dấu ✓ (Bàn 1); "đang ăn" = dải xanh cạnh trên (Bàn 1, 3, 5, 7). Hai thứ không còn lẫn.</p>
+    </div>
+
+    <div class="shot"><b>Bếp</b>
+      <div class="scaler"><div class="tablet">
+        <div data-tpl="status"></div>
+        <div class="app">
+          <div data-tpl="rail" data-on="1"></div>
+          <div class="main">
+            <div class="mhead"><h4>Bếp <span class="badge b-warning">9 chờ</span></h4><span class="sp"></span><button class="btn btn-ghost">Theo bàn<i data-lucide="chevron-down"></i></button></div>
+            <div class="mbody"><div class="board c3" data-tpl="tickets"></div></div>
+            <div class="toast-slot"><div class="toast"><span class="msg">Đã xong: Trà đá · Bàn 2</span><button class="undo"><i data-lucide="undo-2"></i>Hoàn tác</button><span class="bar"></span></div></div>
+          </div>
+        </div>
+      </div></div>
+      <p>3 cột, phiếu trễ nhất đầu tiên. Thông báo Hoàn tác ở góc dưới phải.</p>
+    </div>
+
+    <div class="shot"><b>Bếp · iPad dọc / tablet treo tường 820×1180</b>
+      <div class="scaler"><div class="tablet portrait">
+        <div data-tpl="status"></div>
+        <div class="main">
+          <div class="mhead"><h4>Bếp <span class="badge b-warning">9 chờ</span></h4><span class="sp"></span><button class="btn btn-ghost">Theo bàn<i data-lucide="chevron-down"></i></button></div>
+          <div class="mbody"><div class="board c2" data-tpl="tickets"></div></div>
+        </div>
+        <div data-tpl="tabbar" data-on="1"></div>
+      </div></div>
+      <p>Ngoại lệ bố cục duy nhất: Bếp dùng 2 cột từ 640px (tablet dọc treo tường), còn lại các màn khác theo bố cục điện thoại dưới 900px.</p>
+    </div>
+
+    <div class="shot"><b>Thanh toán · bước ② Chuyển khoản</b>
+      <div class="scaler"><div class="tablet">
+        <div data-tpl="status"></div>
+        <div class="app">
+          <div data-tpl="rail" data-on="0"></div>
+          <div class="main"><div class="mhead"><h4>Bàn</h4></div></div>
+        </div>
+        <div class="dim"></div>
+        <div class="modal">
+          <div class="sheet-h"><h4>Thanh toán · Bàn 1</h4></div>
+          <div class="steps"><span>① Cách trả: Chuyển khoản</span><i data-lucide="chevron-right"></i><span class="on">② Xác nhận</span></div>
+          <div class="total"><span>Cần thu</span><b>485.000đ</b></div>
+          <div class="qr"><span class="hint">Chọn tài khoản nhận (không chọn sẵn)</span><div class="qr-opts"><span>Vietcombank</span><span>MoMo</span></div></div>
+          <div class="switch-row"><span class="t"><i data-lucide="file-text"></i>Xuất hoá đơn điện tử</span><span class="switch"></span></div>
+          <div class="modal-acts"><button class="btn btn-ghost"><i data-lucide="chevron-left"></i>Đổi cách trả</button><button class="btn btn-lg btn-blocked">Xác nhận đã thu<span class="why"><i data-lucide="triangle-alert"></i>Chưa chọn tài khoản nhận</span></button></div>
+        </div>
+      </div></div>
+      <p>Không có ✕: lối thoát duy nhất là "Đổi cách trả". Bật "Xuất hoá đơn điện tử" thì hỏi thêm mã số thuế/tên công ty ở dưới công tắc.</p>
+    </div>
+  </div>
+
+  <!-- ===================== MÁY TÍNH ===================== -->
+  <h3 class="dev" id="desktop"><i data-lucide="monitor"></i>Máy tính · 1440×900</h3>
+  <p class="dev-sub">Thanh bên 256px đủ chữ + số đếm. Lưới bàn 3 cột (4 cột làm số tiền 24px không vừa khi có bảng chi tiết). Cỡ chữ/nút giữ nguyên như điện thoại.</p>
+  <div class="stack">
+
+    <div class="shot"><b>Order</b>
+      <div class="scaler"><div class="desktop wide">
+        <div class="chrome"><i></i><i></i><i></i><div class="url">quan.vn/orders</div></div>
+        <div class="app">
+          <div data-tpl="side" data-on="0"></div>
+          <div class="main">
+            <div class="mhead"><h4>Bàn <small class="hint">Ca trưa</small></h4><div class="chips"><span class="chip on">Tất cả<span class="count">14</span></span><span class="chip">Đang ăn<span class="count">9</span></span><span class="chip">Trống<span class="count">5</span></span><span class="chip plain"><i data-lucide="list-filter"></i>Lọc</span></div></div>
+            <div class="mbody">
+              <div class="tables c3">
+                <div class="tcard s-eat sel"><div class="tname">Bàn 1</div><div class="tmoney">485.000đ</div><div class="tstate"><i data-lucide="utensils"></i>Đang ăn</div><div class="tmeta">42 phút</div></div>
+                <div class="tcard s-wait"><div class="tname">Bàn 2</div><div class="tmoney">220.000đ</div><div class="tstate"><i data-lucide="clock"></i>Chờ món</div><div class="tmeta">18 phút</div></div>
+                <div class="tcard s-eat"><div class="tname">Bàn 3</div><div class="tmoney">1.250.000đ</div><div class="tstate"><i data-lucide="utensils"></i>Đang ăn</div><div class="tmeta">1 giờ</div></div>
+                <div class="tcard s-empty"><div class="tname">Bàn 4</div><div class="tstate"><i data-lucide="plus"></i>Mở bàn</div></div>
+                <div class="tcard s-eat"><div class="tname">Bàn 5</div><div class="tmoney">96.000đ</div><div class="tstate"><i data-lucide="utensils"></i>Đang ăn</div><div class="tmeta">8 phút</div></div>
+                <div class="tcard s-empty"><div class="tname">Bàn 6</div><div class="tstate"><i data-lucide="plus"></i>Mở bàn</div></div>
+                <div class="tcard s-eat"><div class="tname">Bàn 7</div><div class="tmoney">340.000đ</div><div class="tstate"><i data-lucide="utensils"></i>Đang ăn</div><div class="tmeta">25 phút</div></div>
+                <div class="tcard s-empty"><div class="tname">Bàn 8</div><div class="tstate"><i data-lucide="plus"></i>Mở bàn</div></div>
+                <div class="tcard s-eat"><div class="tname">Bàn 9</div><div class="tmoney">150.000đ</div><div class="tstate"><i data-lucide="utensils"></i>Đang ăn</div><div class="tmeta">12 phút</div></div>
+                <div class="tcard s-empty"><div class="tname">Bàn 10</div><div class="tstate"><i data-lucide="plus"></i>Mở bàn</div></div>
+                <div class="tcard s-eat"><div class="tname">Mang về 1</div><div class="tmoney">70.000đ</div><div class="tstate"><i data-lucide="utensils"></i>Đang làm</div><div class="tmeta">3 phút</div></div>
+                <div class="tcard s-wait"><div class="tname">Mang về 2</div><div class="tmoney">45.000đ</div><div class="tstate"><i data-lucide="clock"></i>Chờ lấy</div><div class="tmeta">2 phút</div></div>
+              </div>
+              <div class="detail">
+                <div class="detail-h"><h5>Bàn 1</h5><span class="badge b-info"><i data-lucide="utensils"></i>Đang ăn · 42 phút</span></div>
+                <div class="items">
+                  <div class="item"><span class="q">2×</span><span class="n">Bún bò Huế đặc biệt<small>1 tô không hành</small></span><span class="p">130.000</span></div>
+                  <div class="item"><span class="q">1×</span><span class="n">Cơm tấm sườn bì chả</span><span class="p">55.000</span></div>
+                  <div class="item"><span class="q">3×</span><span class="n">Nem rán</span><span class="p">90.000</span></div>
+                  <div class="item"><span class="q">1×</span><span class="n">Lẩu thái nhỏ</span><span class="p">190.000</span></div>
+                  <div class="item"><span class="q">4×</span><span class="n">Trà đá</span><span class="p">20.000</span></div>
+                </div>
+                <div class="dock">
+                  <div class="sum"><span>Tạm tính · Bàn 1</span><b>485.000đ</b></div>
+                  <div class="acts"><button class="btn btn-secondary btn-lg"><i data-lucide="plus"></i>Gọi món</button><button class="btn btn-primary btn-lg">Thanh toán</button></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div></div>
+    </div>
+
+    <div class="shot"><b>Bếp</b>
+      <div class="scaler"><div class="desktop">
+        <div class="chrome"><i></i><i></i><i></i><div class="url">quan.vn/kitchen</div></div>
+        <div class="app">
+          <div data-tpl="side" data-on="1"></div>
+          <div class="main">
+            <div class="mhead"><h4>Bếp <span class="badge b-warning">11 chờ</span></h4><span class="sp"></span><button class="btn btn-ghost">Theo bàn<i data-lucide="chevron-down"></i></button></div>
+            <div class="mbody"><div class="board c4" data-tpl="tickets" data-extra="1"></div></div>
+          </div>
+        </div>
+      </div></div>
+    </div>
+
+    <div class="shot"><b>Thanh toán · gộp 1 bước</b>
+      <div class="scaler"><div class="desktop">
+        <div class="chrome"><i></i><i></i><i></i><div class="url">quan.vn/orders</div></div>
+        <div class="app"><div data-tpl="side" data-on="0"></div><div class="main"><div class="mhead"><h4>Bàn</h4></div></div></div>
+        <div class="dim"></div>
+        <div class="modal wide2">
+          <div class="col">
+            <div class="sheet-h"><h4>Thanh toán · Bàn 1</h4></div>
+            <div class="lines">
+              <div><span>2× Bún bò Huế đặc biệt</span><span>130.000</span></div>
+              <div><span>1× Cơm tấm sườn bì chả</span><span>55.000</span></div>
+              <div><span>3× Nem rán</span><span>90.000</span></div>
+              <div><span>1× Lẩu thái nhỏ</span><span>190.000</span></div>
+              <div><span>4× Trà đá</span><span>20.000</span></div>
+              <div class="muted"><span>Giảm khách quen</span><span>−25.000</span></div>
+            </div>
+            <div class="total"><span>Cần thu</span><b>485.000đ</b></div>
+          </div>
+          <div class="col">
+            <div class="pay2"><div class="pay on"><i data-lucide="banknote"></i>Tiền mặt</div><div class="pay"><i data-lucide="qr-code"></i>Chuyển khoản</div></div>
+            <div class="field"><label>Khách đưa</label><div class="money-in"><input class="input is-focus" inputmode="numeric" value="500.000"><span>đ</span></div></div>
+            <div class="lines"><div><span>Trả lại khách</span><b>15.000đ</b></div></div>
+            <div class="switch-row"><span class="t"><i data-lucide="file-text"></i>Xuất hoá đơn điện tử</span><span class="switch"></span></div>
+            <button class="btn btn-primary btn-lg btn-block"><i data-lucide="check"></i>Xác nhận đã thu</button>
+            <button class="btn btn-ghost btn-block"><i data-lucide="chevron-left"></i>Quay lại bàn</button>
+          </div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Khung lặp lại (thanh trạng thái, điều hướng, phiếu bếp) sinh bằng JS cho đỡ chép tay.
+const NAV = [['utensils','Bàn'],['chef-hat','Bếp'],['receipt','Lịch sử'],['package','Kho'],['ellipsis','Thêm']];
+const SIDE = [['utensils','Bàn',9],['chef-hat','Bếp',7],['bike','Đơn online',2],['receipt','Lịch sử'],['package','Kho'],['truck','Nhập hàng'],['chart-column','Báo cáo']];
+const ic = (n) => `<i data-lucide="${n}"></i>`;
+const TICKETS = [
+  ['Bàn 2','late','<span class="badge b-danger">'+ic('triangle-alert')+"Trễ 25'</span>",[[2,'Bún bò Huế đặc biệt','Một tô không hành, một tô thêm chả cua'],[1,'Trà đá']]],
+  ['Bàn 5','','<span class="badge b-warning">'+ic('clock')+"8'</span>",[[1,'Cơm tấm sườn bì chả','Ít nước mắm'],[3,'Nem rán']]],
+  ['Bàn 7','','<span class="badge b-muted">2\'</span>',[[2,'Phở bò tái'],[1,'Gỏi cuốn','Không rau mùi']]],
+  ['Mang về 1','','<span class="badge b-muted">1\'</span>',[[2,'Bánh mì thịt','1 cái không ớt']]],
+];
+const tpl = {
+  status: () => `<div class="status"><span>11:42</span><span class="r">${ic('signal')}${ic('wifi')}${ic('battery-full')}</span></div>`,
+  tabbar: (on) => `<div class="tabbar">${NAV.map(([i,l],k)=>`<div class="tab${k==on?' on':''}">${ic(i)}${l}</div>`).join('')}</div>`,
+  rail: (on) => `<div class="rail"><div class="logo">${ic('store')}</div>${NAV.map(([i,l],k)=>`<div class="tab${k==on?' on':''}">${ic(i)}${l}</div>`).join('')}</div>`,
+  side: (on) => `<div class="side"><div class="logo">${ic('store')}Quán Cô Ba</div>${SIDE.map(([i,l,c],k)=>`<div class="navi${k==on?' on':''}">${ic(i)}${l}${c?`<span class="count">${c}</span>`:''}</div>`).join('')}<div class="grow"></div><div class="navi">${ic('settings')}Cài đặt</div><div class="who"><b>Chị Ba</b>Chủ quán · Ca trưa</div></div>`,
+  tickets: (_, el) => TICKETS.slice(0, el.dataset.extra ? 4 : 3).map(([t,cls,b,dishes]) =>
+    `<div class="ticket ${cls}"><div class="ticket-h"><span class="t">${t}</span>${b}</div>${dishes.map(([q,n,note])=>
+      `<div class="dish"><div class="qty">${q}</div><div class="info"><div class="dn">${n}</div>${note?`<div class="note">${note}</div>`:''}</div><div class="done">${ic('check')}Xong</div></div>`).join('')}${dishes.length>1?`<div class="ticket-f"><button class="btn btn-secondary btn-block">${ic('check')}Xong cả bàn</button></div>`:''}</div>`).join(''),
+};
+document.querySelectorAll('[data-tpl]').forEach((el) => {
+  const html = tpl[el.dataset.tpl](el.dataset.on, el);
+  if (el.dataset.tpl === 'tickets') el.innerHTML = html; else el.outerHTML = html;
+});
+lucide.createIcons();
+
+// Đổi bề rộng điện thoại 390 ↔ 360
+const phones = document.querySelector('.phones');
+function setW(w){
+  phones.dataset.w = w;
+  document.getElementById('wlabel').textContent = w == 360 ? '360×800 (Android màn hẹp)' : '390×844';
+  document.querySelectorAll('.devnav [data-w]').forEach(b => b.classList.toggle('on', b.dataset.w == w));
+}
+document.querySelectorAll('.devnav [data-w]').forEach(b => b.onclick = () => setW(b.dataset.w));
+
+// Tự kiểm: phần tử cấm xuống dòng mà bị tràn, hoặc thò ra ngoài khung thiết bị.
+const NOWRAP = '.btn,.chip,.badge,.tab,.navi,.topbar h4,.tname,.tmoney,.tstate,.tmeta,.pay,.sheet-h h4,.mhead h4,.total b,.total span,.steps,.qr-opts span,.ticket-h .t,.item .p,.dock .sum b,.detail-h h5,.toast .undo';
+function check(){
+  const out = [];
+  for (const w of [390, 360]) {
+    setW(w);
+    document.querySelectorAll('.phone,.tablet,.desktop').forEach((frame) => {
+      if (w === 360 && !frame.classList.contains('phone')) return;
+      const fr = frame.getBoundingClientRect();
+      const where = frame.closest('.phone-col,.shot')?.querySelector('b')?.textContent ?? '?';
+      frame.querySelectorAll(NOWRAP).forEach((el) => {
+        if (el.closest('.chips')) { /* chip được phép cuộn ngang — chỉ kiểm chính nó không tràn */ }
+        const r = el.getBoundingClientRect();
+        const overflow = el.scrollWidth > el.clientWidth + 1;
+        const outside = !el.closest('.chips') && (r.right > fr.right + 1 || r.left < fr.left - 1);
+        if (overflow || outside) out.push(`[${frame.className.split(' ')[0]} ${w}] ${where} → "${el.textContent.trim()}" ${overflow ? 'TRÀN' : 'RA NGOÀI KHUNG'}`);
+      });
+    });
+  }
+  setW(390);
+  const pre = document.getElementById('check');
+  pre.hidden = false;
+  pre.textContent = out.length ? `❌ ${out.length} chỗ lỗi:\n` + out.join('\n') : '✅ Không có chữ nào tràn hay gãy dòng ở 390 và 360px.';
+  return out;
+}
+document.getElementById('run-check').onclick = check;
+if (location.search.includes('w=360')) setW(360);
+if (location.search.includes('check')) window.addEventListener('load', () => setTimeout(check, 300));
+</script>
+</body>
+</html>

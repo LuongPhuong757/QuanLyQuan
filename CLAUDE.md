@@ -1,7 +1,31 @@
-# CLAUDE.md — Order Quán Bà Lũn
+# CLAUDE.md — QuanLyQuan (sản phẩm cho thuê, tách từ Quán Bà Lùn)
 
 Bối cảnh dự án cho Claude Code. File này nạp tự động MỌI phiên, mọi agent, mọi worktree.
 Giữ ngắn: chỉ ghi thứ **không đọc ra được từ code** hoặc thứ **đọc nhầm sẽ hỏng việc**.
+
+---
+
+## 0. ĐỌC TRƯỚC — repo này KHÔNG PHẢI repo Quán Bà Lùn
+
+Repo `QuanLyQuan` tách từ `OrderQuanBaLun` ngày 2026-11-06 (commit `79bceb4` của production) để
+làm **sản phẩm cho thuê** 2.799.000đ/tháng cho quán nhỏ. Kiến trúc đã chốt:
+[docs/SAN-PHAM-KIEN-TRUC.md](docs/SAN-PHAM-KIEN-TRUC.md).
+
+- **Remote `origin` = https://github.com/LuongPhuong757/QuanLyQuan.git (gắn 2026-11-06). Chưa deploy ở đâu cả.**
+  Làm việc trên nhánh (vd `ui/dot-1`); **chỉ push khi chủ repo bảo**, không merge vào `main` khi chưa được duyệt.
+  ⚠ `.github/workflows/deploy*.yml` của Bà Lùn còn sót — phải gỡ/tắt TRƯỚC lần push đầu.
+  Mọi phần dưới nói về nhánh `develop`/`production`,
+  domain `quanbalun.site`, VPS, hook đóng băng, `.github/workflows/deploy*.yml` là **của Bà Lùn**,
+  còn sót lại — KHÔNG áp dụng ở đây. Đừng chạy `deploy.sh`.
+- Quán Bà Lùn tách riêng hoàn toàn. Tính năng chung làm ở repo này trước; Bà Lùn cherry-pick khi
+  cần. Không đồng bộ hai chiều.
+- **Không fork code theo quán.** Khác biệt giữa các quán = cấu hình + công tắc trong DB quán.
+  Tính năng riêng một quán = module có công tắc trong CÙNG repo.
+- ⛔ Trước khách thật đầu tiên: `synchronize` → migration; bỏ `container_name` cứng.
+- **Design System tập trung** là việc đầu tiên. Luật: [docs/DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.md).
+  Thiết kế vẽ trên **Pencil** (MCP, file `docs/design/quanlyquan.pen`), **thiết kế duyệt trước rồi mới code**, phong cách theo mẫu tham khảo chủ repo gửi.
+
+Các mục 1–9 bên dưới giữ nguyên từ Bà Lùn vì phần code/bẫy kỹ thuật vẫn đúng; sẽ dọn dần.
 
 ---
 
