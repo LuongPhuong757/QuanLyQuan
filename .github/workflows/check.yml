@@ -1,0 +1,19 @@
+# QuanLyQuan — CHỈ KIỂM, KHÔNG DEPLOY (2026-11-06).
+#
+# Hai workflow deploy của Quán Bà Lùn (`deploy.yml` → production VPS, `deploy-develop.yml` →
+# server dev) đã GỠ trước lần push đầu của repo này — xem CLAUDE.md §0. Sản phẩm cho thuê chưa
+# deploy ở đâu cả. Định nghĩa CI vẫn nằm ở `ci.yml` (dùng chung); file này chỉ gọi nó.
+name: Kiểm tra (CI)
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml

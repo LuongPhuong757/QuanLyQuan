@@ -16,7 +16,7 @@
   --color-warning-tint: var(--orange-50);
   --color-info: var(--color-primary);
   --color-note-tint: var(--yellow-50); /* nền ghi chú bếp */
-  /* Khách gọi qua QR + bàn khoá KiotViet. Cố định, KHÔNG theo màu quán (DESIGN-SYSTEM §5). */
+  /* Khách gọi qua QR. Cố định, KHÔNG theo màu quán (DESIGN-SYSTEM §5). */
   --color-qr: var(--purple-700);
   --color-qr-tint: var(--purple-50);
 

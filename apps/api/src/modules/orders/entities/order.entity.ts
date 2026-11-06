@@ -204,7 +204,7 @@ export class Order {
    * đơn còn sót.
    *
    * CỜ ĐẶT Ở ĐƠN, KHÔNG ĐẶT Ở BÀN. Một bàn trong ngày có nhiều lượt khách; cờ ở
-   * `restaurant_tables` (như `kiotviet_locked`) sẽ bị lượt sau ghi đè lên lượt trước và
+   * `restaurant_tables` sẽ bị lượt sau ghi đè lên lượt trước và
    * không còn vết nào để đối soát.
    *
    * CHỈ THÊM CỘT (C-SCHEMA-07: `synchronize: true`, không migration).

@@ -199,7 +199,7 @@ export function RecipePanel({
         <div className="flex between" style={{ marginBottom: 4, alignItems: 'flex-start', gap: 8 }}>
           <div style={{ minWidth: 0 }}>
             <h1 style={{ margin: 0, fontSize: 19 }}>📋 Công thức</h1>
-            <div style={{ fontSize: 14, color: '#0f766e', fontWeight: 600 }}>{menuItemName}</div>
+            <div style={{ fontSize: 14, color: '#b82a1e', fontWeight: 600 }}>{menuItemName}</div>
           </div>
           <button className="secondary" onClick={onClose} style={{ padding: '6px 12px' }}>✕</button>
         </div>
@@ -294,7 +294,7 @@ export function RecipePanel({
                 )}
                 {/* NCC ở dòng riêng, chữ đủ to: hai dòng "Thịt bò" chỉ khác nhau ở đây. */}
                 {l.supplier_name ? (
-                  <div style={{ fontSize: 13, color: '#0f766e' }}>NCC: {l.supplier_name}</div>
+                  <div style={{ fontSize: 13, color: '#b82a1e' }}>NCC: {l.supplier_name}</div>
                 ) : (
                   <button
                     type="button"
@@ -312,7 +312,7 @@ export function RecipePanel({
                   </button>
                 )}
               </div>
-              <div style={{ whiteSpace: 'nowrap', color: '#0f766e', fontWeight: 700 }}>
+              <div style={{ whiteSpace: 'nowrap', color: '#b82a1e', fontWeight: 700 }}>
                 {fmtQty(l.qty_per_serving, l.unit)}
               </div>
               <button className="secondary" onClick={() => onRemove(l)} style={{ padding: '4px 10px', fontSize: 12, color: '#dc2626' }}>
@@ -523,7 +523,7 @@ function AddLineForm({
               >
                 <b>{i.ingredient_name}</b>
                 {i.supplier_name ? (
-                  <span style={{ color: '#0f766e', fontWeight: 600 }}> · {i.supplier_name}</span>
+                  <span style={{ color: '#b82a1e', fontWeight: 600 }}> · {i.supplier_name}</span>
                 ) : (
                   <span style={{ color: '#b45309' }}> · chưa có NCC</span>
                 )}
@@ -541,7 +541,7 @@ function AddLineForm({
                 onClick={() => setOpen(false)}
                 style={{
                   display: 'block', width: '100%', textAlign: 'left', padding: '9px 12px',
-                  background: '#f0fdfa', border: 'none', fontSize: 14, cursor: 'pointer', color: '#0f766e',
+                  background: '#fef6f3', border: 'none', fontSize: 14, cursor: 'pointer', color: '#b82a1e',
                 }}
               >
                 + Tạo mới “{name.trim()}”
@@ -617,14 +617,14 @@ function AddLineForm({
         </div>
       )}
       {picked?.supplier_name && (
-        <div style={{ fontSize: 14, color: '#0f766e', marginTop: 6, fontWeight: 600 }}>
+        <div style={{ fontSize: 14, color: '#b82a1e', marginTop: 6, fontWeight: 600 }}>
           NCC: {picked.supplier_name}
         </div>
       )}
       <div style={{ fontSize: 12, color: '#6b7280', marginTop: 6 }}>
         Nhập kg hay g đều được — hệ thống tự quy về đơn vị gốc của nguyên liệu.
         {' '}Gõ được phân số: <b>1/24</b> cho món dùng 1 lon trong thùng 24 lon.
-        {qtyPreview && <b style={{ color: '#0f766e', marginLeft: 6 }}>{qtyPreview}</b>}
+        {qtyPreview && <b style={{ color: '#b82a1e', marginLeft: 6 }}>{qtyPreview}</b>}
       </div>
     </form>
   );

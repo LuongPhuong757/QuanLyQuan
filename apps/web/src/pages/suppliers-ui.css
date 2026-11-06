@@ -21,10 +21,10 @@
   --fg:            #1f2937;
   --muted:         #6b7280;
   --muted-tint:    #4b5563; 
-  --accent:        #0f766e;
-  --accent-soft:   #ccfbf1;
-  --accent-hover:  #115e59;
-  --accent-press:  #134e4a;
+  --accent:        #b82a1e;
+  --accent-soft:   #fbe4de;
+  --accent-hover:  #8f1d14;
+  --accent-press:  #8f1d14;
   --accent-ring:   rgba(15, 118, 110, .32);
   --debt:          #c2410c; 
   --debt-soft:     #ffedd5;
@@ -473,7 +473,7 @@
 }
 .ncc-ui .badge--neutral { background: var(--surface-sub); color: var(--muted-tint); border-color: var(--border);
 }
-.ncc-ui .badge--accent { background: var(--accent-soft); color: #115e59; border-color: #99f6e4;
+.ncc-ui .badge--accent { background: var(--accent-soft); color: #8f1d14; border-color: #f3b5a9;
 }
 .ncc-ui .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex: none;
 }
@@ -540,12 +540,12 @@
   display: grid;
   place-items: center;
   background: var(--accent-soft);
-  color: #115e59;
+  color: #8f1d14;
   font-family: var(--font-display);
   font-weight: 800;
   font-size: 15px;
   letter-spacing: -.02em;
-  border: 1px solid #99f6e4;
+  border: 1px solid #f3b5a9;
 }
 .ncc-ui .tablewrap { width: 100%; overflow-x: auto; position: relative;
 }
@@ -869,7 +869,7 @@
   }
   .ncc-ui .topnav__item:hover { background: var(--surface-sub); color: var(--fg);
   }
-  .ncc-ui .topnav__item[aria-current="page"] { background: var(--accent-soft); color: #115e59;
+  .ncc-ui .topnav__item[aria-current="page"] { background: var(--accent-soft); color: #8f1d14;
   }
   .ncc-ui .appbar__in { min-height: 64px;
   }
@@ -1124,7 +1124,7 @@
     border: 1px solid var(--border-strong); border-radius: var(--r-sm);
     background: var(--surface); font-size: 13.5px; font-weight: 600; color: var(--muted-tint);
 }
-.ncc-ui .photo:hover { background: var(--accent-soft); border-color: var(--accent); color: #115e59;
+.ncc-ui .photo:hover { background: var(--accent-soft); border-color: var(--accent); color: #8f1d14;
 }
 .ncc-ui .photo__box {
     width: 32px; height: 32px; border-radius: var(--r-xs);
@@ -1133,7 +1133,7 @@
 }
 .ncc-ui .photo__box svg { width: 17px; height: 17px; color: var(--muted);
 }
-.ncc-ui .photo:hover .photo__box svg { color: #115e59;
+.ncc-ui .photo:hover .photo__box svg { color: #8f1d14;
 }
 .ncc-ui .photo--none { color: var(--muted); border-style: dashed;
 }
@@ -1165,7 +1165,7 @@
 }
 .ncc-ui .rowmenu__btn:hover { background: #eef2f4; border-color: var(--border-strong); color: var(--fg);
 }
-.ncc-ui .rowmenu__btn[aria-expanded="true"] { background: var(--accent-soft); border-color: #99f6e4; color: #115e59;
+.ncc-ui .rowmenu__btn[aria-expanded="true"] { background: var(--accent-soft); border-color: #f3b5a9; color: #8f1d14;
 }
 .ncc-ui .rowpop {
     position: fixed; z-index: 80;
@@ -1479,9 +1479,9 @@
     text-align: left;
     line-height: 1.3;
 }
-.ncc-ui .dishbtn:hover { background: var(--accent-soft); border-color: #99f6e4; color: #115e59;
+.ncc-ui .dishbtn:hover { background: var(--accent-soft); border-color: #f3b5a9; color: #8f1d14;
 }
-.ncc-ui .dishbtn[aria-expanded="true"] { background: var(--accent-soft); border-color: #99f6e4; color: #115e59;
+.ncc-ui .dishbtn[aria-expanded="true"] { background: var(--accent-soft); border-color: #f3b5a9; color: #8f1d14;
 }
 .ncc-ui .dishbtn__chev { width: 15px; height: 15px; flex: none; color: var(--accent); transition: transform .15s ease;
 }

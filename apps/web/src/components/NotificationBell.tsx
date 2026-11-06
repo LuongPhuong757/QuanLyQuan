@@ -1,5 +1,6 @@
 // Bell icon trong header + modal liệt kê thông báo. Dùng notificationStore.
 import { useEffect, useState } from 'react';
+import { Bell } from 'lucide-react';
 import { notificationStore, formatTime, type NotificationEntry, type NotificationKind } from '../lib/notification-store.ts';
 
 const KIND_ICON: Record<NotificationKind, string> = {
@@ -13,14 +14,17 @@ const KIND_ICON: Record<NotificationKind, string> = {
 
 const KIND_COLOR: Record<NotificationKind, string> = {
   ready: '#059669',
-  order_open: '#0f766e',
+  order_open: '#b82a1e',
   order_cancel: '#dc2626',
   order_checkout: '#0284c7',
   info: '#6b7280',
   error: '#dc2626',
 };
 
-export function NotificationBell() {
+/** `variant="header"` (2026-11-06): header app — icon SVG lucide, nút 48×48 (≥ chuẩn 44px màn cảm
+ *  ứng). Mặc định giữ NGUYÊN chuông emoji cũ cho màn Bếp (chủ repo: chưa động vào màn Bếp). */
+export function NotificationBell({ variant = 'default' }: { variant?: 'default' | 'header' } = {}) {
+  const isHeader = variant === 'header';
   const [entries, setEntries] = useState<NotificationEntry[]>(notificationStore.getAll());
   const [open, setOpen] = useState(false);
 
@@ -38,9 +42,10 @@ export function NotificationBell() {
     <>
       <button
         onClick={handleOpen}
+        className={isHeader ? 'header-icon-btn' : undefined}
         title="Thông báo"
         aria-label={`Thông báo${unread > 0 ? ` (${unread} mới)` : ''}`}
-        style={{
+        style={isHeader ? undefined : {
           position: 'relative',
           background: 'transparent',
           color: 'inherit',
@@ -53,7 +58,7 @@ export function NotificationBell() {
           lineHeight: 1,
         }}
       >
-        🔔
+        {isHeader ? <Bell size={22} aria-hidden="true" /> : '🔔'}
         {unread > 0 && (
           <span
             style={{
@@ -138,7 +143,7 @@ export function NotificationBell() {
                       borderTop: '1px solid #f3f4f6',
                       display: 'flex',
                       gap: 10,
-                      background: e.read ? 'white' : '#f0fdfa',
+                      background: e.read ? 'white' : '#fef6f3',
                     }}
                   >
                     <div style={{ fontSize: 20, color: KIND_COLOR[e.kind] }}>

@@ -44,7 +44,7 @@ export function AccountPage() {
         )}
         <p>
           Tên đăng nhập: <strong>{user?.name}</strong>
-          {user?.is_owner && <span style={{ marginLeft: 8, color: '#0f766e' }}>(Chủ quán)</span>}
+          {user?.is_owner && <span style={{ marginLeft: 8, color: '#b82a1e' }}>(Chủ quán)</span>}
         </p>
 
         <h2>Đổi mật khẩu</h2>

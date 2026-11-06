@@ -137,7 +137,7 @@ export function TablesManagementPage() {
             >
               <div className="tbl-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
                 <div>
-                  <div className="tbl-name" style={{ fontSize: 22, fontWeight: 700, color: '#0f766e' }}>{t.name}</div>
+                  <div className="tbl-name" style={{ fontSize: 22, fontWeight: 700, color: '#b82a1e' }}>{t.name}</div>
                   <div style={{ fontSize: 12, color: '#6b7280', fontFamily: 'monospace' }}>{t.code}</div>
                 </div>
                 <span style={{
@@ -283,7 +283,7 @@ function BulkTablesModal({ onClose, onCreated }: { onClose: () => void; onCreate
                 style={{
                   padding: '10px 8px',
                   background: kind === k ? '#fef3c7' : 'white',
-                  border: kind === k ? '2px solid #0f766e' : '1px solid #d1d5db',
+                  border: kind === k ? '2px solid #b82a1e' : '1px solid #d1d5db',
                   color: '#1f2937',
                   fontWeight: kind === k ? 700 : 400,
                   fontSize: 12,
@@ -448,7 +448,7 @@ function TableFormModal({
                 style={{
                   padding: '12px 8px',
                   background: kind === k ? KIND_COLOR[k] : 'white',
-                  border: kind === k ? `2px solid #0f766e` : '1px solid #d1d5db',
+                  border: kind === k ? `2px solid #b82a1e` : '1px solid #d1d5db',
                   color: '#1f2937',
                   fontWeight: kind === k ? 700 : 400,
                   fontSize: 13,

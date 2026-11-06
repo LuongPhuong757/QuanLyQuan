@@ -1,14 +1,20 @@
 // Sơ đồ bàn — grid mobile-first. Click bàn → OrderDrawer.
-import type { CSSProperties } from 'react';
-import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+//
+// Thiết kế lại 2026-11-06 (chủ repo QuanLyQuan): thẻ bàn tô theo VIỆC CẦN LÀM, không theo
+// "có khách hay không" — xem `cardVariant()` bên dưới. Chức năng KiotViet (khoá bàn cho POS
+// ngoài) đã bỏ hẳn cùng ngày, cả API lẫn cột DB.
+import { useEffect, useState, useCallback, useRef, useMemo, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { api, extractError, isTransientError } from '../lib/api.ts';
 import { useToast } from '../components/Toast.tsx';
-import { useConfirm } from '../components/ConfirmDialog.tsx';
 import { OrderDrawer } from '../components/OrderDrawer.tsx';
+import { PageLayout } from '../components/PageLayout.tsx';
 import { readyNotifier } from '../lib/ready-notifier.ts';
-import { openTablesStore } from '../lib/open-tables-badge.ts';
+import { BellRing, Clock, Info, Receipt, ShoppingCart, Timer, TriangleAlert } from 'lucide-react';
 import { formatAge } from '../lib/item-age.ts';
+import { useStaleUnpaid } from '../lib/stale-unpaid.ts';
+import { useGuestPending } from '../lib/guest-pending.ts';
+import './orders-page.css';
 
 type Table = {
   id: string;
@@ -17,7 +23,6 @@ type Table = {
   kind: string;
   x: number;
   y: number;
-  kiotviet_locked?: boolean;
 };
 
 type OrderSummary = {
@@ -31,56 +36,73 @@ type OrderSummary = {
   items?: Array<{
     id: string;
     menu_item_name: string;
+    menu_item_price?: number;
     qty: number;
     state: string;
+    /** Dòng GHI CHÚ (giá 0) — không phải món; không tính tiền/số món/trạng thái. */
+    is_note?: boolean;
   }>;
 };
 
-type FilterKey = 'all' | 'in-use' | 'has-pending' | 'empty' | 'kiotviet' | 'dine-in' | 'takeaway' | 'delivery';
+type FilterKey =
+  | 'all' | 'in-use' | 'ready' | 'has-pending' | 'empty' | 'qr' | 'unpaid'
+  | 'takeaway' | 'delivery';
 
 const FILTER_LABEL: Record<FilterKey, string> = {
   'all': 'Tất cả',
-  'in-use': '🔥 Đang dùng',
-  'has-pending': '🍽 Còn món chưa giao',
-  'empty': '⚪ Trống',
-  'kiotviet': '🔒 KiotViet',
-  'dine-in': '🪑 Tại quán',
-  'takeaway': '🥡 Mang về',
-  'delivery': '🛵 Giao hàng',
+  'in-use': 'Đang dùng',
+  'ready': 'Chờ mang ra',
+  'has-pending': 'Còn món chưa giao',
+  'empty': 'Trống',
+  'qr': 'Khách QR gọi',
+  'unpaid': 'Chưa trả',
+  'takeaway': 'Mang về',
+  'delivery': 'Giao hàng',
 };
 
-const FILTER_ORDER: FilterKey[] = ['all', 'in-use', 'takeaway', 'delivery', 'has-pending', 'empty', 'kiotviet', 'dine-in'];
+/* Nhóm "Trạng thái" luôn hiện (một hàng, vuốt ngang trên điện thoại). Nhóm "Loại bàn" chỉ hiện
+   khi có bàn mang về / giao hàng ĐANG có khách — "Tại quán" luôn bằng tổng số bàn nên không giúp
+   lọc gì (bỏ). Chỉ MỘT bộ lọc được chọn tại một lúc, như bản cũ. */
+/* 'qr' = mọi yêu cầu QR đang chờ (gọi món chờ duyệt, gọi nhân viên, xin hoá đơn). 'unpaid' = bàn mở
+   quá ngưỡng "chưa trả" (BE quyết, cùng danh sách với dải cảnh báo). Thêm 2026-11-06. KHÔNG đưa lại
+   "Chờ thanh toán" / "Chưa gửi bếp" (bỏ cùng ngày — xem STATE_LABEL và cardVariant). */
+const STATUS_FILTERS: FilterKey[] = ['all', 'qr', 'ready', 'unpaid', 'in-use', 'has-pending', 'empty'];
+const KIND_FILTERS: FilterKey[] = ['takeaway', 'delivery'];
 
 // Món "đã giao xong" = SERVED. CANCELLED không tính (bỏ). Còn lại đều là "chưa giao".
 const TERMINAL_STATES = new Set(['SERVED', 'CANCELLED']);
 
-const KIND_BG: Record<string, string> = {
-  'dine-in': '#fef3c7',
-  'takeaway': '#dbeafe',
-  'delivery': '#d1fae5',
+/* Trạng thái món — chấm màu + CHỮ. Màu chấm (orders-page.css `.op-dot--<STATE>`) KHỚP màu viền
+   thẻ: cam = xong chờ mang ra, xám = bếp đang lo, xanh lá = đã giao. Trước đây "đang làm" màu đỏ
+   nên viền đỏ của mọi bàn có khách bị đọc thành "đang làm".
+   KHÔNG có chấm/cảnh báo "chưa gửi bếp" (PENDING) — bỏ 2026-11-06: màn gọi món luôn báo bếp ngay
+   (BulkOrderModal `send_to_kitchen: true`), nên PENDING thực tế chỉ là GHI CHÚ cố ý không gửi bếp
+   (OrderDrawer, bỏ tick "gửi bếp"). Cảnh báo đỏ + nút "Gửi bếp" trên đó là báo động giả và đẩy
+   nhầm ghi chú xuống bếp. */
+const STATE_LABEL: Record<string, string> = {
+  PENDING: 'chưa gửi bếp',
+  KITCHEN: 'đã báo bếp',
+  COOKING: 'đang làm',
+  READY: 'xong, chờ mang ra',
+  SERVED: 'đã giao',
 };
+const STATE_ORDER = ['KITCHEN', 'COOKING', 'READY', 'SERVED'] as const;
 
-// Active states (1 row trên card khi bàn có món đang ở state đó)
-const STATE_BADGE: Record<string, { label: string; color: string; icon: string }> = {
-  PENDING: { label: 'gọi', color: '#6b7280', icon: '✎' },
-  KITCHEN: { label: 'báo bếp', color: '#f59e0b', icon: '📢' },
-  COOKING: { label: 'đang làm', color: '#3b82f6', icon: '🔥' },
-  READY: { label: 'xong', color: '#10b981', icon: '✓' },
-};
+/** Ngưỡng đồng hồ NGỒI BÀN (khác tuổi MÓN ở màn Bếp — 10/20 phút trong lib/item-age.ts): cam từ
+ *  15 phút, đỏ từ 25 phút. */
+const SEAT_WARN_MIN = 15;
+const SEAT_CRITICAL_MIN = 25;
+/** Bếp chậm: đã báo bếp ≥ 15 phút mà chưa có món nào tới khách. */
+const SLOW_KITCHEN_MIN = 15;
 
-const chipStyle = (bg: string): CSSProperties => ({
-  background: bg,
-  color: 'white',
-  padding: '2px 8px',
-  borderRadius: 999,
-  fontSize: 12,
-  fontWeight: 600,
-  display: 'inline-block',
-});
+const fmtMoney = (n: number) => `${n.toLocaleString('vi-VN')}đ`;
+/** Lời gọi QR (gọi nhân viên / xin hoá đơn) đang chờ của một bàn — mốc CŨ NHẤT mỗi loại. */
+type CallInfo = { bill: number | null; staff: number | null };
+
+type Variant = 'empty' | 'alert' | 'qr' | 'stale' | 'ready' | 'normal';
 
 export function OrdersPage() {
   const toast = useToast();
-  const confirm = useConfirm();
   const [tables, setTables] = useState<Table[]>([]);
   const [openOrders, setOpenOrders] = useState<OrderSummary[]>([]);
   /* M7 — số lượt khách gọi bằng QR đang CHỜ DUYỆT, khoá theo `table_code`.
@@ -89,11 +111,38 @@ export function OrdersPage() {
    * `order_items`, nên `listOpenOrders` lọc nó đi như một đơn rỗng (phantom). Đúng cái bàn
    * cần báo động nhất lại là bàn KHÔNG xuất hiện trong danh sách — nên dấu hiệu phải lấy từ
    * nguồn riêng. Dùng lại endpoint màn bếp đang gọi, không thêm endpoint mới. */
-  const [qrWaitingByCode, setQrWaitingByCode] = useState<Map<string, number>>(new Map());
+  const guestPending = useGuestPending(false);
+  const qrWaitingByCode = useMemo(() => {
+    const next = new Map<string, number>();
+    for (const r of guestPending?.requests ?? []) {
+      if (r?.table_code) next.set(r.table_code, (next.get(r.table_code) ?? 0) + 1);
+    }
+    return next;
+  }, [guestPending]);
+  /* Gọi nhân viên / xin hoá đơn — cùng endpoint, trước đây chỉ hiện trên dải trên cùng, thẻ bàn
+     không có dấu hiệu gì (2026-11-06). Khoá theo `table_code`. */
+  const callsByCode = useMemo(() => {
+    const cm = new Map<string, CallInfo>();
+    for (const c of guestPending?.calls ?? []) {
+      if (!c?.table_code) continue;
+      const e = cm.get(c.table_code) ?? { bill: null, staff: null };
+      const k = c.kind === 'BILL' ? 'bill' : 'staff';
+      e[k] = e[k] == null ? c.created_at : Math.min(e[k]!, c.created_at);
+      cm.set(c.table_code, e);
+    }
+    return cm;
+  }, [guestPending]);
+  /* Bàn mở quá lâu chưa trả — CÙNG danh sách BE với dải cảnh báo (ngưỡng ở Cài đặt). */
+  const staleUnpaid = useStaleUnpaid(true);
+  const staleByTable = useMemo(
+    () => new Map((staleUnpaid?.items ?? []).map((it) => [it.table_id, it])),
+    [staleUnpaid],
+  );
   const [loading, setLoading] = useState(true);
   const [active, setActive] = useState<Table | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const [filter, setFilter] = useState<FilterKey>('all');
+  const [legendOpen, setLegendOpen] = useState(false);
   const errorCountRef = useRef(0);
   const pollEnabledRef = useRef(true);
   /* Có đang mở drawer chi tiết bàn hay không. Ref chứ không đọc thẳng `active` để effect poll
@@ -103,37 +152,20 @@ export function OrdersPage() {
 
   const refresh = useCallback(async (showError = true) => {
     try {
-      const [t, o, qr] = await Promise.all([
+      /* Lượt QR KHÔNG kéo ở đây nữa (2026-11-06): App đã poll `/table-requests/pending` cho màn này
+         và đổ vào `guestPendingStore` — kéo thêm mỗi 2 giây ở đây là ~46 request/phút/tab. */
+      const [t, o] = await Promise.all([
         api.get<{ data: { items: Table[] } }>('/tables'),
         api.get<{ data: { items: OrderSummary[] } }>('/orders'),
-        // `.catch` riêng: lượt chờ QR là phần THÊM của sơ đồ bàn. Endpoint này lỗi mà kéo
-        // chết cả nhịp poll thì nhân viên mất luôn sơ đồ bàn — hỏng thứ đang chạy ổn định vì
-        // một thứ phụ.
-        api
-          .get<{ data: { requests: Array<{ table_code: string }> } }>('/table-requests/pending')
-          .catch(() => null),
       ]);
       // Defensive: nếu body trống (vd 304 leak), skip update không throw
       if (t.data?.data?.items) setTables(t.data.data.items);
-      {
-        const reqs = qr?.data?.data?.requests;
-        const next = new Map<string, number>();
-        if (Array.isArray(reqs)) {
-          for (const r of reqs) {
-            if (!r?.table_code) continue;
-            next.set(r.table_code, (next.get(r.table_code) ?? 0) + 1);
-          }
-        }
-        setQrWaitingByCode(next);
-      }
       if (o.data?.data?.items) {
         setOpenOrders(o.data.data.items);
         // Diff vs previous poll → emit notification cho items chuyển sang READY
         readyNotifier.ingest(o.data.data.items);
-        // Badge "Order" ở nav dưới: đứng ở đây thì lấy luôn số của nhịp 2s này (khớp tuyệt đối
-        // với sơ đồ bàn đang thấy) và store hoãn poll `/orders/open-count` → không fetch trùng.
-        // BE đã lọc phantom order nên `items.length` chính là số bàn đang mở.
-        openTablesStore.publish(o.data.data.items.length);
+        // Badge số bàn đang mở trên nút "Order" đã bỏ 2026-11-06 — con số để biết, không phải việc
+        // phải làm (chỉ việc cần xử lý mới có badge).
       }
       errorCountRef.current = 0;  // reset on success
     } catch (err) {
@@ -145,7 +177,7 @@ export function OrdersPage() {
       const threshold = transient ? 10 : 3;
       if (errorCountRef.current >= threshold && pollEnabledRef.current) {
         pollEnabledRef.current = false;
-        toast.push('error', 'Tạm dừng cập nhật tự động — bấm "↻ Làm mới" để thử lại.');
+        toast.push('error', 'Tạm dừng cập nhật tự động - tải lại trang để thử lại');
       }
     } finally {
       setLoading(false);
@@ -157,43 +189,6 @@ export function OrdersPage() {
     pollEnabledRef.current = true;
     refresh(true);
   }, [refresh]);
-
-  // ─── KiotViet lock ────────────────────────────────────────────────────────
-  // Khoá 1 bàn (đánh dấu đang dùng KiotViet). BE chặn nếu còn đơn mở.
-  const lockTable = useCallback(async (t: Table) => {
-    try {
-      await api.patch(`/tables/${t.id}/lock`, { locked: true });
-      toast.push('success', `Đã khoá ${t.name} cho KiotViet`);
-      refresh(false);
-    } catch (err) {
-      toast.push('error', extractError(err).message);
-    }
-  }, [toast, refresh]);
-
-  // Mở khoá 1 bàn. openAfter=true → mở luôn drawer để gọi món ngay.
-  const unlockTable = useCallback(async (t: Table, openAfter = false) => {
-    try {
-      await api.patch(`/tables/${t.id}/lock`, { locked: false });
-      toast.push('success', `Đã mở khoá ${t.name}`);
-      refresh(false);
-      if (openAfter) setActive({ ...t, kiotviet_locked: false });
-    } catch (err) {
-      toast.push('error', extractError(err).message);
-    }
-  }, [toast, refresh]);
-
-  // Click vào bàn đang khoá → hỏi có chuyển về hệ thống không.
-  const onLockedTableClick = useCallback(async (t: Table) => {
-    const ok = await confirm({
-      title: 'Bàn đang dùng KiotViet',
-      message: `${t.name} đang được order bằng KiotViet.\nMuốn chuyển về hệ thống này để gọi món không?`,
-      variant: 'warning',
-      confirmLabel: '↩ Chuyển về hệ thống',
-      cancelLabel: 'Đóng',
-    });
-    if (ok) unlockTable(t, true);
-  }, [confirm, unlockTable]);
-
 
   /** Đóng drawer → làm mới NGAY. Lưới bàn đã nghỉ poll suốt lúc drawer mở (xem effect dưới),
    *  nên nếu chỉ chờ nhịp 2s kế tiếp thì có một khoảng bàn vừa gọi món xong vẫn hiện như cũ. */
@@ -209,9 +204,7 @@ export function OrdersPage() {
       /* NGHỈ khi drawer chi tiết bàn đang mở (2026-09-21). Drawer phủ kín sơ đồ bàn nên nhịp
          này không vẽ ra thứ gì người dùng đang nhìn, nhưng nó vẫn `setTables`/`setOpenOrders`
          → OrdersPage re-render → OrderDrawer re-render → BulkOrderModal (con của drawer)
-         re-render cả lưới ~283 thẻ món, đúng lúc nhân viên đang vuốt chọn món.
-         Badge "Order" ở nav dưới KHÔNG mất: nó chỉ ăn ké `publish()` của nhịp này để hoãn
-         nhịp riêng; ngừng publish thì store tự poll `/orders/open-count` 5s như bình thường. */
+         re-render cả lưới ~283 thẻ món, đúng lúc nhân viên đang vuốt chọn món. */
       if (pollEnabledRef.current && !drawerOpenRef.current) refresh(false);  // silent retry
     }, 2_000);
     return () => clearInterval(t);
@@ -232,438 +225,278 @@ export function OrdersPage() {
     setSearchParams(next, { replace: true });
   }, [tableParam, tables, searchParams, setSearchParams]);
 
-  const orderByTable = useCallback(
-    (table_id: string) => openOrders.find((o) => o.table_id === table_id),
-    [openOrders],
-  );
+  const orderByTable = useMemo(() => {
+    const m = new Map<string, OrderSummary>();
+    for (const o of openOrders) m.set(o.table_id, o);
+    return m;
+  }, [openOrders]);
 
-  // Predicate rõ ràng — đúng theo định nghĩa user:
-  // - "Đang dùng"        = bàn có open order (bất kể có món hay chưa).
-  // - "Còn món chưa giao" = bàn có ít nhất 1 món NOT SERVED và NOT CANCELLED
-  //                          (tức state ∈ {PENDING, KITCHEN, COOKING, READY}).
-  const isInUse = useCallback(
-    (t: Table): boolean => !!orderByTable(t.id),
-    [orderByTable],
-  );
-
-  const hasUnservedItems = useCallback(
-    (t: Table): boolean => {
-      const o = orderByTable(t.id);
-      if (!o) return false;
-      const items = o.items || [];
-      return items.some((it) => !TERMINAL_STATES.has(it.state));
-    },
-    [orderByTable],
-  );
-
-  // Đếm count cho từng filter (luôn tính từ full tables, không phụ thuộc filter hiện tại)
-  const filterCounts = useMemo<Record<FilterKey, number>>(() => {
-    const counts: Record<FilterKey, number> = {
-      'all': tables.length,
-      'in-use': 0,
-      'has-pending': 0,
-      'empty': 0,
-      'kiotviet': 0,
-      'dine-in': 0,
-      'takeaway': 0,
-      'delivery': 0,
-    };
-    for (const t of tables) {
-      if (t.kiotviet_locked) counts['kiotviet']++;
-      if (isInUse(t)) counts['in-use']++;
-      else counts['empty']++;
-      if (hasUnservedItems(t)) counts['has-pending']++;
-      if (t.kind === 'dine-in') counts['dine-in']++;
-      else if (t.kind === 'takeaway') counts['takeaway']++;
-      else if (t.kind === 'delivery') counts['delivery']++;
-    }
-    return counts;
-  }, [tables, isInUse, hasUnservedItems]);
-
-  const matchesFilter = (t: Table): boolean => {
-    if (filter === 'all') return true;
-    if (filter === 'kiotviet') return !!t.kiotviet_locked;
-    if (filter === 'in-use') return isInUse(t);
-    if (filter === 'empty') return !isInUse(t);
-    if (filter === 'has-pending') return hasUnservedItems(t);
-    return t.kind === filter;
-  };
-
-  const filteredTables = tables
-    .filter(matchesFilter)
-    .sort((a, b) => {
-      // Sort: dine-in trước, rồi y,x; các loại khác giữ thứ tự gốc
-      if (a.kind === 'dine-in' && b.kind === 'dine-in') {
-        return (a.y - b.y) || (a.x - b.x);
-      }
-      if (a.kind === 'dine-in') return -1;
-      if (b.kind === 'dine-in') return 1;
-      return a.code.localeCompare(b.code);
-    });
-
-  const renderTableCard = (t: Table) => {
-    // Bàn đang khoá KiotViet — card tím riêng biệt, click để chuyển về hệ thống.
-    if (t.kiotviet_locked) {
-      return (
-        <div key={t.id} style={{ position: 'relative' }}>
-          <button
-            onClick={() => onLockedTableClick(t)}
-            style={{
-              padding: 14,
-              background: '#f5f3ff',
-              color: '#5b21b6',
-              border: '2px solid #7c3aed',
-              borderRadius: 12,
-              textAlign: 'left',
-              minHeight: 100,
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              gap: 6,
-              cursor: 'pointer',
-              width: '100%',
-              fontWeight: 400,
-            }}
-          >
-            <div>
-              <div style={{ fontSize: 18, fontWeight: 700 }}>{t.name}</div>
-              <div style={{ fontSize: 11, color: '#7c6fae', fontFamily: 'monospace' }}>{t.code}</div>
-            </div>
-            <span
-              style={{
-                background: '#7c3aed',
-                color: 'white',
-                padding: '2px 8px',
-                borderRadius: 999,
-                fontSize: 11,
-                fontWeight: 600,
-                alignSelf: 'flex-start',
-              }}
-            >
-              🔒 KiotViet
-            </span>
-          </button>
-        </div>
-      );
-    }
-
-    const order = orderByTable(t.id);
+  /** Mọi con số của một bàn — tính MỘT lần, dùng cho cả bộ lọc lẫn thẻ. */
+  const summarize = useCallback((t: Table) => {
+    const order = orderByTable.get(t.id);
     const items = order?.items || [];
-    const counts: Record<string, number> = { PENDING: 0, KITCHEN: 0, COOKING: 0, READY: 0 };
-    let servedCount = 0;
-    items.forEach((it) => {
-      if (counts[it.state] != null) counts[it.state]++;
-      if (it.state === 'SERVED') servedCount++;
-    });
-    const hasActive = Object.values(counts).some((c) => c > 0);
-    // Tất cả món đã giao (= sẵn sàng thanh toán, nhưng không hiện text):
-    const allServed = !!order && !hasActive && servedCount > 0;
-
-    // Cảnh báo bếp chậm: đã báo bếp ≥15 phút nhưng chưa có món nào tới khách
+    const counts: Record<string, number> = { PENDING: 0, KITCHEN: 0, COOKING: 0, READY: 0, SERVED: 0 };
+    let total = 0;
+    let qty = 0;
+    for (const it of items) {
+      if (it.is_note) continue;  // ghi chú không phải món
+      if (counts[it.state] != null) counts[it.state] += it.qty;
+      if (it.state !== 'CANCELLED') {
+        total += (it.menu_item_price ?? 0) * it.qty;
+        qty += it.qty;
+      }
+    }
+    const unserved = counts.KITCHEN + counts.COOKING + counts.READY;
     const minutesSinceKitchen =
       order?.first_kitchen_at != null
         ? Math.max(0, Math.floor((Date.now() - order.first_kitchen_at) / 60_000))
         : null;
-    const slowKitchen =
-      minutesSinceKitchen != null && minutesSinceKitchen >= 15 && servedCount === 0;
+    // Đồng hồ ngồi bàn: từ lần đầu báo bếp; bàn chưa từng báo bếp thì từ lúc mở bàn.
+    const seatMinutes = order
+      ? minutesSinceKitchen ?? Math.max(0, Math.floor((Date.now() - order.opened_at) / 60_000))
+      : null;
+    return {
+      order,
+      counts,
+      total,
+      qty,
+      hasItems: qty > 0,
+      ready: counts.READY > 0,
+      hasUnserved: unserved > 0,
+      slowKitchen: minutesSinceKitchen != null && minutesSinceKitchen >= SLOW_KITCHEN_MIN && counts.SERVED === 0,
+      seatMinutes,
+      qrWaiting: qrWaitingByCode.get(t.code) ?? 0,
+      /* "Tính tiền" chỉ có nghĩa khi bàn CÒN món để thu — bàn đã trả xong mà lời gọi cũ chưa ai
+         bấm "Đã nghe" thì không hiện trên thẻ (2026-11-06, Bàn 16 trống vẫn hiện "Tính tiền"). */
+      calls: (() => {
+        const c = callsByCode.get(t.code);
+        if (!c) return null;
+        const bill = qty > 0 ? c.bill : null;
+        return bill == null && c.staff == null ? null : { bill, staff: c.staff };
+      })(),
+      stale: staleByTable.get(t.id) ?? null,
+    };
+  }, [orderByTable, qrWaitingByCode, callsByCode, staleByTable]);
 
-    /* M7 — hai dấu hiệu KHÁC NHAU, đừng gộp:
-     *  - `qrWaiting` : khách vừa gửi lượt, CHƯA ai duyệt → việc phải làm NGAY, nên đổi cả
-     *                  viền + nền để liếc từ xa là thấy.
-     *  - `hasQrOrder`: bàn này khách có tự gọi bằng QR trong bữa (đã duyệt rồi) → chỉ một
-     *                  nhãn nhỏ, để nhân viên biết bàn đang dùng điện thoại gọi món.
-     * Bàn chỉ có lượt chờ mà chưa có món nào thì KHÔNG nằm trong `/orders` (đơn rỗng bị lọc),
-     * nên mọi thứ dưới đây phải chạy được cả khi `order` là undefined. */
-    const qrWaiting = qrWaitingByCode.get(t.code) ?? 0;
-    const hasQrOrder = order?.first_guest_request_at != null;
+  const summaries = useMemo(() => new Map(tables.map((t) => [t.id, summarize(t)])), [tables, summarize]);
 
-    const bg = slowKitchen
-      ? '#fee2e2'
-      : qrWaiting > 0
-      ? '#f5f3ff'
-      : allServed
-      ? '#ecfdf5'
-      : hasActive
-      ? KIND_BG[t.kind] || '#f3f4f6'
-      : 'white';
-    // Bếp chậm vẫn thắng: đó là bàn đã chờ 15 phút không có món nào ra, nặng hơn một lượt
-    // vừa gửi vài giây trước.
-    const border = slowKitchen
-      ? '2px solid #dc2626'
-      : qrWaiting > 0
-      ? '2px solid #7c3aed'
-      : allServed
-      ? '2px solid #059669'
-      : hasActive
-      ? '2px solid #0f766e'
-      : '1px solid #e5e7eb';
+  const matches = useCallback((t: Table, k: FilterKey): boolean => {
+    const s = summaries.get(t.id)!;
+    switch (k) {
+      case 'all': return true;
+      case 'in-use': return !!s.order;
+      case 'empty': return !s.order;
+      case 'ready': return s.ready;
+      case 'has-pending': return s.hasUnserved;
+      case 'qr': return s.qrWaiting > 0 || !!s.calls;
+      case 'unpaid': return !!s.stale;
+      default: return t.kind === k;
+    }
+  }, [summaries]);
 
-    // Cho khoá nhanh bàn trống HOẶC bàn chỉ có đơn rỗng (chưa gọi món) — BE sẽ
-    // tự dọn đơn rỗng rồi khoá. Bàn có món thật thì ẩn nút (BE chặn).
-    // M7 — có lượt khách đang chờ duyệt thì ẩn nút khoá nhanh: bàn trông như trống nhưng
-    // thực tế có người ngồi, khoá đi là lượt của khách treo mà không ai biết.
-    const canQuickLock = (!order || items.length === 0) && qrWaiting === 0;
+  // Đếm cho từng bộ lọc (luôn tính từ toàn bộ bàn, không phụ thuộc bộ lọc đang chọn).
+  const filterCounts = useMemo(() => {
+    const c = {} as Record<FilterKey, number>;
+    for (const k of [...STATUS_FILTERS, ...KIND_FILTERS]) c[k] = tables.filter((t) => matches(t, k)).length;
+    return c;
+  }, [tables, matches]);
+
+  // Nhóm "Loại bàn" chỉ khi có bàn mang về / giao hàng ĐANG có khách (hoặc đang lọc theo nó).
+  const showKindGroup =
+    KIND_FILTERS.includes(filter) ||
+    tables.some((t) => t.kind !== 'dine-in' && !!summaries.get(t.id)?.order);
+
+  const filteredTables = tables
+    .filter((t) => matches(t, filter))
+    .sort((a, b) => {
+      // Sort: dine-in trước, rồi theo vị trí y,x (Quản lý bàn); trùng vị trí thì theo SỐ trong tên
+      // ("Bàn 2" trước "Bàn 10" — so chữ thường sẽ ra 1, 10, 2). Các loại khác cũng theo số.
+      const byName = a.name.localeCompare(b.name, 'vi', { numeric: true, sensitivity: 'base' });
+      if (a.kind === 'dine-in' && b.kind === 'dine-in') {
+        return (a.y - b.y) || (a.x - b.x) || byName;
+      }
+      if (a.kind === 'dine-in') return -1;
+      if (b.kind === 'dine-in') return 1;
+      return byName;
+    });
+
+  /** Viền/nền thẻ theo VIỆC CẦN LÀM, ưu tiên từ trên xuống:
+   *  đỏ = bếp chậm → tím = khách QR chờ duyệt → cam = món xong chờ
+   *  mang ra → xám = đang ăn bình thường (kể cả đã giao đủ món: khách còn ngồi thì CHƯA phải "chờ
+   *  thanh toán" — chủ repo bỏ nhãn đó 2026-11-06; chấm xanh lá "đã giao" đã đủ thông tin). */
+  const cardVariant = (s: ReturnType<typeof summarize>): Variant => {
+    if (s.slowKitchen) return 'alert';
+    if (s.qrWaiting > 0 || s.calls) return 'qr';
+    if (s.stale) return 'stale';
+    if (s.ready) return 'ready';
+    if (s.hasItems) return 'normal';
+    return 'empty';
+  };
+
+  const renderTableCard = (t: Table) => {
+    const s = summaries.get(t.id)!;
+    const variant = cardVariant(s);
+    const seatTone =
+      s.seatMinutes == null ? '' : s.seatMinutes >= SEAT_CRITICAL_MIN ? ' is-critical' : s.seatMinutes >= SEAT_WARN_MIN ? ' is-warn' : '';
+
+    /* Việc cần làm của bàn — tối đa HAI dòng, ưu tiên như viền (2026-11-06). Mọi yêu cầu QR đều
+       có dòng riêng, có chữ + thời gian chờ: trước chỉ "gọi món chờ duyệt" mới có dấu hiệu, bàn
+       xin hoá đơn / gọi nhân viên nhìn sơ đồ không thấy gì. */
+    const flags: ReactNode[] = [];
+    if (s.slowKitchen) {
+      flags.push(<span key="slow" className="tcard-flag tcard-flag--alert"><TriangleAlert size={14} aria-hidden="true" /> Bếp chậm</span>);
+    }
+    if (s.qrWaiting > 0) {
+      flags.push(<span key="qr" className="tcard-flag tcard-flag--qr"><ShoppingCart size={14} aria-hidden="true" /> {s.qrWaiting > 1 ? `Gọi món ×${s.qrWaiting}` : 'Gọi món'}</span>);
+    }
+    if (s.calls?.bill != null) {
+      flags.push(<span key="bill" className="tcard-flag tcard-flag--qr"><Receipt size={14} aria-hidden="true" /> Tính tiền</span>);
+    }
+    if (s.calls?.staff != null) {
+      flags.push(<span key="staff" className="tcard-flag tcard-flag--qr"><BellRing size={14} aria-hidden="true" /> Gọi nhân viên</span>);
+    }
+    if (s.stale) {
+      flags.push(<span key="stale" className="tcard-flag tcard-flag--stale"><Clock size={14} aria-hidden="true" /> Chưa trả</span>);
+    }
+    if (s.ready) {
+      flags.push(<span key="ready" className="tcard-flag tcard-flag--ready">Có món chờ mang ra</span>);
+    }
+    /* MỘT dòng việc trên thẻ (2026-11-06): hai dòng làm cả hàng thẻ cao theo (lưới chia đều
+       chiều cao). Việc còn lại hiện "+N"; chi tiết đủ ở thanh "việc đang chờ" và trong bàn. */
+    const shownFlags = flags.slice(0, 1);
 
     return (
-      <div key={t.id} style={{ position: 'relative' }}>
-      <button
-        onClick={() => setActive(t)}
-        style={{
-          padding: 14,
-          background: bg,
-          color: '#1f2937',
-          border,
-          borderRadius: 12,
-          textAlign: 'left',
-          minHeight: 100,
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between',
-          gap: 6,
-          cursor: 'pointer',
-          width: '100%',
-          fontWeight: 400,
-        }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <div>
-            <div style={{ fontSize: 18, fontWeight: 700 }}>{t.name}</div>
-            <div style={{ fontSize: 11, color: '#6b7280', fontFamily: 'monospace' }}>{t.code}</div>
+      <div key={t.id} className="op-cell">
+        <button className={`tcard tcard--${variant}`} onClick={() => setActive(t)}>
+          <div className="tcard-top">
+            {/* Mã bàn kỹ thuật (ban-01) đã bỏ khỏi thẻ (2026-11-06): nhân viên chỉ cần tên. */}
+            <div className="tcard-name">{t.name}</div>
+            {s.seatMinutes != null && (
+              <div className={`tcard-age${seatTone}`}>
+                <Timer size={14} aria-hidden="true" /> {formatAge(s.seatMinutes)}
+              </div>
+            )}
           </div>
-          {/* Thời gian "vào bàn" = từ lần đầu báo bếp.
-              Null nếu chưa từng báo bếp (vẫn còn PENDING hết) — không hiển thị. */}
-          {minutesSinceKitchen != null && (
-            <div
-              style={{
-                fontSize: 11,
-                color: slowKitchen ? '#dc2626' : '#6b7280',
-                fontWeight: slowKitchen ? 700 : 400,
-                // Từ khi đồng hồ đổi sang dạng giờ+phút, chữ dài nhất không còn là `99′` (3 ký
-                // tự) mà là `2h35p` (5). Không chặn thì flex bóp nó lại và nó gãy giữa token
-                // thành "2h35" / "p" — một con số cảnh báo mà xuống dòng thì đọc ra số khác.
-                // Thà để TÊN BÀN gãy: tên vẫn đọc được khi gãy, con số thì không.
-                whiteSpace: 'nowrap',
-                flex: 'none',
-                marginLeft: 6,
-              }}
-            >
-              {formatAge(minutesSinceKitchen)}
+
+          {s.hasItems ? (
+            <>
+              <div className="tcard-money">
+                {/* Số món bỏ (2026-11-06): chấm trạng thái ngay dưới đã cộng ra đúng số món, ở 360px
+                    "- 2 món" bị cắt thành "- 2 m…". */}
+                {fmtMoney(s.total)}
+              </div>
+              {/* Trạng thái món gộp MỘT dòng chấm màu + số (chú thích ở nút ⓘ). Thẻ nhờ vậy cao
+                  đều nhau — trước đây bàn có 3 trạng thái kéo cả hàng thẻ cao theo. */}
+              <div className="tcard-states" aria-label={STATE_ORDER.filter((st) => s.counts[st] > 0).map((st) => `${s.counts[st]} ${STATE_LABEL[st]}`).join(', ')}>
+                {STATE_ORDER.map((st) =>
+                  s.counts[st] > 0 ? (
+                    <span key={st} className="tcard-state" aria-hidden="true">
+                      <span className={`op-dot op-dot--${st}`} />
+                      {s.counts[st]}
+                    </span>
+                  ) : null,
+                )}
+              </div>
+            </>
+          ) : s.qrWaiting > 0 || s.calls ? null : (
+            /* KHÔNG rơi về chữ "Trống" khi có lượt QR chờ (chủ quán chốt 2026-10-01): bàn đang có
+               khách ngồi chờ mà ghi "Trống" là đúng tình huống dấu hiệu QR sinh ra để tránh. */
+            <div className="tcard-empty-text">Trống</div>
+          )}
+
+          {shownFlags.length > 0 && (
+            <div className="tcard-flagrow">
+              {shownFlags}
+              {flags.length > 1 && <span className="tcard-more">+{flags.length - 1}</span>}
             </div>
           )}
-        </div>
-
-        {qrWaiting > 0 && (
-          /* Chữ đầy đủ, không chỉ một con số: "2" cạnh các badge trạng thái khác thì không
-             ai đoán ra nó là lượt chờ duyệt. */
-          <div
-            style={{
-              background: '#7c3aed',
-              color: 'white',
-              padding: '3px 8px',
-              borderRadius: 8,
-              fontSize: 12,
-              fontWeight: 700,
-              alignSelf: 'flex-start',
-            }}
-            title="Khách gọi bằng QR, đang chờ nhân viên duyệt"
-          >
-            📱 {qrWaiting} lượt chờ duyệt
-          </div>
-        )}
-
-        {hasActive || servedCount > 0 ? (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-            {hasQrOrder && (
-              <span
-                style={{
-                  background: '#ede9fe',
-                  color: '#5b21b6',
-                  padding: '2px 8px',
-                  borderRadius: 999,
-                  fontSize: 11,
-                  fontWeight: 600,
-                }}
-                title="Bàn này khách tự gọi món bằng QR"
-              >
-                📱 QR
-              </span>
-            )}
-            {Object.entries(counts).map(([st, n]) => {
-              if (n === 0) return null;
-              const b = STATE_BADGE[st];
-              return (
-                <span
-                  key={st}
-                  style={{
-                    background: b.color,
-                    color: 'white',
-                    padding: '2px 8px',
-                    borderRadius: 999,
-                    fontSize: 11,
-                    fontWeight: 600,
-                  }}
-                >
-                  {b.icon} {n}
-                </span>
-              );
-            })}
-            {/* Luôn hiện số món đã giao khi servedCount > 0, kể cả khi vẫn còn món active.
-                Giúp staff biết "đã giao mấy món rồi" mà không cần mở drawer. */}
-            {servedCount > 0 && (
-              <span
-                style={{
-                  background: '#10b981',
-                  color: 'white',
-                  padding: '2px 8px',
-                  borderRadius: 999,
-                  fontSize: 11,
-                  fontWeight: 600,
-                }}
-                title="Đã giao tới khách"
-              >
-                🍽 {servedCount} đã giao
-              </span>
-            )}
-          </div>
-        ) : qrWaiting > 0 ? (
-          /* KHÔNG viết chữ gì ở đây (chủ quán chốt 2026-10-01): badge tím "N lượt chờ duyệt"
-             ngay trên kia đã nói đủ, thêm một câu nữa là lặp. Nhưng cũng KHÔNG được rơi về
-             nhánh "Trống — bấm để gọi món" bên dưới: bàn đang có khách ngồi chờ mà thẻ ghi
-             "Trống" là đúng tình huống dấu hiệu QR sinh ra để tránh. */
-          null
-        ) : (
-          <div style={{ color: '#9ca3af', fontSize: 12 }}>Trống — bấm để gọi món</div>
-        )}
-      </button>
-      {canQuickLock && (
-        <button
-          title="Đánh dấu bàn dùng KiotViet"
-          onClick={(e) => { e.stopPropagation(); lockTable(t); }}
-          style={{
-            position: 'absolute',
-            top: 6,
-            right: 6,
-            width: 28,
-            height: 28,
-            padding: 0,
-            lineHeight: '28px',
-            textAlign: 'center',
-            borderRadius: 8,
-            border: '1px solid #ddd6fe',
-            background: 'white',
-            color: '#7c3aed',
-            fontSize: 14,
-            cursor: 'pointer',
-            opacity: 0.85,
-          }}
-        >
-          🔒
         </button>
-      )}
       </div>
     );
   };
 
+  const renderChip = (k: FilterKey) => (
+    <button
+      key={k}
+      type="button"
+      onClick={() => setFilter(k)}
+      aria-pressed={filter === k}
+      className={`op-chip${filterCounts[k] === 0 ? ' op-chip--zero' : ''}`}
+    >
+      {FILTER_LABEL[k]}
+      <span className="op-chip-count">{filterCounts[k]}</span>
+    </button>
+  );
+
   return (
-    <div className="container wide with-bottom-nav">
-      {/* Cụm nút Hướng dẫn / Mở tất cả / Làm mới đã bỏ (2026-09-08, chủ quán). "Làm mới" vốn
-          thừa — trang đã tự làm mới mỗi 2s. Mở khoá KiotViet nay làm từng bàn: tap thẳng vào
-          thẻ bàn tím, hệ thống hỏi rồi mở. */}
-      <h1 className="hide-on-mobile" style={{ margin: '0 0 16px' }}>Sơ đồ bàn</h1>
+    <PageLayout className="orders-page">
+      {/* Tiêu đề "Sơ đồ bàn" nằm trên header (App.tsx `pageTitle`) — hiện cả trên điện thoại. */}
 
-
-      {loading && <p style={{ color: '#6b7280' }}>Đang tải bàn...</p>}
+      {loading && <p className="muted">Đang tải bàn...</p>}
 
       {!loading && tables.length === 0 && (
         <div className="empty-state card">
-          Chưa có bàn nào. Chạy <code>pnpm seed:demo</code> để có dữ liệu mẫu.
+          Chưa có bàn nào - vào Thêm → Quản lý bàn để tạo bàn
         </div>
       )}
 
       {!loading && tables.length > 0 && (
         <>
-          {/* Dãy lọc — MỘT DÒNG kéo ngang (chỉ đạo chủ quán 2026-09-06).
-              Trước là `flexWrap: wrap` + nút `flex: 1 1 auto; minWidth: 130`, nên 8 nút trên máy
-              390px xếp thành lưới 2 cột 4 hàng cao ~270px — gần một phần ba màn hình trước khi
-              thấy cái bàn đầu tiên. `tabstrip` giữ một hàng, nút giữ bề rộng theo chữ, thiếu chỗ
-              thì vuốt ngang. Desktop rộng nên hàng vẫn vừa, không đổi gì. */}
-          <div
-            className="card tabstrip-sm"
-            style={{
-              marginBottom: 16,
-              padding: 8,
-              display: 'flex',
-              gap: 6,
-              flexWrap: 'wrap',
-            }}
-          >
-            {FILTER_ORDER.map((k) => (
+          {/* Bộ lọc: mỗi nhóm MỘT hàng — điện thoại vuốt ngang (mép phải mờ dần báo còn chip phía
+              sau), máy tính tự xuống dòng. Chú thích trạng thái thu vào nút ⓘ để bàn đầu tiên
+              lên cao hơn. */}
+          <div className="op-filters">
+            <div className="op-filter-row">
+              <div className="op-filter-group op-scroll" role="group" aria-label="Lọc theo trạng thái">
+                {STATUS_FILTERS.map(renderChip)}
+              </div>
               <button
-                key={k}
-                onClick={() => setFilter(k)}
-                className={filter === k ? '' : 'secondary'}
-                style={{
-                  padding: '8px 12px',
-                  fontSize: 13,
-                  flex: '1 1 auto',
-                  minWidth: 130,
-                }}
+                type="button"
+                className="secondary op-legend-btn"
+                aria-expanded={legendOpen}
+                aria-label="Chú thích màu"
+                onClick={() => setLegendOpen((v) => !v)}
               >
-                {FILTER_LABEL[k]} ({filterCounts[k]})
+                <Info size={20} aria-hidden="true" />
               </button>
-            ))}
+            </div>
+            {showKindGroup && (
+              <div className="op-filter-group op-scroll" role="group" aria-label="Lọc theo loại bàn">
+                {KIND_FILTERS.map(renderChip)}
+              </div>
+            )}
           </div>
+
+          {legendOpen && (
+            <div className="op-legend card">
+              <div><strong>Màu viền thẻ:</strong></div>
+              <div className="op-legend-row">
+                <span><span className="op-swatch op-swatch--alert" />Bếp chậm (báo bếp 15 phút chưa ra món)</span>
+                <span><span className="op-swatch op-swatch--qr" />Khách QR gọi (gọi món, gọi nhân viên, tính tiền)</span>
+                <span><span className="op-swatch op-swatch--stale" />Chưa trả (mở bàn quá lâu)</span>
+                <span><span className="op-swatch op-swatch--ready" />Có món chờ mang ra</span>
+                <span><span className="op-swatch op-swatch--normal" />Đang ăn</span>
+              </div>
+              <div><strong>Chấm trạng thái món:</strong></div>
+              <div className="op-legend-row">
+                {STATE_ORDER.map((st) => (
+                  <span key={st}><span className={`op-dot op-dot--${st}`} aria-hidden="true" />{STATE_LABEL[st]}</span>
+                ))}
+              </div>
+            </div>
+          )}
 
           {filteredTables.length === 0 ? (
             <div className="empty-state card">
-              Không có bàn khớp filter "{FILTER_LABEL[filter]}".
+              Không có bàn nào ở mục "{FILTER_LABEL[filter]}"
             </div>
           ) : (
-            <div
-              style={{
-                display: 'grid',
-                gap: 10,
-                gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
-              }}
-            >
-              {filteredTables.map(renderTableCard)}
-            </div>
+            <div className="op-grid">{filteredTables.map(renderTableCard)}</div>
           )}
         </>
       )}
 
-      {/* Legend */}
-      <div
-        className="card"
-        style={{
-          fontSize: 12,
-          padding: 12,
-          marginTop: 16,
-          color: '#6b7280',
-          display: 'flex',
-          gap: 12,
-          flexWrap: 'wrap',
-        }}
-      >
-        <span><strong>Vòng đời:</strong></span>
-        {Object.entries(STATE_BADGE).map(([s, b]) => (
-          <span key={s}>
-            <span
-              style={{
-                display: 'inline-block',
-                width: 10,
-                height: 10,
-                borderRadius: '50%',
-                background: b.color,
-                marginRight: 4,
-              }}
-            />
-            {b.icon} {b.label}
-          </span>
-        ))}
-      </div>
-
       {active && <OrderDrawer table={active} onClose={closeDrawer} onTransferred={manualRefresh} />}
-    </div>
+    </PageLayout>
   );
 }

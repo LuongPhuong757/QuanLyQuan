@@ -1,5 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
+import { Banknote, BellRing, Printer, Receipt, ShoppingCart } from 'lucide-react';
+import { api, extractError } from '../lib/api.ts';
+import { useToast } from './Toast.tsx';
 import type { GuestCard, PendingCall } from '../lib/kds-guest-cards.js';
 import { describeAge, describeGroup, groupCallsByTable } from '../lib/kds-guest-cards.js';
 import { tableSpeechName } from '../lib/voice-text.js';
@@ -41,6 +45,45 @@ function chipLabel(tableName: string): string {
   return /^bàn\s/i.test(t) || !/^\d+$/.test(t) ? t : `Bàn ${t}`;
 }
 
+/** Lý do bỏ lượt gọi món QR — chọn một chạm (2026-11-06), API `reject` nhận `reason`. */
+const REJECT_REASONS = ['Hết món', 'Khách gọi nhầm', 'Khách đổi ý', 'Khác'];
+
+/** Đơn đang mở của một bàn — để popup nói "Bàn đang có 8 món · 365.000đ" và làm được In tạm
+ *  tính / Mở bàn. Lấy từ `GET /orders` (đã có), chỉ kéo khi mở popup ở màn Order. */
+type TableNow = { order_id: string; table_id: string; qty: number; total: number };
+
+function useTableNow(tableCode: string | null): TableNow | null | 'loading' {
+  const [v, setV] = useState<TableNow | null | 'loading'>(null);
+  useEffect(() => {
+    if (!tableCode) {
+      setV(null);
+      return;
+    }
+    let alive = true;
+    setV('loading');
+    api
+      .get<{ data: { items: Array<{ id: string; table_id: string; table_code: string; items?: Array<{ qty: number; state: string; menu_item_price?: number; is_note?: boolean }> }> } }>('/orders')
+      .then((res) => {
+        if (!alive) return;
+        const o = res.data?.data?.items?.find((x) => x.table_code === tableCode);
+        if (!o) return setV(null);
+        let qty = 0;
+        let total = 0;
+        for (const it of o.items ?? []) {
+          if (it.is_note || it.state === 'CANCELLED') continue;
+          qty += it.qty;
+          total += (it.menu_item_price ?? 0) * it.qty;
+        }
+        setV({ order_id: o.id, table_id: o.table_id, qty, total });
+      })
+      .catch(() => alive && setV(null));
+    return () => {
+      alive = false;
+    };
+  }, [tableCode]);
+  return v;
+}
+
 export function GuestRequestCards({
   cards,
   calls,
@@ -49,6 +92,7 @@ export function GuestRequestCards({
   onApprove,
   onReject,
   onAck,
+  labeled = false,
 }: {
   cards: GuestCard[];
   calls: PendingCall[];
@@ -56,10 +100,15 @@ export function GuestRequestCards({
   /** `false` = màn Bếp: xem món được, không duyệt / bỏ được. */
   canApprove: boolean;
   onApprove: (requestId: string) => void;
-  onReject: (requestId: string) => void;
+  onReject: (requestId: string, reason?: string) => void;
   /** Nhận NHIỀU id: một chuyến đi tới bàn giải quyết mọi lời nhắn của bàn đó cùng lúc. */
   onAck: (callIds: string[]) => void;
+  /** Màn Order (2026-11-06): chip mang ICON + CHỮ loại yêu cầu, xếp dọc trong tấm danh sách —
+   *  trước chỉ phân biệt bằng màu viền. Màn Bếp giữ dải chip cũ (`false`). */
+  labeled?: boolean;
 }) {
+  const navigate = useNavigate();
+  const toast = useToast();
   const [openId, setOpenId] = useState<string | null>(null);
   const [confirmReject, setConfirmReject] = useState(false);
   /* Thẻ gọi: bấm vào là MỞ RA XEM, không phải "Đã nghe" ngay.
@@ -69,12 +118,42 @@ export function GuestRequestCards({
    * chạm để đọc, rồi mới bấm "Đã nghe". */
   /* Mở theo BÀN, không theo từng lời nhắn: chip giờ là một bàn. */
   const [openTable, setOpenTable] = useState<string | null>(null);
-
-  if (cards.length === 0 && calls.length === 0) return null;
+  const [rejectReason, setRejectReason] = useState<string | null>(null);
 
   const open = cards.find((c) => c.request_id === openId) ?? null;
   const groups = groupCallsByTable(calls);
   const openGroup = groups.find((g) => g.table_code === openTable) ?? null;
+  // Mã bàn của lượt gọi món đang mở → tra đơn đang có của bàn (chỉ màn Order).
+  const openCardCode = open && canApprove ? open.table_code ?? null : null;
+  const tableNow = useTableNow(canApprove ? (openTable ?? openCardCode) : null);
+
+  if (cards.length === 0 && calls.length === 0) return null;
+
+  const tableNowLine =
+    tableNow === 'loading'
+      ? 'Đang xem bàn…'
+      : tableNow && tableNow.qty > 0
+        ? `Bàn đang có ${tableNow.qty} món · ${vnd(tableNow.total)}`
+        : 'Bàn chưa có món nào';
+
+  /** Khách bấm "Tính tiền" trên trang QR → làm luôn: nghe + mở bàn / in tạm tính (2026-11-06). */
+  const openTableForPay = (ids: string[]) => {
+    onAck(ids);
+    setOpenTable(null);
+    if (tableNow && tableNow !== 'loading') navigate(`/orders?table=${encodeURIComponent(tableNow.table_id)}`);
+  };
+  const printBill = async (ids: string[]) => {
+    if (!tableNow || tableNow === 'loading') return;
+    try {
+      const res = await api.post<{ data: { queued: boolean } }>(`/orders/${tableNow.order_id}/print-tam-tinh`, {});
+      if (res.data.data.queued) toast.push('success', 'Đang in phiếu tạm tính…');
+      else toast.push('error', 'Chưa bật in hoá đơn - vào Cài đặt → Máy in để bật');
+      onAck(ids);
+      setOpenTable(null);
+    } catch (err) {
+      toast.push('error', extractError(err).message);
+    }
+  };
 
   return (
     <>
@@ -99,6 +178,14 @@ export function GuestRequestCards({
                   : 'Bấm để xem và báo đã nghe'
             }
           >
+            {labeled && (
+              <span className="qr-chip-kind">
+                {g.has_bill && <Receipt size={18} aria-hidden="true" />}
+                {g.has_staff && <BellRing size={18} aria-hidden="true" />}
+                {g.has_bill && g.has_staff ? 'Tính tiền + gọi NV' : g.has_bill ? 'Tính tiền' : 'Gọi nhân viên'}
+                {g.items.length > 1 ? ` ×${g.items.length}` : ''}
+              </span>
+            )}
             <strong>{chipLabel(g.table_name)}</strong>
             {/* Từ lời nhắn CŨ NHẤT chưa ai nghe: khách đã đứng chờ từ lúc đó. */}
             <span>{formatAge((Date.now() - Math.min(...g.items.map((i) => i.created_at))) / 60_000)}</span>
@@ -113,9 +200,15 @@ export function GuestRequestCards({
             aria-label={`${tableSpeechName(c.table_name)} gọi ${c.lines.reduce((t, l) => t + l.qty, 0)} món, chờ ${describeAge(c.ageMs)}`}
             onClick={() => {
               setConfirmReject(false);
+              setRejectReason(null);
               setOpenId(c.request_id);
             }}
           >
+            {labeled && (
+              <span className="qr-chip-kind">
+                <ShoppingCart size={18} aria-hidden="true" /> Gọi {c.lines.reduce((t, l) => t + l.qty, 0)} món
+              </span>
+            )}
             <strong>{chipLabel(c.table_name)}</strong>
             <span>{formatAge(c.ageMs / 60_000)}</span>
           </button>
@@ -167,10 +260,31 @@ export function GuestRequestCards({
               ))}
             </div>
 
+            {canApprove && openGroup.has_bill && (
+              <div className="qr-bill-actions">
+                <p className="qr-table-now">{tableNowLine}</p>
+                {/* Khách gọi tính tiền → làm luôn, bấm là tự đánh dấu "đã nghe". */}
+                <button
+                  type="button"
+                  disabled={!tableNow || tableNow === 'loading'}
+                  onClick={() => openTableForPay(openGroup.items.map((i) => i.id))}
+                >
+                  <Banknote size={20} aria-hidden="true" /> Mở bàn để thanh toán
+                </button>
+                <button
+                  type="button"
+                  className="secondary"
+                  disabled={!tableNow || tableNow === 'loading'}
+                  onClick={() => void printBill(openGroup.items.filter((i) => i.kind === 'BILL').map((i) => i.id))}
+                >
+                  <Printer size={20} aria-hidden="true" /> In tạm tính
+                </button>
+              </div>
+            )}
             <div className="kds-guest-modal-foot">
               <button
                 type="button"
-                className="kds-guest-approve"
+                className={canApprove && openGroup.has_bill ? 'secondary kds-guest-ack-plain' : 'kds-guest-approve'}
                 disabled={openGroup.items.some((i) => busyId === i.id)}
                 onClick={() => {
                   onAck(openGroup.items.map((i) => i.id));
@@ -210,6 +324,7 @@ export function GuestRequestCards({
                 </div>
               ))}
               <div className="kds-guest-foot">Tạm tính theo giá hiện tại: {vnd(open.subtotal)}</div>
+              {canApprove && <p className="qr-table-now">{tableNowLine}</p>}
             </div>
 
             {!canApprove ? (
@@ -220,42 +335,59 @@ export function GuestRequestCards({
               </div>
             ) : (
             <div className="kds-guest-modal-foot">
-              <button
-                type="button"
-                className="kds-guest-approve"
-                disabled={busyId === open.request_id}
-                onClick={() => {
-                  onApprove(open.request_id);
-                  setOpenId(null);
-                }}
-              >
-                {busyId === open.request_id ? 'Đang gửi…' : '✓ Duyệt cả lượt'}
-              </button>
-
               {confirmReject ? (
-                <div className="kds-guest-confirm">
-                  <span>Bỏ cả lượt này?</span>
-                  {/* Nút AN TOÀN đứng trước, nút huỷ đứng sau — cùng thứ tự với mọi hộp xác
-                      nhận khác của app (Chọn lại / Đúng rồi). Bản cũ để "Bỏ thật" bên trái,
-                      tức ngón tay rơi vào đúng nút phá trước. */}
-                  <button type="button" onClick={() => setConfirmReject(false)}>
-                    Không, giữ lại
+                /* Bỏ lượt: CHỌN lý do (2026-11-06) — khách thấy lý do trên điện thoại của họ. */
+                <div className="qr-reject">
+                  <p className="qr-reject-title">Bỏ lượt này - chọn lý do</p>
+                  <div className="qr-reject-chips">
+                    {REJECT_REASONS.map((r) => (
+                      <button
+                        key={r}
+                        type="button"
+                        className="secondary"
+                        aria-pressed={rejectReason === r}
+                        onClick={() => setRejectReason(r)}
+                      >
+                        {r}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="qr-reject-actions">
+                    <button type="button" className="secondary" onClick={() => setConfirmReject(false)}>
+                      Không, giữ lại
+                    </button>
+                    <button
+                      type="button"
+                      className="danger"
+                      disabled={!rejectReason}
+                      onClick={() => {
+                        onReject(open.request_id, rejectReason ?? undefined);
+                        setOpenId(null);
+                      }}
+                    >
+                      Bỏ lượt
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="qr-approve-row">
+                  <button type="button" className="danger" onClick={() => setConfirmReject(true)}>
+                    Bỏ
                   </button>
+                  {/* Nút CHÍNH (đỏ ớt như mọi nút chính) — "Bỏ" là nút viền. */}
                   <button
                     type="button"
-                    className="kds-confirm-yes"
+                    disabled={busyId === open.request_id}
                     onClick={() => {
-                      onReject(open.request_id);
+                      onApprove(open.request_id);
                       setOpenId(null);
                     }}
                   >
-                    Bỏ thật
+                    {busyId === open.request_id
+                      ? 'Đang gửi…'
+                      : `Duyệt ${open.lines.filter((l) => !l.gone).reduce((t, l) => t + l.qty, 0)} món`}
                   </button>
                 </div>
-              ) : (
-                <button type="button" className="kds-guest-reject" onClick={() => setConfirmReject(true)}>
-                  ✕ Bỏ lượt
-                </button>
               )}
             </div>
             )}

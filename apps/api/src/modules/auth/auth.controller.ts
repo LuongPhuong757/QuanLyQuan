@@ -25,7 +25,9 @@ export class AuthController {
   /** E-01 POST /auth/login */
   @Post('login')
   @HttpCode(200)
-  @Throttle({ default: { limit: 5, ttl: 300_000 } })
+  // BỎ giới hạn riêng 5 lần/5 phút (2026-11-06, chủ repo yêu cầu): bộ đếm theo IP, mà cả quán
+  // dùng chung MỘT wifi = một IP → một nhân viên gõ sai vài lần là khoá đăng nhập của CẢ quán.
+  // Đăng nhập vẫn chịu giới hạn chung toàn API (ThrottlerModule: 600 request/phút/IP).
   async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
     const { user, token } = await this.svc.loginByCredentials(dto.username, dto.password);
     res.cookie(this.jwtSvc.cookieName, token, this.jwtSvc.cookieOptions);

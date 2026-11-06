@@ -48,7 +48,7 @@ type InternalState =
   | null;
 
 const VARIANT_COLORS: Record<ConfirmVariant, { bg: string; border: string; text: string; icon: string }> = {
-  default: { bg: '#f0f9ff', border: '#0f766e', text: '#0f766e', icon: '❓' },
+  default: { bg: '#f0f9ff', border: '#b82a1e', text: '#b82a1e', icon: '❓' },
   danger:  { bg: '#fef2f2', border: '#dc2626', text: '#dc2626', icon: '⚠️' },
   warning: { bg: '#fef3c7', border: '#f59e0b', text: '#92400e', icon: '⚠️' },
   success: { bg: '#ecfdf5', border: '#059669', text: '#059669', icon: '✓' },
@@ -176,7 +176,7 @@ function ConfirmModal({
               background: variant === 'danger' ? '#dc2626'
                        : variant === 'warning' ? '#f59e0b'
                        : variant === 'success' ? '#059669'
-                       : '#0f766e',
+                       : '#b82a1e',
               color: 'white',
               fontWeight: 600,
             }}
@@ -296,7 +296,7 @@ function PromptModal({
             style={{
               flex: 1,
               minHeight: 44,
-              background: '#0f766e',
+              background: '#b82a1e',
               color: 'white',
               fontWeight: 600,
             }}

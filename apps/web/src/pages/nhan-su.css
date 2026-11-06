@@ -2,11 +2,11 @@
    khó nhìn"). Bản vẽ duyệt qua OpenDesign: project `qbl-quan-ly-nhan-su-v2`.
 
    Mọi selector gắn dưới `.nv-ui`: `styles.css` đã có `.card`, `.chip`… dùng chung cả app, đặt tên
-   trần là đè sang màn khác. Nút viết `button.nv-*` vì luật `button { background: #0f766e }` toàn
+   trần là đè sang màn khác. Nút viết `button.nv-*` vì luật `button { background: #b82a1e }` toàn
    cục sẽ thắng một class trần đứng một mình ở chỗ cùng độ ưu tiên. */
 
 .nv-ui {
-  --nv-teal: #0f766e;
+  --nv-teal: #b82a1e;
   --nv-green: #059669;
   --nv-green-soft: #d1fae5;
   --nv-amber: #b45309;
@@ -424,6 +424,6 @@
   height: 52px;
   font-size: 17px;
   font-weight: 700;
-  background: #0f766e;
+  background: #b82a1e;
   color: #fff;
 }

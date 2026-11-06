@@ -15,8 +15,10 @@ import { useEffect, useSyncExternalStore } from 'react';
 import { api } from './api.ts';
 import type { PendingPayload } from './kds-guest-cards.ts';
 
-/** 3 giây: khách vừa bấm gửi là đứng nhìn điện thoại chờ — chậm hơn nữa là họ bấm gửi lại. */
-const GUEST_PENDING_POLL_MS = 3_000;
+/** 5 giây (2026-11-06, trước 3 giây): khách vừa bấm gửi thì nhân viên thấy trong ≤5 giây — vẫn
+ *  nhanh hơn thời gian họ đi tới bàn. Cùng ngày bỏ nhịp kéo trùng 2 giây ở màn Sơ đồ bàn (nay đọc
+ *  chung store này): tổng ~46 → 12 request/phút/tab. Nhiều máy hơn nữa thì cần SSE/WebSocket. */
+const GUEST_PENDING_POLL_MS = 5_000;
 
 let current: PendingPayload | null = null;
 const listeners = new Set<() => void>();

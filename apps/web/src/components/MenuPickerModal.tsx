@@ -216,7 +216,7 @@ export function MenuPickerModal({ onClose, onPick, hideGroupFilter }: Props) {
                 {it.is_out_of_stock ? (
                   <span style={{ fontSize: 12, fontWeight: 700 }}>HẾT</span>
                 ) : (
-                  <strong style={{ color: '#0f766e' }}>{fmt(it.price)}</strong>
+                  <strong style={{ color: '#b82a1e' }}>{fmt(it.price)}</strong>
                 )}
               </div>
             </button>

@@ -108,7 +108,7 @@ function BieuDoCot({ days, fmt, donVi, nhanTruc }: { days: CotNgay[]; fmt: (v: n
 
 /** Đường giá theo từng lần nhập. MỘT NCC thì tô nền như biểu đồ "Biến động giá"; nhiều NCC thì
  *  mỗi NCC một đường không tô nền — hai vùng tô đè lên nhau thì không còn đọc được đường nào. */
-const MAU_NCC = ['#0f766e', '#b45309', '#6d28d9', '#be123c', '#1d4ed8'];
+const MAU_NCC = ['#b82a1e', '#b45309', '#6d28d9', '#be123c', '#1d4ed8'];
 function BieuDoGia({ points }: { points: DiemNhap[] }) {
   const [ref, W] = useBeNgang();
   const H = 220, padL = 62, padR = 14, padT = 18, padB = 30;
@@ -143,12 +143,12 @@ function BieuDoGia({ points }: { points: DiemNhap[] }) {
           </g>
         ))}
         {[...nhom.values()].map((g, gi) => {
-          const mau = motNcc ? '#0f766e' : MAU_NCC[gi % MAU_NCC.length];
+          const mau = motNcc ? '#b82a1e' : MAU_NCC[gi % MAU_NCC.length];
           const line = g.map(({ i, p }, k) => `${k ? 'L' : 'M'}${X(i).toFixed(1)} ${Y(p.unit_price).toFixed(1)}`).join(' ');
           const area = `${line} L${X(g[g.length - 1].i).toFixed(1)} ${padT + ph} L${X(g[0].i).toFixed(1)} ${padT + ph} Z`;
           return (
             <g key={gi}>
-              {motNcc && <path d={area} fill="#ccfbf1" />}
+              {motNcc && <path d={area} fill="#fbe4de" />}
               <path d={line} fill="none" stroke={mau} strokeWidth={2.6} strokeLinejoin="round" strokeLinecap="round" />
               {g.map(({ i, p }) => {
                 const last = i === n - 1;

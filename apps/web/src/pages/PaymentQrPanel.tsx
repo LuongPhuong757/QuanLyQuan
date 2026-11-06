@@ -687,8 +687,8 @@ function KindButton({
         textAlign: 'left',
         padding: '10px 14px',
         borderRadius: 10,
-        border: active ? '2px solid #0d9488' : `1px solid ${C.borderSoft}`,
-        background: active ? '#f0fdfa' : 'white',
+        border: active ? '2px solid #cf3323' : `1px solid ${C.borderSoft}`,
+        background: active ? '#fef6f3' : 'white',
         color: C.text,
         cursor: 'pointer',
       }}

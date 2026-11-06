@@ -55,6 +55,8 @@ export type GuestCardLine = {
 
 export type GuestCard = {
   request_id: string;
+  /** Mã bàn — để màn Order tra đơn đang mở của bàn (tóm tắt "đang có N món"). */
+  table_code?: string;
   table_name: string;
   ageMs: number;
   blink: boolean;
@@ -78,6 +80,7 @@ export function buildGuestCards(payload: PendingPayload | undefined | null, nowM
         const ageMs = Math.max(0, nowMs - Number(r.created_at ?? nowMs));
         out.push({
           request_id: r.id,
+          table_code: r.table_code,
           table_name: r.table_name || r.table_code || '',
           ageMs,
           blink: ageMs >= BLINK_AFTER_MS,

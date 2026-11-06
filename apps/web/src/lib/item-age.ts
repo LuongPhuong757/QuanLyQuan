@@ -23,24 +23,18 @@ export function ageMinutes(created_at: number): number {
 }
 
 /**
- * Tuổi món thành chữ ngắn: `45p`, `1h`, `1h1p`, `2h5p`.
+ * Thời gian chờ / ngồi thành chữ ngắn — MỘT kiểu cho mọi màn (chủ repo chốt 2026-11-06):
+ * `54p`, `1g05`, `2g00`, `25g05`.
  *
- * Quá một tiếng thì "61p" đọc chậm — mắt phải chia nhẩm mới biết là đã hơn một tiếng, mà đó
- * đúng là lúc cần phản ứng nhanh nhất. "1h1p" nói ngay điều đó.
- *
- * Tròn giờ thì BỎ phần phút (`1h` chứ không `1h0p`): con số này nằm ở góc thẻ bàn với cỡ chữ
- * 11px, mỗi ký tự thừa là một ký tự phải liếc. "0p" không thêm thông tin nào.
- *
- * Để ở đây chứ không viết lẻ ở từng màn: ba màn (lưới bàn, drawer bàn, Bếp) cùng nói về một
- * con số, trước đây mỗi màn một kiểu — `61′`, `61 phút`, `61p`. Nhân viên đi qua đi lại giữa
- * ba màn thì ba cách viết là ba lần phải dịch lại trong đầu.
+ * Trước đó mỗi chỗ một kiểu ("25h8p" ở dải trên, "25 giờ 05" trên thẻ bàn, "54 phút" thẻ khác) —
+ * nhân viên đi qua lại giữa lưới bàn, drawer, Bếp phải dịch lại trong đầu. "g" thay "h" vì là chữ
+ * Việt; phút luôn 2 chữ số sau giờ để đọc như đồng hồ (1g05, không phải 1g5).
  */
 export function formatAge(minutes: number): string {
   const m = Math.max(0, Math.floor(minutes));
   if (m < 60) return `${m}p`;
   const h = Math.floor(m / 60);
-  const rem = m % 60;
-  return rem === 0 ? `${h}h` : `${h}h${rem}p`;
+  return `${h}g${String(m % 60).padStart(2, '0')}`;
 }
 
 /** Đã quá ngưỡng khẩn cấp → bồi bàn nên ưu tiên hoặc báo khách. */

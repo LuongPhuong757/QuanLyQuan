@@ -101,7 +101,7 @@ export function PaymentSummaryBox({ query, filterKey }: { query: string; filterK
       <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 10 }}>Đối soát tiền</div>
 
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-        <Tile label="💵 Tiền mặt (phải có trong két)" value={fmt(data.cash)} color="#0f766e" />
+        <Tile label="💵 Tiền mặt (phải có trong két)" value={fmt(data.cash)} color="#b82a1e" />
         <Tile label="🏦 Chuyển khoản (phải về ngân hàng)" value={fmt(data.transfer)} color="#0369a1" />
         <Tile label="Tổng thu" value={fmt(data.total)} color="#374151" />
         {/* Nợ là số MỌI THỜI GIAN, cố ý đứng cùng hàng nhưng khác màu: câu admin cần trả lời là

@@ -38,7 +38,7 @@ const SENTINEL_PHONE_LIKE = '09000000%';
  * `AND t.code LIKE ?` để không đụng bàn thật. Đây là câu cần chứng minh — sửa nó ở service mà
  * không sửa ở đây là làm test mất giá trị. */
 const PICK_TABLE_SQL = `SELECT t.id, t.code, t.name FROM restaurant_tables t
-   WHERE t.kind = ? AND t.is_active = 1 AND t.kiotviet_locked = 0
+   WHERE t.kind = ? AND t.is_active = 1
      AND t.id NOT IN (SELECT o.table_id FROM orders o WHERE o.closed_at IS NULL)
      AND t.code LIKE ?
    ORDER BY t.code ASC LIMIT 1 FOR UPDATE`;
@@ -132,13 +132,13 @@ async function cleanupSentinelRows(): Promise<void> {
 async function insertTable(
   code: string,
   kind: 'delivery' | 'takeaway',
-  opts: { active?: boolean; kiotvietLocked?: boolean } = {},
+  opts: { active?: boolean } = {},
 ): Promise<string> {
   const id = randomUUID();
   await ds.query(
-    `INSERT INTO restaurant_tables (id, code, name, kind, x, y, is_active, kiotviet_locked, created_at)
-     VALUES (?, ?, ?, ?, 0, 0, ?, ?, NOW(6))`,
-    [id, code, `Test ${code}`, kind, opts.active === false ? 0 : 1, opts.kiotvietLocked ? 1 : 0],
+    `INSERT INTO restaurant_tables (id, code, name, kind, x, y, is_active, created_at)
+     VALUES (?, ?, ?, ?, 0, 0, ?, NOW(6))`,
+    [id, code, `Test ${code}`, kind, opts.active === false ? 0 : 1],
   );
   return id;
 }
@@ -342,8 +342,7 @@ describe('Cấp bàn — row lock chống cấp trùng (M2.D-06)', () => {
     }
   }, 15_000);
 
-  it('bàn `kiotviet_locked` hoặc `is_active = 0` KHÔNG được cấp → buộc sang nhánh tự tạo bàn', async () => {
-    await insertTable('ship-93', 'delivery', { kiotvietLocked: true });
+  it('bàn `is_active = 0` KHÔNG được cấp → buộc sang nhánh tự tạo bàn', async () => {
     await insertTable('ship-94', 'delivery', { active: false });
 
     const runner = ds.createQueryRunner();

@@ -78,7 +78,12 @@ export class JwtService {
     return {
       httpOnly: true,
       secure: process.env.COOKIE_SECURE === 'true',
-      sameSite: 'strict' as const,
+      // 'lax' chứ không 'strict' (2026-11-06): với Strict, mở trang quản lý từ một nơi khác (link
+      // Zalo/tin nhắn, trang khách, gợi ý của Safari iPhone) thì lần điều hướng ĐẦU không kèm
+      // cookie → app tưởng chưa đăng nhập, bắt đăng nhập lại dù tab bên cạnh vẫn đang đăng nhập.
+      // Lax vẫn KHÔNG gửi cookie cho POST/PATCH/DELETE từ trang lạ (chặn CSRF), và còn lớp
+      // CsrfOriginGuard kiểm Origin cho /admin/* + /auth/*.
+      sameSite: 'lax' as const,
       maxAge: this.lifetimeDays * 86_400_000,
       path: '/',
     };

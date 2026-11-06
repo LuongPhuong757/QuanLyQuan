@@ -135,7 +135,9 @@ services:
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
-      JWT_LIFETIME_DAYS: ${JWT_LIFETIME_DAYS:-7}
+      # Phiên đăng nhập VĨNH VIỄN (3650 ngày) — khớp mặc định trong jwt.service.ts. Trước 2026-11-06
+      # ghi `:-7` ở đây đè mặc định của code → bản chạy thật bắt đăng nhập lại mỗi 7 ngày.
+      JWT_LIFETIME_DAYS: ${JWT_LIFETIME_DAYS:-3650}
       COOKIE_NAME: ${COOKIE_NAME:-ssp_token}
       # HTTP mode → cookie secure=false. Khi có HTTPS đổi 'true'.
       COOKIE_SECURE: ${COOKIE_SECURE:-false}

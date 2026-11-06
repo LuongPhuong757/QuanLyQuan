@@ -15,6 +15,11 @@
 // CSS `--qr-banner-h` để dải đỏ "chưa trả", header và khung Bếp tụt xuống dưới nó. Dải này nằm
 // TRÊN dải đỏ vì nó là việc phải làm NGAY (khách đang đứng chờ), dải đỏ là nhắc nhở.
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
+import { BellRing, ChevronRight, Clock, X } from 'lucide-react';
+import { formatAge } from '../lib/item-age.ts';
+import type { StaleUnpaid } from '../lib/stale-unpaid.ts';
 import { api, extractError } from '../lib/api.ts';
 import { createBell } from '../lib/bell.ts';
 import { guestPendingStore } from '../lib/guest-pending.ts';
@@ -26,6 +31,14 @@ type Props = {
   data: PendingPayload | null;
   /** `true` = màn Order (duyệt được + kêu chuông lượt mới). `false` = màn Bếp (chỉ báo). */
   canApprove: boolean;
+  /**
+   * `compact` (màn Order, 2026-11-06): GỘP dải QR + dải "chưa trả" thành MỘT dòng
+   * "N yêu cầu QR · N bàn chưa trả ›", bấm mở tấm danh sách từ đáy. Hai dải cũ cùng header
+   * chiếm ~18% màn điện thoại mọi lúc, chip bị cắt không bấm được. Màn Bếp giữ dải cũ.
+   */
+  variant?: 'rail' | 'compact';
+  /** Chỉ dùng ở `compact` — danh sách bàn chưa trả (cùng dữ liệu StaleTableBanner). */
+  stale?: StaleUnpaid | null;
 };
 
 /**
@@ -35,8 +48,12 @@ type Props = {
  */
 const rungIds = new Set<string>();
 
-export function GuestQrBanner({ data, canApprove }: Props) {
+export function GuestQrBanner({ data, canApprove, variant = 'rail', stale = null }: Props) {
   const toast = useToast();
+  const navigate = useNavigate();
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const compact = variant === 'compact';
+  const staleItems = compact ? stale?.items ?? [] : [];
   const ref = useRef<HTMLDivElement>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const bellRef = useRef<ReturnType<typeof createBell> | null>(null);
@@ -48,7 +65,9 @@ export function GuestQrBanner({ data, canApprove }: Props) {
     ...cards.map((c) => c.table_name),
     ...groupCallsByTable(calls).map((g) => g.table_name),
   ]).size;
-  const visible = cards.length > 0 || calls.length > 0;
+  // Đếm theo YÊU CẦU, không theo bàn (2026-11-06): "5 bàn QR" mà có 7 chip là đọc lệch.
+  const requestCount = cards.length + calls.length;
+  const visible = cards.length > 0 || calls.length > 0 || staleItems.length > 0;
 
   useEffect(() => {
     const root = document.documentElement;
@@ -115,10 +134,10 @@ export function GuestQrBanner({ data, canApprove }: Props) {
   );
 
   const reject = useCallback(
-    async (requestId: string) => {
+    async (requestId: string, reason?: string) => {
       setBusyId(requestId);
       try {
-        await api.post(`/table-requests/${requestId}/reject`, {});
+        await api.post(`/table-requests/${requestId}/reject`, reason ? { reason } : {});
       } catch (err) {
         toast.push('error', extractError(err).message);
       } finally {
@@ -156,7 +175,97 @@ export function GuestQrBanner({ data, canApprove }: Props) {
     [toast],
   );
 
+  // Hết việc trong tấm → tự đóng.
+  useEffect(() => {
+    if (sheetOpen && !visible) setSheetOpen(false);
+  }, [sheetOpen, visible]);
+
   if (!visible) return null;
+
+  if (compact) {
+    return (
+      <>
+        <div ref={ref} className="alert-bar" role="status">
+          <button type="button" className="alert-bar-btn" onClick={() => setSheetOpen(true)} aria-haspopup="dialog">
+            {requestCount > 0 && (
+              <span className="alert-bar-qr">
+                <BellRing size={18} aria-hidden="true" /> {requestCount} yêu cầu QR
+              </span>
+            )}
+            {requestCount > 0 && staleItems.length > 0 && <span aria-hidden="true">·</span>}
+            {staleItems.length > 0 && (
+              <span className="alert-bar-stale">
+                <Clock size={18} aria-hidden="true" /> {staleItems.length} bàn chưa trả
+              </span>
+            )}
+            <ChevronRight size={20} aria-hidden="true" className="alert-bar-go" />
+          </button>
+        </div>
+        {sheetOpen &&
+          createPortal(
+            <div
+              className="alert-sheet-overlay"
+              onClick={(e) => e.target === e.currentTarget && setSheetOpen(false)}
+            >
+              <div className="alert-sheet" role="dialog" aria-modal="true" aria-labelledby="alert-sheet-title">
+                <div className="alert-sheet-head">
+                  <h2 id="alert-sheet-title">Việc đang chờ</h2>
+                  <button type="button" className="secondary alert-sheet-close" onClick={() => setSheetOpen(false)} aria-label="Đóng">
+                    <X size={22} aria-hidden="true" />
+                  </button>
+                </div>
+                <div className="alert-sheet-body">
+                  {requestCount > 0 && (
+                    <section>
+                      <h3>Khách QR gọi ({requestCount})</h3>
+                      <div className="alert-sheet-list">
+                        <GuestRequestCards
+                          cards={cards}
+                          calls={calls}
+                          busyId={busyId}
+                          canApprove={canApprove}
+                          onApprove={approve}
+                          onReject={reject}
+                          onAck={ack}
+                          labeled
+                        />
+                      </div>
+                    </section>
+                  )}
+                  {staleItems.length > 0 && (
+                    <section>
+                      <h3>Bàn chưa trả ({staleItems.length})</h3>
+                      <div className="alert-sheet-list">
+                        {staleItems.map((it) => (
+                          <button
+                            key={it.order_id}
+                            type="button"
+                            className="secondary alert-stale-row"
+                            onClick={() => {
+                              setSheetOpen(false);
+                              navigate(`/orders?table=${encodeURIComponent(it.table_id)}`);
+                            }}
+                          >
+                            <strong>{it.label}</strong>
+                            <span className="muted">
+                              {it.reason === 'done' && it.done_age_ms !== null
+                                ? `xong ${formatAge(it.done_age_ms / 60_000)}`
+                                : `mở ${formatAge(it.open_ms / 60_000)}`}
+                            </span>
+                            <ChevronRight size={20} aria-hidden="true" />
+                          </button>
+                        ))}
+                      </div>
+                    </section>
+                  )}
+                </div>
+              </div>
+            </div>,
+            document.body,
+          )}
+      </>
+    );
+  }
 
   return (
     <div ref={ref} className={`qr-banner${canApprove ? '' : ' qr-banner--kds'}`} role="alert">

@@ -8,7 +8,8 @@ html,
 body {
   margin: 0;
   padding: 0;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  /* Một phông duy nhất cho cả app (2026-11-06): Be Vietnam Pro tự host — xem fonts.css. */
+  font-family: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
   font-size: 16px; /* iOS no-zoom baseline */
   line-height: 1.5;
   color: #1f2937;
@@ -38,12 +39,13 @@ textarea {
 
 button {
   cursor: pointer;
-  min-height: 44px; /* Apple HIG touch target */
-  min-width: 44px;
+  /* 48px (2026-11-06, trước 44): người dùng lớn tuổi bấm trên điện thoại — nút to dễ trúng hơn. */
+  min-height: 48px;
+  min-width: 48px;
   border: none;
   border-radius: 8px;
   padding: 12px 16px;
-  background: #0f766e;
+  background: #b82a1e;
   color: white;
   font-weight: 600;
   transition: opacity 0.15s ease;
@@ -64,8 +66,13 @@ button.secondary {
   border: 1px solid #d1d5db;
 }
 
+/* Nút nguy hiểm = VIỀN đỏ trên nền trắng (2026-11-06). Màu chủ đạo đã là đỏ ớt #b82a1e (đồng bộ
+   trang khách), nên nếu "Huỷ" cũng nền đỏ đặc thì nhìn y hệt nút chính "Thanh toán" → người lớn
+   tuổi bấm nhầm. Khác HÌNH (viền vs đặc) chứ không chỉ khác sắc đỏ. */
 button.danger {
-  background: #dc2626;
+  background: white;
+  color: #b4231d;
+  border: 2px solid #b4231d;
 }
 
 input,
@@ -73,12 +80,24 @@ select,
 textarea {
   display: block;
   width: 100%;
-  min-height: 44px;
+  /* 48px (2026-11-06, trước 44): bằng chiều cao nút — ô nhập và nút đứng cạnh nhau thẳng hàng. */
+  min-height: 48px;
   padding: 10px 14px;
   border: 1px solid #d1d5db;
   border-radius: 8px;
   background: white;
   color: #1f2937;
+}
+
+/* Trình duyệt tự tô nền xanh/vàng cho ô đã tự điền (tên đăng nhập, mật khẩu) — lệch hẳn tông
+   màu app. Không đổi được `background` của :-webkit-autofill, nên phủ một bóng trong màu trắng
+   đủ lớn để che nền đó; giữ màu chữ chuẩn. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px white inset;
+  -webkit-text-fill-color: #1f2937;
+  caret-color: #1f2937;
 }
 
 /* Rule `display: block` ngay trên ĐÈ LÊN thuộc tính `hidden` của HTML: user-agent chỉ đặt
@@ -102,9 +121,9 @@ select {
 }
 
 select:focus {
-  outline: 2px solid #0f766e;
+  outline: 2px solid #b82a1e;
   outline-offset: -2px;
-  border-color: #0f766e;
+  border-color: #b82a1e;
 }
 
 /* Ô ngày: Chromium vẽ nút lịch to và đậm hơn hẳn phần còn lại của form. Kéo nó về đúng cỡ
@@ -138,7 +157,7 @@ input[type='checkbox'] {
   margin: 0;
   border-radius: 4px;
   flex: none;
-  accent-color: #0f766e;
+  accent-color: #b82a1e;
 }
 
 input[type='radio'] {
@@ -147,9 +166,9 @@ input[type='radio'] {
 
 input:focus,
 textarea:focus {
-  outline: 2px solid #0f766e;
+  outline: 2px solid #b82a1e;
   outline-offset: -2px;
-  border-color: #0f766e;
+  border-color: #b82a1e;
 }
 
 input[aria-invalid="true"] {
@@ -179,12 +198,70 @@ label {
   max-width: 960px;
 }
 
-/* Màn Quản lý giao dịch: bảng 8 cột + thanh lọc 1 dòng. Ở 960px của `.container.wide`, hai
-   bên màn hình desktop bỏ trống hàng trăm px trong khi cột "Bàn" bên trong lại bị bóp đến mức
-   tên khách ship phải cắt "…". 1360px là chỗ vừa đủ cho cả 8 cột mà không thành bảng tràn màn. */
-.container.txn-page {
-  max-width: 1360px;
+/* ── Màn đăng nhập (2026-11-06) ──────────────────────────────────────────────
+   Thẻ căn GIỮA theo chiều dọc: trước đây dính mép trên, 2/3 màn bên dưới bỏ trống.
+   Trừ dải môi trường dev (body đã đệm --env-banner-h) để không sinh thanh cuộn thừa.
+   `dvh` chứ không `vh`: thanh địa chỉ iPhone làm `vh` cao hơn màn thật. */
+.login-page {
+  min-height: calc(100dvh - var(--env-banner-h, 0px));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
 }
+
+.login-card {
+  width: 100%;
+  max-width: 420px;
+  padding: 32px;
+  border: 1px solid #e5e7eb;
+  /* Đậm hơn .card thường một bậc: thẻ đứng một mình giữa nền xám nên cần nổi rõ. */
+  box-shadow: 0 4px 16px rgba(17, 24, 39, 0.08);
+}
+
+@media (max-width: 399px) {
+  .login-card { padding: 24px 20px; }
+}
+
+.login-brand {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.login-logo {
+  display: block;
+  margin: 0 auto 12px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.login-foot {
+  margin: 24px 0 0;
+  font-size: 15px;
+  color: #6b7280;
+  text-align: center;
+}
+
+.login-title {
+  margin: 0 0 4px;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.login-sub {
+  margin: 0;
+  font-size: 15px;
+  color: #6b7280;
+}
+
+/* Hành động chính của màn → to hơn nút thường (56px), kéo hết ngang thẻ. */
+button.login-submit {
+  width: 100%;
+  min-height: 56px;
+  margin-top: 8px;
+  font-size: 17px;
+}
+
 
 .card {
   background: white;
@@ -219,15 +296,30 @@ h2 {
   position: relative;
 }
 
+/* Nút mắt neo theo Ô NHẬP (khung .password-field), căn giữa dọc bằng top:0/bottom:0 + flex —
+   không phụ thuộc chiều cao nhãn phía trên. Ô nhập chừa 52px bên phải để chữ không chui dưới nút. */
+.password-field {
+  position: relative;
+}
+
+.password-field input {
+  padding-right: 52px;
+}
+
 .password-row .toggle {
   position: absolute;
-  right: 4px;
-  top: 28px;
+  top: 0;
+  bottom: 0;
+  right: 2px;
+  margin: auto 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: transparent;
   color: #6b7280;
-  font-size: 14px;
-  min-height: 36px;
-  min-width: 36px;
+  min-height: 44px;
+  min-width: 48px;
+  height: 100%;
   padding: 0;
 }
 
@@ -498,80 +590,173 @@ body.kds-mode .toast-banner.error {
 .drawer-menu button:hover:not(:disabled) { background: #f9fafb; opacity: 1; }
 .drawer-menu button:disabled { color: #9ca3af; }
 
-/* Nút GỌI MÓN hình tròn, dính đáy khung drawer.
-   Khung bọc cao 0 nên KHÔNG chiếm chỗ trong dòng chảy — nếu nó có chiều cao thì món cuối cùng
-   bị đẩy lên và luôn thừa một khoảng trắng dưới đáy. `pointer-events: none` để dải trong suốt
-   này không nuốt cú chạm vào món nằm dưới nó; riêng cái nút bật lại. */
-.drawer-fab-wrap {
+/* Vạch ngăn + mục nguy hiểm trong menu ⋯ (2026-11-06): "Huỷ" luôn nằm CUỐI, tách khỏi các
+   mục thường để không bấm nhầm. */
+.drawer-menu button { display: flex; align-items: center; gap: 10px; font-size: 16px; min-height: 48px; }
+.drawer-menu-sep { height: 1px; background: #e5e7eb; margin: 4px 0; }
+.drawer-menu button.drawer-menu-danger { color: #b4231d; border-top: none; }
+
+/* Nút ⋯ trên một dòng món (cũng dùng ở Hoá đơn tự do) — 44×44, đủ vùng chạm. */
+.item-more {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  color: #374151;
+  padding: 0;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+}
+.item-more:hover { background: #f3f4f6; opacity: 1; }
+
+/* ─── Drawer chi tiết bàn (2026-11-06) ──────────────────────────────────── */
+/* Điện thoại: TOÀN MÀN (giống màn "Xem đơn") — trước cao 95dvh nên header trang lộ ra phía
+   trên. Flex dọc để thanh đáy (.drawer-paybar) bám đáy cả khi danh sách món ngắn. */
+.modal-overlay > .modal.drawer-full {
+  height: 100vh;
+  height: 100dvh;
+  max-height: 100vh;
+  max-height: 100dvh;
+  border-radius: 0;
+  padding-bottom: 0;
+  display: flex;
+  flex-direction: column;
+}
+.modal-overlay > .modal.drawer-full > * { flex-shrink: 0; }
+.drawer-full .drawer-sticky-head {
+  border-radius: 0;
+  padding-top: calc(10px + env(safe-area-inset-top, 0px));
+}
+.drawer-title-row { display: flex; align-items: center; gap: 6px; }
+.drawer-title-row h1 { margin: 0; font-size: 22px; }
+.modal button.drawer-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  min-width: 48px;
+  height: 48px;
+  padding: 0;
+}
+.drawer-title-row button.drawer-icon-btn { border-color: transparent; color: #6b7280; }
+.drawer-online-tag {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid #d1d5db;
+  background: #f3f4f6;
+  color: #374151;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Thông báo món chờ lâu — một dòng cho cả bàn. */
+.drawer-slow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 8px 8px 8px 12px;
+  border: 1px solid #b4231d;
+  border-radius: 12px;
+  background: #fef6f3;
+  color: #8f1d14;
+}
+.drawer-slow-text { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; font-size: 16px; }
+.drawer-slow button { display: inline-flex; align-items: center; gap: 6px; }
+
+/* Thanh đáy dính: tổng tiền + Gọi món + Thanh toán. margin-top:auto đẩy nó xuống đáy khi danh
+   sách ngắn; sticky giữ nó ở đáy khi danh sách dài. Lề âm để nền trắng phủ ra sát mép. */
+.drawer-paybar {
   position: sticky;
   bottom: 0;
-  height: 0;
-  display: flex;
-  justify-content: flex-end;
-  pointer-events: none;
   z-index: 30;
-}
-
-.drawer-fab {
-  pointer-events: auto;
-  transform: translateY(-68px);
-  width: 56px;
-  height: 56px;
-  min-width: 56px;
-  min-height: 56px;
-  padding: 0;
-  border-radius: 50%;
-  background: #0f766e;
-  color: white;
-  font-size: 30px;
-  font-weight: 400;
-  line-height: 1;
-  box-shadow: 0 6px 18px rgba(15, 118, 110, 0.45);
-}
-
-/* Hàng nút của một món: mặc định ẨN, mở bằng cú vuốt ngang hoặc nút ⋯ (chủ quán 2026-09-08).
-   TRƯỢT NGANG chứ không đổ dọc: `transform: translateX(-100%) → 0`. Chiều cao vẫn phải mở ra
-   (hàng nút cần chỗ đứng) nhưng KHÔNG cho nó chạy hoạt ảnh — `transition` chỉ liệt kê transform
-   và opacity, nên chiều cao bật ra tức thì còn mắt chỉ bắt được chuyển động ngang.
-   `overflow: hidden` là thứ cắt phần nút còn nằm ngoài lề trái trong lúc trượt. */
-.item-actions {
+  margin: auto -8px 0;
+  padding: 10px 8px calc(10px + env(safe-area-inset-bottom, 0px));
+  background: white;
+  border-top: 1px solid #e5e7eb;
+  box-shadow: 0 -4px 16px rgba(17, 24, 39, 0.06);
   display: flex;
-  gap: 4px;
-  max-height: 0;
-  margin-top: 0 !important;
-  overflow: hidden;
-  transform: translateX(-100%);
-  opacity: 0;
-  transition: transform 0.22s ease, opacity 0.22s ease;
+  flex-direction: column;
+  gap: 8px;
+}
+.drawer-paybar-total { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.drawer-paybar-total strong { font-size: 22px; font-weight: 600; color: #1f2937; white-space: nowrap; }
+.drawer-paybar-btns { display: flex; gap: 8px; }
+.drawer-paybar-btns button {
+  flex: 1 1 0;
+  min-height: 56px;
+  font-size: 17px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 
-.item-actions.revealed {
-  max-height: 60px;
-  margin-top: 8px !important;
-  transform: translateX(0);
-  opacity: 1;
-}
-
-/* Nút ⋯ dưới giá tiền — đường mở hàng nút cho máy dùng chuột (không vuốt được) và cho người
-   chưa biết là thẻ này vuốt được. Nhờ nó mà bỏ được ngoại lệ "desktop hiện thường trực": cả
-   hai loại máy nay dùng chung một cách. */
-.item-more {
-  background: none;
+/* Dòng món (2026-11-06, bản 2): tên chiếm CẢ dòng; dòng dưới = đồng hồ · giá bên trái, nút bên
+   phải. Bản trước giá + 2 nút nằm cạnh tên, ở 360px tên gãy hai dòng ("Cà phê / sữa đá"). */
+.item-card {
+  position: relative;
+  background: white;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
-  color: #6b7280;
-  font-size: 16px;
-  line-height: 1;
-  padding: 0;
-  /* ⋯ đứng TRÊN giá (xem OrderDrawer) nên khoảng hở nằm ở dưới, không phải ở trên. */
+  padding: 8px 10px;
   margin-bottom: 6px;
-  width: 40px;
-  height: 32px;
-  min-width: 40px;
-  min-height: 32px;
 }
+.item-card-name { font-weight: 600; font-size: 16px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; overflow-wrap: anywhere; }
+.item-card-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; }
+.item-card-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 12px; min-width: 0; }
+.item-card-age { display: inline-flex; align-items: center; gap: 4px; font-size: 14px; font-weight: 600; white-space: nowrap; color: #6b7280; }
+.item-card-age.is-cooling { color: #b45309; }
+.item-card-sub { font-size: 13px; color: #6b7280; margin-top: 2px; overflow-wrap: anywhere; }
+.item-card-note { font-style: italic; }
+.item-card-cancel { color: #b4231d; }
+.item-priority-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid #f59e0b;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 13px;
+  font-weight: 600;
+}
+.item-card-price { font-size: 15px; color: #6b7280; white-space: nowrap; }
+.item-card-btns { display: flex; gap: 6px; flex: 0 0 auto; }
+.modal button.item-section-action { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; margin: 0 0 8px 8px; border-color: #16a34a; color: #15803d; }
+.drawer-ready { border-color: #f59e0b; background: #fffbeb; color: #92400e; }
+.modal button.item-act {
+  min-height: 44px;
+  padding: 0 12px;
+  font-size: 15px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.modal button.item-act--served { border-color: #16a34a; color: #15803d; }
+.item-menu { top: calc(100% - 6px); right: 10px; }
 
-.item-more:hover { background: #f3f4f6; opacity: 1; }
+/* Hộp chọn lý do huỷ — phủ trên drawer (z cao hơn modal-overlay thường). */
+.reason-overlay { z-index: 10020; }
+.reason-summary { display: flex; flex-direction: column; gap: 6px; font-size: 16px; }
+.reason-warn { color: #8f1d14; background: #fef6f3; border: 1px solid #f3b5a9; border-radius: 8px; padding: 8px 10px; }
+.reason-label { margin: 16px 0 8px; font-weight: 600; }
+.reason-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.modal button.reason-chip { min-height: 48px; padding: 0 14px; font-size: 16px; }
+.modal button.reason-chip[aria-pressed='true'] { border: 2px solid #b82a1e; background: #fef6f3; color: #8f1d14; font-weight: 600; }
+.reason-actions { display: flex; gap: 8px; margin-top: 20px; }
+.reason-actions button { flex: 1 1 0; min-height: 52px; }
+.muted { color: #6b7280; }
 
 /* Khung bao quanh MỘT vùng trạng thái trong drawer (Đã order / Đã báo bếp / Xong chờ giao /
    Đã giao / Đã huỷ) — chủ quán 2026-09-08.
@@ -623,6 +808,14 @@ body.kds-mode .toast-banner.error {
     padding-right: 24px;
   }
   .modal-overlay > .modal.modal-flush { padding-top: 0; }
+  .modal-overlay > .modal.drawer-full {
+    height: auto;
+    max-height: 95vh;
+    max-height: 95dvh;
+    border-radius: 12px;
+  }
+  .drawer-full .drawer-sticky-head { border-radius: 12px 12px 0 0; padding-top: 16px; }
+  .drawer-paybar { margin-left: -24px; margin-right: -24px; padding-left: 24px; padding-right: 24px; }
 }
 
 @keyframes fadeIn {
@@ -630,23 +823,32 @@ body.kds-mode .toast-banner.error {
   to { opacity: 1; }
 }
 
+/* Một kiểu bảng cho cả app (2026-11-06): chữ 15px dễ đọc hơn 14, đầu cột nền xám đậm hơn
+   một bậc để tách hẳn khỏi dữ liệu, dòng chẵn tô nhạt để mắt dò theo hàng ngang không nhảy
+   dòng. Tô dòng chỉ áp từ 640px — dưới đó `table.responsive` thành thẻ, tô nền sẽ lem vào thẻ. */
 table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 14px;
+  font-size: 15px;
 }
 
 th,
 td {
-  padding: 10px 12px;
+  padding: 12px;
   text-align: left;
   border-bottom: 1px solid #e5e7eb;
 }
 
 th {
   font-weight: 600;
-  color: #6b7280;
-  background: #f9fafb;
+  color: #374151;
+  background: #f3f4f6;
+}
+
+@media (min-width: 640px) {
+  tbody tr:nth-child(even) > td {
+    background: #f9fafb;
+  }
 }
 
 @media (max-width: 639px) {
@@ -784,7 +986,7 @@ th {
 /* Bảng giao dịch: dòng đơn bấm được, header ngày, hover trên desktop */
 tr.txn-row { cursor: pointer; }
 @media (min-width: 640px) {
-  tr.txn-row:hover td { background: #f0fdfa; }
+  tr.txn-row:hover td { background: #fef6f3; }
 }
 td.txn-day {
   background: #f1f5f9;
@@ -848,7 +1050,7 @@ td.txn-day {
 }
 
 a {
-  color: #0f766e;
+  color: #b82a1e;
   text-decoration: none;
 }
 
@@ -918,8 +1120,10 @@ a:hover {
   pointer-events: none;
 }
 .nav-bottom a .nav-label {
-  font-size: 10px;
+  /* 12px (trước 10px): nhãn nay viết ĐẦY ĐỦ ("Lịch sử", "Tài khoản") và nav chỉ còn ≤ 5 ô nên đủ chỗ. */
+  font-size: 12px;
   font-weight: 500;
+  white-space: nowrap;
 }
 /* Thanh nav dưới TRƯỢT NGANG (chỉ đạo chủ quán 2026-09-06: "rồi sẽ phát sinh càng ngày càng
    nhiều, cho trượt ngay đi").
@@ -931,21 +1135,115 @@ a:hover {
    bóp xuống dưới 66px.
    Mục đang mở được kéo vào giữa bằng JS ở `ProtectedShell` (App.tsx) — không có nó thì đứng ở
    mục thứ 7 sẽ không thấy mình đang ở đâu. */
-.nav-bottom {
-  overflow-x: auto;
-  scroll-snap-type: x proximity;
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
+/* KHÔNG còn trượt ngang (2026-11-06, chủ repo QuanLyQuan): trượt ngang làm mục thứ 6+ nằm ngoài
+   màn mà không có dấu hiệu gì. Nay mỗi role ≤ 5 ô (4 mục + "Thêm", xem BottomNav.tsx) nên chia
+   đều bề ngang là đủ chỗ cho chữ đầy đủ. */
+.nav-bottom a,
+.nav-bottom .nav-more {
+  flex: 1 1 0;
+  min-width: 0;
 }
 
-.nav-bottom::-webkit-scrollbar {
-  display: none;
+/* Ô "Thêm" là <button> (mở tấm danh sách) — trả về đúng dáng một ô nav, bỏ dáng nút đỏ chung. */
+.nav-bottom .nav-more {
+  background: transparent;
+  color: #6b7280;
+  border: none;
+  border-radius: 10px;
+  min-height: 0;
+  padding: 8px 4px;
+  font-size: 13px;
+  font-weight: 400;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  line-height: 1.1;
+  position: relative;
+}
+.nav-bottom .nav-more .nav-label { font-size: 12px; font-weight: 500; }
+.nav-bottom .nav-icon-wrap { position: relative; display: inline-flex; line-height: 1; }
+.nav-bottom .nav-badge--alert { background: #dc2626; }
+.nav-bottom .nav-badge--info { background: #2563eb; }
+.nav-bottom .nav-more .nav-badge,
+.nav-sheet .nav-badge {
+  position: absolute;
+  top: -6px;
+  left: calc(100% - 6px);
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+}
+.nav-sheet .nav-badge--alert { background: #dc2626; }
+.nav-sheet .nav-badge--info { background: #2563eb; }
+.nav-bottom .nav-more[aria-current="page"] {
+  color: #b82a1e;
+  font-weight: 600;
+  background: #fbe4de;
 }
 
-.nav-bottom a {
-  flex: 1 0 66px;
-  scroll-snap-align: center;
+/* Tấm "Thêm" trượt từ đáy — danh sách hàng to (60px), chữ đầy đủ + mô tả ngắn. */
+.nav-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.4);
+  z-index: 300;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
 }
+.nav-sheet {
+  width: 100%;
+  max-width: 520px;
+  max-height: 80dvh;
+  overflow-y: auto;
+  background: white;
+  border-radius: 16px 16px 0 0;
+  padding: 8px 16px max(16px, env(safe-area-inset-bottom));
+}
+.nav-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  font-size: 17px;
+}
+.nav-sheet-head .nav-sheet-close {
+  width: 48px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.nav-sheet-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.nav-sheet-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 60px;
+  padding: 8px 4px;
+  border-top: 1px solid #e5e7eb;
+  color: #1f2937;
+  text-decoration: none;
+}
+.nav-sheet-item:hover { text-decoration: none; background: #f9fafb; }
+.nav-sheet-item[aria-current="page"] { color: #b82a1e; background: #fef6f3; }
+.nav-sheet-item .nav-icon-wrap { position: relative; display: inline-flex; flex: none; }
+.nav-sheet-text { display: flex; flex-direction: column; min-width: 0; }
+.nav-sheet-label { font-size: 16px; font-weight: 600; }
+.nav-sheet-hint { font-size: 13px; color: #6b7280; }
 
 /* Desktop/tablet: icon và chữ nằm CÙNG một dòng — thanh nav còn ~40px thay vì 2 tầng.
    Dưới 640px vẫn xếp dọc: ở đó bề ngang mới là thứ khan hiếm, xếp ngang là chữ bị bóp
@@ -963,6 +1261,8 @@ a:hover {
   }
   .nav-bottom a .nav-icon { font-size: 16px; }
   .nav-bottom a .nav-label { font-size: 13px; }
+  .nav-bottom .nav-more { flex-direction: row; justify-content: center; gap: 6px; padding: 9px 4px; white-space: nowrap; }
+  .nav-bottom .nav-more .nav-label { font-size: 13px; }
   /* Ở đây icon và chữ nằm CÙNG hàng, mà badge thò ra bên phải icon — không chừa chỗ thì con số
      2 chữ số ("12") bò đè lên chữ đầu của nhãn. Chỉ mục CÓ badge mới bọc `.nav-icon-wrap`,
      nên chỉ mục đó rộng thêm. Dưới 640px không cần: ở đó chữ nằm DƯỚI icon. */
@@ -970,9 +1270,9 @@ a:hover {
 }
 
 .nav-bottom a[aria-current="page"] {
-  color: #0f766e;
+  color: #b82a1e;
   font-weight: 700;
-  background: #ccfbf1;
+  background: #fbe4de;
   border-radius: 10px;
   position: relative;
 }
@@ -983,24 +1283,19 @@ a:hover {
   left: 25%;
   right: 25%;
   height: 3px;
-  background: #0f766e;
+  background: #b82a1e;
   border-radius: 0 0 3px 3px;
 }
 
 .header {
-  /* Nền TRONG SUỐT TUYỆT ĐỐI (2026-09-08, chủ quán). Không phải `#f9fafb` cho giống nền trang:
-     trong suốt thật thì header hoà vào bất cứ nền nào phía sau nó, kể cả dải đỏ môi trường dev.
-     ⚠ Header vẫn `position: sticky`, nên khi cuộn, nội dung trang chạy NGAY DƯỚI chữ của
-     header. Đổi lại đúng thứ được yêu cầu; nếu chữ bị chồng khó đọc thì đường sửa là bỏ sticky
-     hoặc thêm `backdrop-filter`, KHÔNG phải trả lại nền trắng. */
-  background: transparent;
+  /* Nền TRẮNG ĐẶC (2026-11-06, chủ repo QuanLyQuan). Trước đó (2026-09-08, chủ quán Bà Lùn) là
+     trong suốt tuyệt đối — nhưng header sticky nên khi cuộn, tên bàn chui xuống dưới huy hiệu,
+     chuông, nút đăng xuất và các chữ đè lên nhau trên điện thoại. Nền đặc + viền dưới + z-index
+     trên nội dung là cách duy nhất đọc được cả hai. */
+  background: white;
   border-bottom: 1px solid #e5e7eb;
-  padding: 10px 14px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-  min-height: 56px;
+  /* Bố cục nằm ở .header-inner (cùng độ rộng + lề với trang, xem khối "Khung trang" bên dưới). */
+  padding: 0;
   /* Sticky để banner thông báo (fixed top:56px) luôn nằm ngay dưới header
      kể cả khi cuộn trang. z-index dưới modal (9998+). */
   position: sticky;
@@ -1013,7 +1308,7 @@ a:hover {
 
 .header .brand {
   font-weight: 700;
-  color: #0f766e;
+  color: #b82a1e;
   font-size: 16px;
   min-width: 0;
   flex: 1;
@@ -1023,28 +1318,68 @@ a:hover {
   flex-wrap: wrap;
 }
 
-@media (max-width: 480px) {
-  .header { padding: 8px 10px; }
-  /* Mobile: ẩn cả logo emoji + brand text — chừa diện tích cho name + noti + logout */
-  .header .brand .brand-text { display: none; }
-  .header .brand .brand-short { display: none; }
-}
-@media (min-width: 481px) {
-  .header .brand .brand-short { display: none; }
-}
-
-.header .user-chip {
-  font-size: 12px;
-  color: #6b7280;
-  font-weight: 400;
-  padding: 2px 8px;
-  background: #f3f4f6;
-  border-radius: 999px;
+.header .brand .page-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2937;
   white-space: nowrap;
-  max-width: 140px;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
 }
+.header .brand .page-title:empty { display: none; }
+
+@media (max-width: 480px) {
+  .header { padding: 8px 10px; }
+  .header .brand { flex-wrap: nowrap; }
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+.user-menu { position: relative; }
+.user-menu-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  min-width: 220px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(17, 24, 39, 0.12);
+  padding: 6px;
+  z-index: 260;
+}
+.user-menu-who {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 10px;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 4px;
+}
+.user-menu-who span { font-size: 13px; color: #6b7280; }
+.user-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 48px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 400;
+  color: #1f2937;
+  background: transparent;
+  border: none;
+  text-align: left;
+  text-decoration: none;
+}
+.user-menu-item:hover { background: #f9fafb; text-decoration: none; }
+button.user-menu-logout { color: #b4231d; }
+
 
 .btn-icon-only {
   display: inline-flex;
@@ -1400,47 +1735,6 @@ a:hover {
     display: none !important;
   }
 
-  /* ── Màn Lịch sử: thanh lọc ──────────────────────────────────────────────
-     Hàng lọc gộp 5 nhóm điều khiển (tab trạng thái, chọn bàn, chọn thu ngân, 2 ô ngày).
-     Trên điện thoại chúng wrap thành 4-5 dòng lệch nhau vì mỗi thứ một bề rộng cứng. */
-  .txn-filters {
-    /* Ô lọc chiếm trọn bề ngang thay vì canh giữa hàng — mép trái thẳng cột thì mắt quét nhanh. */
-    align-items: stretch !important;
-  }
-
-  /* Vạch ngăn dọc giữa "tab" và "bộ lọc phạm vi": `align-self: stretch` trên một hàng đã wrap
-     biến nó thành sợi tóc dựng đứng giữa màn, không ngăn cách gì cả. */
-  .txn-filter-sep {
-    display: none !important;
-  }
-
-  /* Hai ô ngày: bỏ bề rộng cố định 140px, chia đôi hàng còn lại. (Class đổi `.txn-date` →
-     `.time-date` 2026-09-07 khi hai ô này chuyển sang dùng chung `DateRangeFields`; luật vẫn
-     bó trong `.txn-filters` vì `flex-basis: 40%` chỉ đúng cho hàng lọc CÓ wrap của màn này.) */
-  .txn-filters .time-date {
-    /* `flex-basis` theo PHẦN TRĂM, không phải 0. Với `0 0` hai ô ngày phải giành chỗ với 2 ô
-       chọn trên cùng một dòng wrap và bị bóp còn ~20px — chỉ còn cái icon lịch, không đọc được
-       ngày nào. 40% ép chúng tự tách thành một hàng riêng của hai ô, chia đôi. */
-    flex: 1 1 40% !important;
-    width: auto !important;
-    min-width: 118px !important;
-  }
-
-  /* Ba ô chọn (bàn / thu ngân / sắp xếp) — cùng lý do: bỏ bề rộng cứng, mỗi ô nửa hàng. Nâng
-     chiều cao 34→40px cho gần ngưỡng chạm 44px. */
-  .txn-fsel {
-    flex: 1 1 45% !important;
-    width: auto !important;
-    min-width: 130px !important;
-  }
-  /* `> button` là dropdown tự vẽ (SearchableSelect), `select.txn-fsel` là ô sắp xếp — cùng
-     phải cao 40px, nếu không hai ô cạnh nhau trên một hàng lệch cao thấy rõ. */
-  .txn-fsel > button,
-  select.txn-fsel {
-    min-height: 40px !important;
-    height: 40px !important;
-  }
-
   /* ── Ô nhập nói chung ────────────────────────────────────────────────────
      Mọi ô nhập/ô chọn bị đặt cỡ chữ nhỏ hơn 16px bằng inline style đều làm iOS phóng trang khi
      focus (ô tìm món ở màn Menu, ô sắp xếp, ô tìm trong dropdown lọc). Ép sàn 16px ở đây thay
@@ -1519,147 +1813,7 @@ a:hover {
   }
 }
 
-/* ════════════════════════════════════════════════════════════════════════════
-   Lịch sử giao dịch trên điện thoại — mỗi đơn 3 DÒNG thay vì 8
-   Sửa 2026-09-06 (chỉ đạo chủ quán: "quá dài, chiếm quá nhiều diện tích").
-   Cách "nhãn trái ─ giá trị phải" cho từng ô là đúng cho bảng Nhân sự / Nhật ký, nhưng bảng
-   này có 8 cột nên một đơn cao ~470px: màn hình 844px chỉ chứa được MỘT đơn rưỡi. Người xem
-   lịch sử cần QUÉT nhiều đơn, không phải đọc kỹ từng đơn — chi tiết đã có sẵn ở khối bung ra
-   khi bấm vào dòng.
-   Nay xếp lại thành lưới 3×3, ~110px một đơn (7 đơn mỗi màn):
-     06:19   Bàn 01 · 🛵 Khách…        205.000đ
-     Thu ngân Chủ quán                Giờ TT 23:19
-     ✓4      [✓ Đã thanh toán]        [📋] ▼
-   Nhãn chỉ giữ ở 2 ô mơ hồ (thu ngân / giờ TT); giờ vào, tên bàn, tiền, badge và nút thì tự
-   nói lên nó là gì nên bỏ nhãn — đó là chỗ tiết kiệm được nhiều chiều ngang nhất.
-   Chỉ áp cho `.txn-table` — các bảng khác giữ nguyên kiểu nhãn/giá trị.
-   ════════════════════════════════════════════════════════════════════════════ */
-@media (max-width: 639px) {
-  /* LƯỚI 4 CỘT (sửa 2026-09-23 theo chủ quán). Ba cột không đủ: giờ thanh toán phải đứng NGAY
-     CẠNH số tiền ở dòng đầu, mà dòng đầu đã có giờ vào và tên bàn.
-
-     ⚠ MỌI `nth-child` dưới đây bám vào THỨ TỰ CỘT của bảng. Thêm/bớt một cột là phải sửa lại hết,
-     nếu không ô mới cướp chỗ ô cũ và ô cuối không còn luật nào đặt chỗ → nó rơi khỏi lưới và biến
-     mất trên điện thoại. Đã xảy ra đúng vậy khi thêm cột "Xác thực".
-
-       ┌──────────────────────────────────────────────┐
-       │ 14:27   Bàn 1                        6.000đ  │  ① vào · bàn · tiền
-       │ Quản lý test                          14:31  │  ② ai thu · thu lúc nào
-       │ [✓ Đã thanh toán]        [🏦 Chuyển khoản]    │  ③ trạng thái ── hình thức (dạt 2 mép)
-       │ Chưa xác thực                    [⋯ 🖨 ▼]    │  ④ ngân hàng xác nhận · thao tác
-       └──────────────────────────────────────────────┘
-
-     Số món ẩn trên điện thoại (chủ quán chốt 2026-09-23): "✓ 1" không giúp nhận ra đơn nào, mà
-     lại chiếm một ô trong lưới vốn đã chật. Bấm mở đơn là thấy đủ món. */
-  table.responsive.txn-table tbody tr.txn-row {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto auto;
-    column-gap: 8px;
-    row-gap: 4px;
-    padding: 10px 12px;
-    align-items: baseline;
-  }
-
-  table.responsive.txn-table tbody tr.txn-row > td {
-    display: block;
-    padding: 0;
-    border-top: 0;
-    text-align: left;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  /* Ô tự nói lên nội dung → bỏ nhãn hẳn. Chỉ còn "Thu ngân" giữ nhãn vì một cái tên trần thì
-     không ai biết đó là ai. */
-  table.responsive.txn-table tr.txn-row > td:nth-child(1)::before,
-  table.responsive.txn-table tr.txn-row > td:nth-child(2)::before,
-  table.responsive.txn-table tr.txn-row > td:nth-child(3)::before,
-  table.responsive.txn-table tr.txn-row > td:nth-child(4)::before,
-  table.responsive.txn-table tr.txn-row > td:nth-child(5)::before,
-  table.responsive.txn-table tr.txn-row > td:nth-child(6)::before,
-  table.responsive.txn-table tr.txn-row > td:nth-child(7)::before,
-  table.responsive.txn-table tr.txn-row > td:nth-child(8)::before,
-  table.responsive.txn-table tr.txn-row > td:nth-child(9)::before {
-    content: none;
-  }
-
-  /* ① Giờ vào · Bàn · Giờ TT · Tổng */
-  table.responsive.txn-table tr.txn-row > td:nth-child(1) {
-    grid-area: 1 / 1;
-    color: #9ca3af;
-    font-variant-numeric: tabular-nums;
-  }
-  table.responsive.txn-table tr.txn-row > td:nth-child(2) {
-    grid-area: 1 / 2 / auto / span 2;
-  }
-  table.responsive.txn-table tr.txn-row > td:nth-child(6) {
-    grid-area: 1 / 4;
-    text-align: right;
-  }
-
-  /* ② Ai thu · mấy món */
-  table.responsive.txn-table tr.txn-row > td:nth-child(3) {
-    grid-area: 2 / 1 / auto / span 3;
-    font-size: 12px;
-    color: #6b7280;
-  }
-  table.responsive.txn-table tr.txn-row > td:nth-child(4) {
-    grid-area: 2 / 4;
-    font-size: 12px;
-    color: #6b7280;
-    text-align: right;
-    font-variant-numeric: tabular-nums;
-  }
-  table.responsive.txn-table tr.txn-row > td:nth-child(5) {
-    display: none;
-  }
-
-  /* ③ Trạng thái + hình thức thu — chiếm TRỌN bề ngang.
-     Để nút thao tác chen vào dòng này thì hai badge chỉ còn ~230px và "Đã thanh toán" +
-     "Chuyển khoản" gãy làm hai dòng — đúng thứ chủ quán vừa bảo là rối mắt. Nút xuống dòng cuối
-     cùng với ô xác thực, ở đó nó còn thừa chỗ. */
-  table.responsive.txn-table tr.txn-row > td:nth-child(7) {
-    grid-area: 3 / 1 / auto / span 4;
-    overflow: visible;
-  }
-  /* Trạng thái dạt trái, hình thức thu dạt PHẢI — thẳng hàng với nút thao tác ngay dưới, thay vì
-     hai thứ dính nhau ở giữa dòng. Chỉ trên điện thoại: cột "Trạng thái" của máy tính hẹp, dạt
-     hai mép ở đó chỉ tạo một khoảng trống vô nghĩa. */
-  table.responsive.txn-table tr.txn-row .txn-status-wrap {
-    justify-content: space-between;
-  }
-
-  /* ④ Ngân hàng xác nhận · thao tác
-     HAI DẠNG BẢNG, và phải viết tách bạch (2026-09-25). Khi công tắc "xác thực giao dịch tại
-     quầy" TẮT thì cột "Xác thực" không được render, bảng còn 8 cột — và `nth-child(8)` lúc đó
-     trỏ vào ô THAO TÁC chứ không phải ô xác thực nữa.
-     Để nguyên một bộ luật thì nút thao tác thừa hưởng `grid-area: 4/1/span 3` + `font-size: 12px`
-     của ô xác thực, tức là dạt trái và teo chữ; còn `nth-child(9)` không khớp ai cả. Đây đúng là
-     cái bẫy mà chú thích đầu khối lưới đã cảnh báo, chỉ là lần này nó đến từ hướng BỚT cột. */
-  table.responsive.txn-table:not(.no-verify) tr.txn-row > td:nth-child(8) {
-    grid-area: 4 / 1 / auto / span 3;
-    font-size: 12px;
-    align-self: center;
-  }
-  table.responsive.txn-table:not(.no-verify) tr.txn-row > td:nth-child(9) {
-    grid-area: 4 / 4;
-    text-align: right;
-    overflow: visible;
-  }
-  /* 8 cột: ô thứ 8 LÀ thao tác. Cho nó trọn bề ngang dòng 4 và dạt phải — cùng vị trí mắt đã
-     quen, chỉ là không còn gì đứng bên trái nó. */
-  table.responsive.txn-table.no-verify tr.txn-row > td:nth-child(8) {
-    grid-area: 4 / 1 / auto / span 4;
-    text-align: right;
-    overflow: visible;
-  }
-
-  /* Đơn tiền mặt không có gì để xác nhận — ẩn hẳn thay vì bày một dòng gạch. */
-  .txn-dash {
-    display: none;
-  }
-}
+/* Lưới thẻ của bảng Lịch sử (.txn-table) chuyển sang pages/history-page.css (2026-11-06). */
 
 /* ════════════════════════════════════════════════════════════════════════════
    Màn Bàn ăn trên điện thoại — 2 thẻ mỗi dòng
@@ -2293,21 +2447,21 @@ a:hover {
 }
 
 .time-chip:hover:not([aria-pressed='true']) {
-  border-color: #0f766e;
-  color: #0f766e;
-  background: #f0fdfa;
+  border-color: #b82a1e;
+  color: #b82a1e;
+  background: #fef6f3;
 }
 
 .time-chip[aria-pressed='true'] {
-  background: #0f766e;
-  border-color: #0f766e;
+  background: #b82a1e;
+  border-color: #b82a1e;
   color: #fff;
   font-weight: 700;
 }
 
 /* Vòng focus phải thấy được cả khi chip đang bật (nền teal đậm) — dùng offset ra ngoài viền. */
 .time-chip:focus-visible {
-  outline: 2px solid #0f766e;
+  outline: 2px solid #b82a1e;
   outline-offset: 2px;
 }
 
@@ -2327,13 +2481,13 @@ a:hover {
 }
 
 .time-date:hover {
-  border-color: #0f766e;
+  border-color: #b82a1e;
 }
 
 .time-date:focus-visible {
-  outline: 2px solid #0f766e;
+  outline: 2px solid #b82a1e;
   outline-offset: -1px;
-  border-color: #0f766e;
+  border-color: #b82a1e;
 }
 
 .time-date-sep {
@@ -2459,7 +2613,7 @@ table.stat-grid thead th.stat-th > button:hover {
 }
 
 table.stat-grid thead th.stat-th.active {
-  color: #0f766e;
+  color: #b82a1e;
 }
 
 /* Mũi tên "↕" mờ trên mọi cột xếp được: không có nó thì chỉ cột ĐANG xếp mới lộ ra là bấm
@@ -2478,7 +2632,7 @@ table.stat-grid tbody tr:nth-child(even) {
 }
 
 table.stat-grid tbody tr:hover {
-  background: #f0fdfa;
+  background: #fef6f3;
 }
 
 table.stat-grid td {
@@ -2531,8 +2685,8 @@ table.stat-grid .stat-muted {
   min-width: 22px;
   height: 22px;
   border-radius: 999px;
-  background: #ccfbf1;
-  color: #0f766e;
+  background: #fbe4de;
+  color: #b82a1e;
   font-size: 12px;
   font-weight: 700;
 }
@@ -2581,7 +2735,7 @@ table.stat-grid .stat-muted {
   display: block;
   height: 100%;
   border-radius: 2px;
-  background: #0f766e;
+  background: #b82a1e;
 }
 
 /* Tên món trong phiếu: từng viên thay vì một chuỗi ngăn bởi dấu phẩy — mắt tách được "Trâu
@@ -2603,8 +2757,8 @@ table.stat-grid .stat-muted {
 }
 
 .stat-chip.hit {
-  background: #ccfbf1;
-  color: #0f766e;
+  background: #fbe4de;
+  color: #b82a1e;
   font-weight: 600;
 }
 
@@ -2705,38 +2859,90 @@ table.stat-grid .stat-muted {
    điện thoại, và người bấm thì đang vội.
    Xếp dọc: chữ không gãy, mỗi nút một hàng rộng bằng màn hình, ngón tay bấm không trượt. */
 .pay-modes {
-  display: flex;
+  /* Lưới 2×2 (2026-11-06): nhãn đã ngắn (bỏ emoji) nên không gãy dòng ở 360px; 4 nút xếp dọc làm
+     màn đầu (đã gộp soát bill) dài phải cuộn. */
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 8px;
 }
 button.pay-mode {
-  flex: 1;
-  min-height: 48px;
-  padding: 8px 10px;
-  border: 1px solid #e5e7eb;
+  min-height: 56px;
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
   border-radius: 10px;
   background: white;
   color: #1f2937;
-  font-size: 14px;
+  font-size: 16px;
+  font-weight: 600;
   line-height: 1.25;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
-/* `button.pay-mode` chứ không phải `.pay-mode`: nút dùng chung với `button.secondary` ở nơi khác,
-   và rule chạm tới color/background phải thắng được nó (bài học cũ của repo). */
+/* `button.pay-mode` chứ không phải `.pay-mode`: thắng `button.secondary` (bài học cũ của repo).
+   Đang chọn: ✓ + viền màu CHÍNH + nền nhạt — không chỉ viền đỏ (dễ đọc thành lỗi). */
 button.pay-mode[aria-pressed='true'] {
-  border: 2px solid #0d9488;
-  background: #f0fdfa;
-  font-weight: 700;
+  border: 2px solid #b82a1e;
+  background: #fef6f3;
+  color: #8f1d14;
 }
-@media (max-width: 560px) {
-  .pay-modes {
-    flex-direction: column;
-  }
-  button.pay-mode {
-    width: 100%;
-    text-align: left;
-    min-height: 52px;
-    font-size: 15px;
-  }
+
+/* ── Hộp Thanh toán (2026-11-06) ── */
+.pay-head { padding: 14px 18px; border-bottom: 1px solid #e5e7eb; background: white; }
+.pay-head h2 { margin: 0; font-size: 18px; color: #1f2937; }
+.pay-total { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; padding: 14px; text-align: center; }
+.pay-total-label { font-size: 14px; color: #6b7280; }
+.pay-total-value { font-size: 30px; font-weight: 600; color: #1f2937; margin-top: 2px; }
+.pay-total-sub { font-size: 14px; color: #6b7280; margin-top: 2px; }
+.pay-lines > summary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+  cursor: pointer;
+  font-weight: 600;
+  color: #374151;
 }
+.pay-lines > summary::-webkit-details-marker { display: none; }
+.pay-lines[open] > summary svg { transform: rotate(180deg); }
+.pay-q { font-size: 15px; font-weight: 600; margin-bottom: 8px; }
+.pay-cash { display: flex; flex-direction: column; gap: 8px; }
+.pay-cash label { font-size: 15px; font-weight: 600; }
+.pay-cash input { width: 100%; font-size: 22px; text-align: right; min-height: 52px; }
+.pay-cash-quick { display: flex; gap: 8px; flex-wrap: wrap; }
+.pay-cash-quick button { flex: 1 1 0; min-height: 48px; font-size: 16px; padding: 0 6px; white-space: nowrap; }
+.pay-change { font-size: 20px; font-weight: 600; color: #15803d; text-align: right; }
+.pay-change.is-short { color: #92400e; }
+.pay-error {
+  margin: 0 14px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #f3b5a9;
+  background: #fef6f3;
+  color: #8f1d14;
+  font-size: 15px;
+}
+.pay-qr-img { width: 100%; max-width: 300px; aspect-ratio: 1; background: white; display: block; margin: 0 auto; }
+.pay-qr-amount { font-size: 28px; font-weight: 600; color: #1f2937; margin-top: 6px; }
+.pay-qr-acc { color: #4b5563; font-size: 15px; }
+.pay-qr-note { margin-top: 4px; font-weight: 600; letter-spacing: 0.5px; font-size: 16px; }
+button.pay-qr-change {
+  width: 100%;
+  margin-top: 12px;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 15px;
+  text-align: left;
+}
+.pay-qr-change-go { display: inline-flex; align-items: center; gap: 2px; color: #8f1d14; font-weight: 600; white-space: nowrap; }
+.pay-qr-list { display: flex; flex-direction: column; gap: 8px; }
+.pay-qr-list button { min-height: 48px; display: flex; align-items: center; gap: 8px; text-align: left; font-size: 16px; }
+.pay-qr-list button[aria-pressed='true'] { border: 2px solid #b82a1e; background: #fef6f3; color: #8f1d14; }
 
 /* ─── Màn Quản lý Menu: ảnh món, % nguyên liệu, hàng nút ───────────────────────
    Ba thứ chủ quán chốt 2026-09-29:
@@ -2805,7 +3011,7 @@ button.mm-zoom-close {
 }
 
 .mm-money { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
-.mm-money strong { color: #0f766e; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.mm-money strong { color: #b82a1e; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .mm-pct {
   font-size: 12.5px; font-weight: 700; white-space: nowrap;
   font-variant-numeric: tabular-nums; cursor: help;
@@ -2823,8 +3029,8 @@ button.mm-b {
 }
 button.mm-b-out   { border-color: #fbcfa5; background: #fff8f1; color: #b45309; }
 button.mm-b-out:hover   { border-color: #b45309; background: #fdf0e3; }
-button.mm-b-back  { border-color: #a7d9c9; background: #f0fdfa; color: #0f766e; }
-button.mm-b-back:hover  { border-color: #0f766e; background: #ccfbf1; }
+button.mm-b-back  { border-color: #a7d9c9; background: #fef6f3; color: #b82a1e; }
+button.mm-b-back:hover  { border-color: #b82a1e; background: #fbe4de; }
 button.mm-b-edit  { border-color: #c7d2e0; background: #f7f9fc; color: #334155; }
 button.mm-b-edit:hover  { border-color: #334155; background: #eef2f7; }
 button.mm-b-del   { border-color: #f0c2c2; background: #fdf5f5; color: #b91c1c; }
@@ -2838,11 +3044,11 @@ button.mm-recipe {
   background: #fff; color: #64748b;
   font-size: 13.5px; font-weight: 650; cursor: pointer;
 }
-button.mm-recipe:hover { border-color: #0f766e; color: #0f766e; background: #f0fdfa; }
+button.mm-recipe:hover { border-color: #b82a1e; color: #b82a1e; background: #fef6f3; }
 button.mm-recipe.has {
-  border-style: solid; border-color: #99e2d5; background: #f0fdfa; color: #0f766e;
+  border-style: solid; border-color: #99e2d5; background: #fef6f3; color: #b82a1e;
 }
-button.mm-recipe.has:hover { border-color: #0f766e; background: #ccfbf1; }
+button.mm-recipe.has:hover { border-color: #b82a1e; background: #fbe4de; }
 
 /* ─── "Đẩy bán" (2026-10-05) ───────────────────────────────────────────────────
    Hàng thứ hai của thẻ món: [🔥 Đẩy bán] [Công thức]. `margin-top` chuyển lên
@@ -2935,7 +3141,7 @@ button.mm-star.on:hover { background: #6d28d9; border-color: #6d28d9; color: #ff
    mắt cộng dọc được "chính + phụ = giá vốn"; dòng tổng ngăn bằng một vạch và chữ to hơn. */
 .rp-sum {
   padding: 10px 14px; margin-bottom: 12px;
-  background: #f0fdfa; border: 1px solid #ccfbf1; border-radius: 10px;
+  background: #fef6f3; border: 1px solid #fbe4de; border-radius: 10px;
   font-variant-numeric: tabular-nums;
 }
 .rp-sum-row {
@@ -2945,9 +3151,9 @@ button.mm-star.on:hover { background: #6d28d9; border-color: #6d28d9; color: #ff
 .rp-sum-l { font-size: 14px; font-weight: 600; color: #4b5563; }
 .rp-sum-n { font-size: 16px; font-weight: 700; color: #374151; text-align: right; }
 .rp-sum-p { font-size: 14px; font-weight: 600; color: #6b7280; text-align: right; }
-.rp-sum-tong { margin-top: 4px; padding-top: 8px; border-top: 1px dashed #99f6e4; }
-.rp-sum-tong .rp-sum-l { color: #134e4a; font-size: 15px; }
-.rp-sum-v { font-size: 22px; font-weight: 800; color: #0f766e; text-align: right; }
+.rp-sum-tong { margin-top: 4px; padding-top: 8px; border-top: 1px dashed #f3b5a9; }
+.rp-sum-tong .rp-sum-l { color: #8f1d14; font-size: 15px; }
+.rp-sum-v { font-size: 22px; font-weight: 800; color: #b82a1e; text-align: right; }
 .rp-sum-tong .rp-sum-p { font-size: 18px; font-weight: 800; }
 .rp-sum-gia { font-size: 13px; color: #6b7280; text-align: right; margin-top: 2px; }
 /* Nhãn "Phụ" trên dòng công thức — cùng tông cam với `.ing-kind-tag` ở danh mục nguyên liệu. */
@@ -3069,8 +3275,8 @@ button.mm-recipe:disabled:hover { border-color: #dfe3e6; color: #a6adb4; backgro
 
 /* "Có lại" là hành động DUY NHẤT còn mở — tô đặc để mắt rơi thẳng vào nó. */
 .mm-card.is-out button.mm-b-back {
-  background: #0f766e;
-  border-color: #0f766e;
+  background: #b82a1e;
+  border-color: #b82a1e;
   color: #fff;
   font-weight: 700;
 }
@@ -3119,9 +3325,9 @@ button.mm-recipe:disabled:hover { border-color: #dfe3e6; color: #a6adb4; backgro
 }
 .mm-groups button:hover { background: #f3f4f6; }
 .mm-groups button.on {
-  background: #f0fdfa;
-  border-left-color: #0f766e;
-  color: #0f766e;
+  background: #fef6f3;
+  border-left-color: #b82a1e;
+  color: #b82a1e;
   font-weight: 700;
 }
 
@@ -3145,7 +3351,7 @@ button.mm-recipe:disabled:hover { border-color: #dfe3e6; color: #a6adb4; backgro
     border-radius: 8px;
     white-space: nowrap;
   }
-  .mm-groups button.on { border-left: none; border-bottom-color: #0f766e; }
+  .mm-groups button.on { border-left: none; border-bottom-color: #b82a1e; }
   /* Thẻ món một cột trên điện thoại: hai cột ở 390px làm tên món cắt "…" gần hết. */
   .container.menu-page .mm-main > div[style*="grid"] { grid-template-columns: 1fr !important; }
 }
@@ -3267,7 +3473,7 @@ button.mm-b:disabled:hover { background: #e8eaec; border-color: #d3d7da; color: 
     border-radius: 8px;
     white-space: nowrap;
   }
-  .mm-groups button.on { border-left: none; border-bottom-color: #0f766e; }
+  .mm-groups button.on { border-left: none; border-bottom-color: #b82a1e; }
 }
 
 @media (max-width: 720px) {
@@ -3418,7 +3624,7 @@ button.stale-banner-chip {
 .kds-guest-foot { margin-top: 10px; font-size: 15px; color: #5b21b6; }
 .kds-guest-approve {
   width: 100%; min-height: 52px; border: none; border-radius: 8px;
-  background: #0f766e; color: #fff; font-size: 19px; font-weight: 800; cursor: pointer;
+  background: #b82a1e; color: #fff; font-size: 19px; font-weight: 800; cursor: pointer;
 }
 .kds-guest-approve:disabled { opacity: 0.6; cursor: default; }
 .kds-guest-reject {
@@ -3445,12 +3651,12 @@ button.stale-banner-chip {
 .kds-call-kind { font-size: 14px; font-weight: 700; color: #0e7490; }
 .kds-call-one {
   flex: none; min-width: 44px; min-height: 44px; border-radius: 8px;
-  border: 1px solid #99f6e4; background: #f0fdfa; color: #0f766e;
+  border: 1px solid #f3b5a9; background: #fef6f3; color: #b82a1e;
   font-size: 20px; font-weight: 800; cursor: pointer;
 }
 .kds-call-one:disabled { opacity: 0.5; cursor: default; }
 /* PHẢI khai color ở đây. styles.css có rule chung cho mọi <button> đặt
-   background:#0f766e; color:white. Rule này mạnh hơn nên đè được NỀN về trắng, nhưng
+   background:#b82a1e; color:white. Rule này mạnh hơn nên đè được NỀN về trắng, nhưng
    không đụng tới màu CHỮ — nên chữ vẫn trắng, nằm trên nền trắng, đọc không ra. Người
    test báo đúng ca này 2026-10-02. Cùng cái bẫy CLAUDE.md đã ghi về nút secondary.
    Hai nút cũng phải KHÁC MÀU nhau: một bên là huỷ việc đã làm, một bên là thoát ra. */
@@ -3615,3 +3821,219 @@ button.ohp-save { min-height: 40px; padding: 0 16px; }
 .ohp--cell { display: inline-flex; flex-wrap: nowrap; gap: 6px; justify-content: flex-end; }
 .ohp--cell .ohp-input input { width: 56px; min-height: 36px; font-size: 15px; }
 .ohp--cell button.ohp-save { min-height: 36px; padding: 0 10px; font-size: 14px; }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   KHUNG TRANG DÙNG CHUNG (2026-11-06, chủ repo QuanLyQuan) — PageLayout.tsx + lib/pages.ts
+   Hai độ rộng: narrow (≤ 960px) · wide (tràn màn). Header dùng CÙNG độ rộng + CÙNG lề
+   (--page-gutter) với trang → tên trang trên header thẳng hàng với mép nội dung.
+   ════════════════════════════════════════════════════════════════════════════ */
+:root {
+  --page-gutter: 16px;
+}
+@media (min-width: 640px) {
+  :root { --page-gutter: 24px; }
+}
+
+.header-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  min-height: 60px;
+  margin: 0 auto;
+  padding-block: 6px;
+  padding-inline: var(--page-gutter);
+}
+.page {
+  margin: 0 auto;
+  /* KHÔNG dùng shorthand padding: nó ghi đè padding-bottom của .with-bottom-nav. */
+  padding-top: 16px;
+  padding-inline: var(--page-gutter);
+}
+.page--narrow { max-width: 960px; }
+.page--wide { max-width: none; }
+
+/* Hàng nút thao tác của trang — CÙNG vị trí ở mọi trang, ngay dưới header. Tối đa 1 nút đỏ. */
+.page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+/* <h1> tên trang trên header (trang KHÔNG tự đặt <h1>). */
+.header h1.page-title {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 600;
+  color: #1f2937;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+/* Chuông trên header: icon SVG, vùng bấm 48×48. */
+.header button.header-icon-btn {
+  position: relative;
+  width: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: #374151;
+  border-radius: 999px;
+}
+.header button.header-icon-btn:hover { background: #f3f4f6; opacity: 1; }
+
+/* Avatar chữ cái — vòng tròn 44px, màu trung tính. */
+.header button.user-avatar {
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+  border-radius: 50%;
+  background: #f3f4f6;
+  color: #1f2937;
+  border: 1px solid #d1d5db;
+  font-size: 18px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.user-menu-hint { color: #b82a1e; }
+
+/* Nhãn vai trò cạnh avatar ("Admin" / "Order" / "Bếp" / "Báo cáo") — CHỮ, màu trung tính. */
+.header .role-tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  color: #374151;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.drawer-opened { font-size: 14px; margin-top: 2px; }
+
+/* ── Thanh gộp "việc đang chờ" ở màn Order (2026-11-06) — xem GuestQrBanner variant compact ──
+   MỘT dòng 48px thay cho hai dải chip (QR + chưa trả). Dính trên cùng như dải cũ (header đọc
+   chiều cao qua --qr-banner-h). Bấm mở tấm danh sách từ đáy. */
+.alert-bar {
+  position: sticky;
+  top: var(--env-banner-h, 0px);
+  z-index: 202;
+  background: #f5f3ff;
+  border-bottom: 1px solid #c4b5fd;
+}
+button.alert-bar-btn {
+  width: 100%;
+  min-height: 48px;
+  padding: 6px var(--page-gutter, 16px);
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: #1f2937;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  text-align: left;
+}
+.alert-bar-qr { display: inline-flex; align-items: center; gap: 6px; color: #5b21b6; white-space: nowrap; }
+.alert-bar-stale { display: inline-flex; align-items: center; gap: 6px; color: #8f1d14; white-space: nowrap; }
+.alert-bar-go { margin-left: auto; flex: none; color: #6b7280; }
+
+.alert-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  height: 100vh;
+  height: 100dvh;
+  z-index: 300; /* dưới hộp chi tiết QR (.kds-guest-overlay 320) mở từ trong tấm */
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.alert-sheet {
+  width: 100%;
+  max-width: 560px;
+  max-height: 85vh;
+  max-height: 85dvh;
+  background: white;
+  border-radius: 16px 16px 0 0;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.alert-sheet-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid #e5e7eb; }
+.alert-sheet-head h2 { margin: 0; font-size: 18px; }
+button.alert-sheet-close { width: 48px; min-width: 48px; height: 48px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+.alert-sheet-body { overflow-y: auto; padding: 8px 16px 16px; }
+.alert-sheet-body h3 { font-size: 15px; color: #6b7280; margin: 12px 0 8px; font-weight: 600; }
+/* Trong tấm: chip xếp DỌC, cả hàng bấm được, có icon + chữ loại yêu cầu. */
+.alert-sheet-list .kds-guest-rail { flex-direction: column; overflow: visible; gap: 8px; }
+.alert-sheet-list button.qr-banner-chip {
+  width: 100%;
+  min-height: 52px;
+  border-radius: 12px;
+  padding: 8px 12px;
+  font-size: 16px;
+  justify-content: flex-start;
+  gap: 10px;
+  white-space: normal;
+}
+.alert-sheet-list button.qr-banner-chip strong { margin-left: auto; order: 2; }
+.alert-sheet-list button.qr-banner-chip > span:last-child { order: 3; color: #6b7280; min-width: 3.5em; text-align: right; }
+.qr-chip-kind { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+button.alert-stale-row {
+  width: 100%;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  border-color: #f3b5a9;
+  text-align: left;
+}
+button.alert-stale-row strong { color: #8f1d14; }
+button.alert-stale-row .muted { margin-left: auto; }
+
+/* Popup QR ở màn Order: tóm tắt bàn, hàng [Bỏ][Duyệt N món], chọn lý do bỏ, nút xin hoá đơn. */
+.qr-table-now { margin: 8px 0 0; font-size: 15px; font-weight: 600; color: #1f2937; }
+.qr-approve-row { display: flex; gap: 8px; }
+.qr-approve-row button { min-height: 52px; font-size: 17px; }
+.qr-approve-row button.danger { flex: 0 0 auto; padding: 0 18px; }
+.qr-approve-row button:not(.danger) { flex: 1 1 auto; }
+.qr-reject-title { margin: 0 0 8px; font-weight: 600; }
+.qr-reject-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.qr-reject-chips button { min-height: 48px; }
+.qr-reject-chips button[aria-pressed='true'] { border: 2px solid #b82a1e; background: #fef6f3; color: #8f1d14; font-weight: 600; }
+.qr-reject-actions { display: flex; gap: 8px; margin-top: 12px; }
+.qr-reject-actions button { flex: 1 1 0; min-height: 52px; }
+.qr-bill-actions { padding: 12px 16px 0; display: flex; flex-direction: column; gap: 8px; }
+.qr-bill-actions .qr-table-now { margin: 0 0 4px; }
+.qr-bill-actions button { min-height: 52px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-size: 17px; }
+button.kds-guest-ack-plain { width: 100%; min-height: 48px; }
+
+/* Lượt khách QR chờ duyệt trong drawer bàn (2026-11-06) — rộng hết khung, 2 nút bằng nhau. */
+.guest-req { margin: 0 0 12px; padding: 12px; border-radius: 12px; border: 2px solid #7c3aed; background: #f5f3ff; }
+.guest-req-title { display: flex; align-items: center; gap: 6px; font-size: 16px; font-weight: 600; color: #5b21b6; margin-bottom: 6px; }
+.guest-req-line { font-size: 16px; color: #1f2937; }
+.guest-req-line.is-gone { text-decoration: line-through; opacity: 0.6; }
+.guest-req-note { color: #6d28d9; }
+.guest-req-gone { margin-left: 6px; font-size: 13px; color: #b4231d; }
+.guest-req-sub { font-size: 14px; color: #5b21b6; margin: 6px 0 10px; }
+.guest-req-actions { display: flex; gap: 8px; }
+.guest-req-actions button { flex: 1 1 0; min-height: 52px; font-size: 17px; }

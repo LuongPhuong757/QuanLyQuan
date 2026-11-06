@@ -1,9 +1,10 @@
 import { useState, FormEvent } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { api, extractError } from '../lib/api.ts';
 import { useAuth, defaultLandingPath, type Role } from '../lib/auth-context.tsx';
 import { useToast } from '../components/Toast.tsx';
 import { PasswordInput } from '../components/PasswordInput.tsx';
+import { STORE_LOGO_URL, STORE_NAME } from '../lib/store-brand.ts';
 
 export function LoginPage() {
   const { refresh } = useAuth();
@@ -43,18 +44,31 @@ export function LoginPage() {
   };
 
   return (
-    <div className="container">
-      <div className="card">
-        <h1>Quán Bà Lùn · QUẢN TRỊ</h1>
-        <p style={{ color: '#6b7280', marginTop: -8, marginBottom: 24 }}>Đăng nhập để vào dashboard</p>
+    <div className="login-page">
+      <div className="card login-card">
+        <div className="login-brand">
+          {/* Ảnh trang trí đi kèm tên quán ngay bên dưới → alt rỗng để trình đọc màn hình không đọc lặp. */}
+          <img className="login-logo" src={STORE_LOGO_URL} alt="" width={72} height={72} />
+          <h1 className="login-title">{STORE_NAME}</h1>
+          {/* "Trang quản lý" phải có ngay màn đầu: nhân viên mở cả trang khách lẫn trang này
+              trên cùng máy — cùng lý do header sau đăng nhập ghi "QUẢN TRỊ" (App.tsx). */}
+          <p className="login-sub">Trang quản lý - Đăng nhập để vào làm việc</p>
+        </div>
 
         <form onSubmit={submit} noValidate>
           <div className="row">
             <label htmlFor="username">Tên đăng nhập</label>
+            {/* KHÔNG đổi thành "Số điện thoại"/inputMode="tel": tên đăng nhập là chuỗi tự do
+                (chủ quán mặc định `admin`, nhân viên kiểu `nva` — xem AdminUsersPage). Bàn phím
+                số sẽ khiến không gõ được "admin" trên điện thoại.
+                Tắt tự viết hoa/tự sửa: iOS biến "admin" thành "Admin" → báo sai mật khẩu dù gõ đúng. */}
             <input
               id="username"
               type="text"
               autoComplete="username"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               onBlur={validateUsername}
@@ -80,17 +94,17 @@ export function LoginPage() {
 
           <button
             type="submit"
+            className="login-submit"
             disabled={submitting || !username.trim() || password.length < 8}
-            style={{ width: '100%' }}
           >
             {submitting && <span className="spinner" />}
             Đăng nhập
           </button>
         </form>
-
-        <p style={{ marginTop: 24, fontSize: 14, color: '#6b7280', textAlign: 'center' }}>
-          Quên mật khẩu? <Link to="/recover">Nhập mã khôi phục</Link>
-        </p>
+        {/* Thay link "Nhập mã khôi phục" bằng hướng dẫn liên hệ admin (2026-11-06, chủ repo yêu cầu):
+            nhân viên quên mật khẩu thì admin đặt lại ở màn Nhân sự. Route /recover VẪN GIỮ — đường
+            cứu duy nhất khi chính chủ quán quên mật khẩu (mã khôi phục cấp lúc /setup); gõ thẳng URL. */}
+        <p className="login-foot">Quên mật khẩu - Liên hệ admin để được cấp lại</p>
       </div>
     </div>
   );

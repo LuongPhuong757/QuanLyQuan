@@ -4,8 +4,10 @@
  * đừng set tay: hàm đó chặn màu không đạt tương phản AA.
  */
 :root {
-  --brand-primary: var(--blue-600);
-  --brand-primary-hover: var(--blue-700);
+  /* Đỏ ớt — ĐỒNG BỘ trang khách apps/shop (--brand-600/700) và rule nút chung của apps/web
+     (2026-11-06). Trước là xanh dương #0057D9 trong khi giao diện dùng đỏ. */
+  --brand-primary: #b82a1e;
+  --brand-primary-hover: #8f1d14;
   --brand-on-primary: var(--white);
-  --brand-primary-tint: var(--blue-50);
+  --brand-primary-tint: #fef6f3;
 }

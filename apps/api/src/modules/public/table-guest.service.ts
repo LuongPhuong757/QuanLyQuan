@@ -109,13 +109,6 @@ export class TableGuestService {
     }
 
     const table = match.table;
-    if (table.kiotviet_locked) {
-      throw new ConflictException({
-        code: 'TABLE_KIOTVIET_LOCKED',
-        message: 'Bàn này đang khoá. Nhờ nhân viên giúp bạn nhé.',
-      });
-    }
-
     const open = await this.orders.findOne({ where: { table_id: table.id, closed_at: IsNull() } });
 
     // M7.R9 (CRITICAL) — đơn ONLINE bị chuyển vào bàn mang theo `order_token` + PII của khách

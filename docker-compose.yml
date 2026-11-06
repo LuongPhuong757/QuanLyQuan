@@ -1,7 +1,8 @@
 services:
   mysql:
     image: mysql:8.0
-    container_name: order_quan_balun_mysql
+    # KHÔNG đặt container_name cứng (2026-11-06): trùng tên `order_quan_balun_mysql` với repo Bà Lùn
+    # làm `pnpm db:up` thất bại. Để compose tự đặt theo thư mục (vd `quanlyquan-mysql-1`).
     restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpass}

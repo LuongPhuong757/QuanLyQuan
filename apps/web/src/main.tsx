@@ -7,6 +7,7 @@ import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 // Design System tập trung (packages/ui): token + component .ui-*. Nạp TRƯỚC styles.css cũ;
 // class đều có tiền tố .ui- nên không đè lên màn chưa chuyển (DESIGN-SYSTEM.md §6 bước 4).
 import '@order/ui/styles.css';
+import './fonts.css';
 import './styles.css';
 
 const root = document.getElementById('root');

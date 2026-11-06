@@ -2088,7 +2088,7 @@ function Card({
             </span>
           )}
           {item.created_by_full_name && (
-            <span style={{ color: '#0f766e' }} title="Nhân viên gọi món — hỏi người này nếu có vấn đề">
+            <span style={{ color: '#b82a1e' }} title="Nhân viên gọi món — hỏi người này nếu có vấn đề">
               👤 {item.created_by_full_name}
             </span>
           )}
@@ -2316,7 +2316,7 @@ function GroupFilterModal({
             style={{
               padding: '8px 16px',
               minHeight: 40,
-              background: '#0f766e',
+              background: '#b82a1e',
               color: 'white',
               fontWeight: 600,
             }}
@@ -2348,7 +2348,7 @@ function FilterRow({
         gap: 10,
         padding: '10px 18px',
         cursor: 'pointer',
-        background: checked ? '#f0fdfa' : 'white',
+        background: checked ? '#fef6f3' : 'white',
         borderTop: '1px solid #f3f4f6',
         opacity: count === 0 ? 0.55 : 1,
       }}
@@ -2368,7 +2368,7 @@ function FilterRow({
         style={{
           fontSize: 12,
           fontWeight: 600,
-          color: count > 0 ? '#0f766e' : '#9ca3af',
+          color: count > 0 ? '#b82a1e' : '#9ca3af',
           minWidth: 24,
           textAlign: 'right',
         }}

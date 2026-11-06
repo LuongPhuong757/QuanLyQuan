@@ -37,7 +37,7 @@ const ROLE_OPTIONS: Role[] = ['order', 'kitchen', 'admin', 'report', 'print'];
 /** Màu theo quyền cho avatar + chip quyền trên thẻ (2026-10-20). Mỗi quyền một màu để chủ quán
  *  liếc là phân biệt được người bếp với người order, không phải đọc chữ. */
 const ROLE_TONE: Record<Role, { avatar: string; chipBg: string; chipFg: string }> = {
-  admin: { avatar: '#0f766e', chipBg: '#ccfbf1', chipFg: '#0f766e' },
+  admin: { avatar: '#b82a1e', chipBg: '#fbe4de', chipFg: '#b82a1e' },
   order: { avatar: '#2563eb', chipBg: '#dbeafe', chipFg: '#1d4ed8' },
   kitchen: { avatar: '#b45309', chipBg: '#fef3c7', chipFg: '#b45309' },
   report: { avatar: '#7c3aed', chipBg: '#ede9fe', chipFg: '#6d28d9' },
@@ -596,7 +596,7 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
                 style={{
                   padding: '12px 8px',
                   background: role === r ? '#fef3c7' : 'white',
-                  border: role === r ? '2px solid #0f766e' : '1px solid #d1d5db',
+                  border: role === r ? '2px solid #b82a1e' : '1px solid #d1d5db',
                   color: '#1f2937',
                   fontWeight: role === r ? 700 : 400,
                   fontSize: 12,
@@ -814,7 +814,7 @@ function EditUserModal({
                   style={{
                     padding: '10px 8px',
                     background: role === r ? '#fef3c7' : 'white',
-                    border: role === r ? '2px solid #0f766e' : '1px solid #d1d5db',
+                    border: role === r ? '2px solid #b82a1e' : '1px solid #d1d5db',
                     fontWeight: role === r ? 700 : 400,
                     fontSize: 12,
                     borderRadius: 8,

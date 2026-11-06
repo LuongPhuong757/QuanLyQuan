@@ -13,7 +13,7 @@ làm **sản phẩm cho thuê** 2.799.000đ/tháng cho quán nhỏ. Kiến trúc
 
 - **Remote `origin` = https://github.com/LuongPhuong757/QuanLyQuan.git (gắn 2026-11-06). Chưa deploy ở đâu cả.**
   Làm việc trên nhánh (vd `ui/dot-1`); **chỉ push khi chủ repo bảo**, không merge vào `main` khi chưa được duyệt.
-  ⚠ `.github/workflows/deploy*.yml` của Bà Lùn còn sót — phải gỡ/tắt TRƯỚC lần push đầu.
+  `.github/workflows/deploy*.yml` của Bà Lùn đã GỠ 2026-11-06 (trước lần push đầu); `check.yml` chỉ chạy CI, không deploy.
   Mọi phần dưới nói về nhánh `develop`/`production`,
   domain `quanbalun.site`, VPS, hook đóng băng, `.github/workflows/deploy*.yml` là **của Bà Lùn**,
   còn sót lại — KHÔNG áp dụng ở đây. Đừng chạy `deploy.sh`.
@@ -21,7 +21,12 @@ làm **sản phẩm cho thuê** 2.799.000đ/tháng cho quán nhỏ. Kiến trúc
   cần. Không đồng bộ hai chiều.
 - **Không fork code theo quán.** Khác biệt giữa các quán = cấu hình + công tắc trong DB quán.
   Tính năng riêng một quán = module có công tắc trong CÙNG repo.
-- ⛔ Trước khách thật đầu tiên: `synchronize` → migration; bỏ `container_name` cứng.
+- ⛔ Trước khách thật đầu tiên: `synchronize` → migration. (`container_name` cứng đã bỏ 2026-11-06.)
+- **DB dev RIÊNG ở cổng 3308** (container `quanlyquan-mysql-1`, dựng 2026-11-06). Chạy API:
+  `cd apps/api && MYSQL_PORT=3308 node --import @swc-node/register/esm-register --watch src/main.ts`
+  (`pnpm dev` qua turbo KHÔNG chuyển `MYSQL_PORT` vào API). ⛔ KHÔNG trỏ API repo này vào DB 3307
+  của Bà Lùn: entity ở đây đã khác (vd cột `kiotviet_locked` đã bỏ 2026-11-06) → `synchronize`
+  sẽ XOÁ cột của Bà Lùn.
 - **Design System tập trung** là việc đầu tiên. Luật: [docs/DESIGN-SYSTEM.md](docs/DESIGN-SYSTEM.md).
   Thiết kế vẽ trên **Pencil** (MCP, file `docs/design/quanlyquan.pen`), **thiết kế duyệt trước rồi mới code**, phong cách theo mẫu tham khảo chủ repo gửi.
 

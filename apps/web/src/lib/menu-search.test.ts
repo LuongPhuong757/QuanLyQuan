@@ -74,3 +74,25 @@ describe('xếp hạng và biên', () => {
     expect(menuSearchScore(MENU[0], 'ktl')).toBeGreaterThan(0);
   });
 });
+
+describe('gọi tắt phổ biến (alias)', () => {
+  const DRINKS = [
+    { name: 'Cà phê sữa đá', code: 'D007' },
+    { name: 'Coca Cola', code: 'D010' },
+    { name: 'Bia Hà Nội', code: 'D020' },
+    { name: 'Bia Sài Gòn', code: 'D021' },
+  ];
+  it('cf / cafe ra cà phê', () => {
+    expect(filterMenuBySearch(DRINKS, 'cf')[0].name).toBe('Cà phê sữa đá');
+    expect(filterMenuBySearch(DRINKS, 'cafe')[0].name).toBe('Cà phê sữa đá');
+  });
+  it('coke ra coca', () => {
+    expect(filterMenuBySearch(DRINKS, 'coke').map((m) => m.name)).toEqual(['Coca Cola']);
+  });
+  it('bia hn chỉ ra Bia Hà Nội', () => {
+    expect(filterMenuBySearch(DRINKS, 'bia hn').map((m) => m.name)).toEqual(['Bia Hà Nội']);
+  });
+  it('alias không làm mất kết quả cũ', () => {
+    expect(filterMenuBySearch(DRINKS, 'cpsd')[0].name).toBe('Cà phê sữa đá');
+  });
+});

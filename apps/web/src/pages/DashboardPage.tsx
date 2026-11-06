@@ -129,7 +129,7 @@ function OrderingWidget() {
   const statusColor = !status
     ? '#6b7280'
     : status.enabled
-      ? '#0f766e'
+      ? '#b82a1e'
       : status.blocking_reason === 'OUTSIDE_HOURS'
         ? '#f59e0b'
         : '#dc2626';
@@ -159,7 +159,7 @@ function OrderingWidget() {
           <button disabled={toggling} onClick={toggle} style={{ width: '100%' }}>
             {toggling ? 'Đang cập nhật...' : status.enabled ? 'Tắt nhận đơn' : 'Bật lại nhận đơn'}
           </button>
-          <Link to="/admin/online-orders?view=settings" style={{ display: 'block', marginTop: 8, fontSize: 13, color: '#0f766e' }}>
+          <Link to="/admin/online-orders?view=settings" style={{ display: 'block', marginTop: 8, fontSize: 13, color: '#b82a1e' }}>
             Cài đặt chi tiết (lý do, giờ mở cửa, số bị chặn) →
           </Link>
         </>

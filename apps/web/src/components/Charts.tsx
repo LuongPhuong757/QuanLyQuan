@@ -4,7 +4,7 @@ import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { tangCuaCot, tongMoiCot } from '../lib/stacked-bars.ts';
 import { buocNhanTruc, chiSoGhiNhan } from '../lib/gio-cao-diem.ts';
 
-const TEAL = '#0f766e';
+const TEAL = '#b82a1e';
 
 /**
  * Bảng màu phân loại — 8 sắc, dùng THEO THỨ TỰ và không bao giờ quay vòng.
@@ -322,7 +322,9 @@ export type LineSeries = {
 function mocTron(max: number): number {
   if (max <= 0) return 1;
   const bac = 10 ** Math.floor(Math.log10(max));
-  for (const b of [1, 2, 2.5, 3, 4, 5, 10]) if (max <= b * bac) return b * bac;
+  // Thêm nấc 6 và 8 (2026-11-06): đỉnh 5,5tr trước đây kéo trục lên 10tr, cột cao nhất chỉ
+  // chiếm 55% chiều cao — cùng bệnh như khoảng hở 2,5–5 ở trên.
+  for (const b of [1, 2, 2.5, 3, 4, 5, 6, 8, 10]) if (max <= b * bac) return b * bac;
   return 10 * bac;
 }
 

@@ -355,7 +355,7 @@ function ComposeScreen({
           <div
             key={l.key}
             className="card"
-            style={{ padding: 14, background: l.qty > 0 ? '#f0fdfa' : undefined }}
+            style={{ padding: 14, background: l.qty > 0 ? '#fef6f3' : undefined }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
               <strong style={{ fontSize: 18 }}>{l.item.ingredient_name}</strong>

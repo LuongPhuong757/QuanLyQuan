@@ -58,6 +58,43 @@ function tokenScore(token: string, name: string, words: string[], code: string):
   return null;
 }
 
+/** Cách viết tắt / gọi tắt phổ biến ở quán (2026-11-06) → cụm từ thật trong tên món. So trên
+ *  dạng ĐÃ bỏ dấu, theo NGUYÊN token. Ví dụ: 'cf' tìm ra 'Cà phê sữa đá', 'coke' ra 'Coca',
+ *  'bia hn' ra 'Bia Hà Nội'. Đây là bộ CHUNG cho mọi quán; từ khoá riêng từng món cần thêm
+ *  trường ở menu (backend) — xem docs/design/VIEC-NGOAI-UI.md. */
+const ALIASES: Record<string, string[]> = {
+  cf: ['ca phe'],
+  cafe: ['ca phe'],
+  coffee: ['ca phe'],
+  caphe: ['ca phe'],
+  coke: ['coca'],
+  cocacola: ['coca'],
+  hn: ['ha noi'],
+  sg: ['sai gon'],
+  bbq: ['nuong'],
+};
+
+/** Điểm của 1 token, có thử thêm dạng gọi tắt: cụm thay thế phải khớp ĐỦ mọi từ của nó. Lấy
+ *  điểm cao hơn trong hai cách — gõ 'cf' mà có món mã 'CF01' thì mã vẫn thắng. */
+function tokenScoreWithAlias(token: string, name: string, words: string[], code: string): number | null {
+  let best = tokenScore(token, name, words, code);
+  for (const phrase of ALIASES[token] ?? []) {
+    const parts = phrase.split(' ');
+    let sum = 0;
+    let ok = true;
+    for (const part of parts) {
+      const sc = tokenScore(part, name, words, code);
+      if (sc === null) { ok = false; break; }
+      sum += sc;
+    }
+    if (ok) {
+      const sc = sum / parts.length;
+      if (best === null || sc > best) best = sc;
+    }
+  }
+  return best;
+}
+
 /** Điểm khớp của cả câu tìm kiếm với 1 món, null = không khớp.
  *  Tách token theo khoảng trắng — MỌI token phải khớp (AND), không cần liền nhau.
  *  Vd: 'canh chien' match 'cánh giữa chiên giòn'. */
@@ -71,7 +108,7 @@ export function menuSearchScore(item: MenuSearchTarget, query: string): number |
 
   let total = 0;
   for (const t of tokens) {
-    const s = tokenScore(t, name, words, code);
+    const s = tokenScoreWithAlias(t, name, words, code);
     if (s === null) return null;
     total += s;
   }

@@ -1,5 +1,13 @@
 import { Suspense, lazy, useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation, NavLink, Outlet } from 'react-router-dom';
+import {
+  BarChart3, BookOpen, ChefHat, History, LayoutGrid, LineChart,
+  Receipt, ShoppingBag, Truck, UserRound, Users, Utensils,
+} from 'lucide-react';
+import { BottomNav, type NavItem } from './components/BottomNav.tsx';
+import { UserMenu } from './components/UserMenu.tsx';
+import { STORE_NAME } from './lib/store-brand.ts';
+import { PAGES, pageFor, navLabel } from './lib/pages.ts';
 import { AuthProvider, useAuth, defaultLandingPath, type Role } from './lib/auth-context.tsx';
 import { ToastProvider } from './components/Toast.tsx';
 import { ConfirmProvider } from './components/ConfirmDialog.tsx';
@@ -8,7 +16,6 @@ import { ReadyListener } from './components/ReadyListener.tsx';
 import { NotificationBell } from './components/NotificationBell.tsx';
 import { useOnlineWaitingCount } from './lib/online-waiting-badge.ts';
 import { usePendingDeliveriesCount } from './lib/pending-deliveries-badge.ts';
-import { useOpenTablesCount } from './lib/open-tables-badge.ts';
 import { useKitchenPendingCount } from './lib/kitchen-pending-badge.ts';
 import { useStaleUnpaid } from './lib/stale-unpaid.ts';
 import { StaleTableBanner } from './components/StaleTableBanner.tsx';
@@ -259,13 +266,14 @@ export function App() {
   );
 }
 
-// Khung màu quanh tên user thay vì text chip — gọn + dễ phân biệt khi liếc.
-const ROLE_STYLE: Record<Role, { label: string; bg: string; border: string; text: string; icon: string }> = {
-  admin:   { label: 'Admin', icon: '👑',    bg: '#fef3c7', border: '#f59e0b', text: '#92400e' },
-  order:   { label: 'Order', icon: '🍽',    bg: '#dbeafe', border: '#3b82f6', text: '#1e40af' },
-  kitchen: { label: 'Bếp',   icon: '👨‍🍳', bg: '#d1fae5', border: '#10b981', text: '#065f46' },
-  report:  { label: 'Báo cáo', icon: '📊', bg: '#ede9fe', border: '#8b5cf6', text: '#5b21b6' },
-  print:   { label: 'Máy in', icon: '🖨',  bg: '#e5e7eb', border: '#6b7280', text: '#374151' },
+/** Tên vai trò hiện trong menu tài khoản. Bỏ màu theo vai trò (2026-11-06): vàng/xanh/xanh lá/tím
+ *  nằm ngoài bảng màu chung; avatar nay là vòng tròn chữ cái màu trung tính. */
+const ROLE_LABEL: Record<Role, string> = {
+  admin: 'Admin',
+  order: 'Order',
+  kitchen: 'Bếp',
+  report: 'Báo cáo',
+  print: 'Máy in',
 };
 
 function ProtectedShell() {
@@ -277,9 +285,6 @@ function ProtectedShell() {
   // role là bật. SSE + đếm sống ở shell để đứng ở TRANG NÀO badge cũng nhảy realtime.
   // `report` không có nút Online (BE cũng chặn) → không bật, tránh 403 lặp mỗi nhịp đếm.
   const waitingCount = useOnlineWaitingCount(role !== null && role !== 'report');
-  // Badge số bàn đang mở trên nút "Order" — cả 3 role đều có nút này ở nav dưới. Cũng phải tính
-  // TRƯỚC early-return vì cùng lý do trên.
-  const openTablesCount = useOpenTablesCount(role !== null && role !== 'report');
   // Phiếu nhập chờ duyệt (2026-10-23) — chỉ admin duyệt được nên chỉ admin đếm.
   const pendingDeliveriesCount = usePendingDeliveriesCount(role === 'admin');
   // Badge số món đang chờ bếp làm trên nút "Bếp" — chỉ admin và role kitchen có nút này ở nav
@@ -310,14 +315,17 @@ function ProtectedShell() {
   useEffect(() => {
     // Giữ ĐÚNG chuỗi trong `apps/web/index.html` — hai chỗ lệch nhau thì tiêu đề tab đổi một cái
     // khi app mount xong, và người dùng thấy tab "nhảy chữ" mà không hiểu vì sao.
+    // Tên TRANG đứng đầu (2026-11-06): mở nhiều tab vẫn phân biệt được tab nào là màn nào.
     const base = 'Admin · Quán Bà Lùn';
-    document.title = waitingCount && waitingCount > 0 ? `(${waitingCount}) Đơn mới · ${base}` : base;
+    const page = pageFor(loc.pathname)?.title;
+    const named = page ? `${page} - ${STORE_NAME}` : base;
+    document.title = waitingCount && waitingCount > 0 ? `(${waitingCount}) Đơn mới · ${named}` : named;
     // Trả tiêu đề về nguyên trạng khi rời khu vực đã đăng nhập (đăng xuất) — để lại "(3) Đơn mới"
     // trên màn hình đăng nhập là nói về dữ liệu người vừa đăng xuất không còn quyền xem.
     return () => {
       document.title = base;
     };
-  }, [waitingCount]);
+  }, [waitingCount, loc.pathname]);
 
   /**
    * Nạp trước chunk của những màn role này dùng nhiều nhất (xem `PREFETCH_BY_ROLE`).
@@ -379,7 +387,7 @@ function ProtectedShell() {
   if (!user) {
     return <Navigate to={`/login?returnUrl=${encodeURIComponent(loc.pathname + loc.search)}`} replace />;
   }
-  const roleStyle = role ? ROLE_STYLE[role] : null;
+  const pageInfo = pageFor(loc.pathname);
   /* Màn Bếp (`/kitchen`) chạy FULL-SCREEN: nó tự dựng đúng một thanh nút ở đáy (← quay về
      Order, lọc nhóm, làm mới, hướng dẫn, thông báo, đăng xuất) nên header + nav dưới ở đây
      chỉ ăn chỗ của danh sách món. Bếp đứng cách iPad cả mét, mỗi ~60px lấy lại được là thêm
@@ -387,53 +395,47 @@ function ProtectedShell() {
      CHỈ áp cho `/kitchen`: mọi màn khác giữ nguyên header + nav. Rời màn bếp là cả hai
      hiện lại, nên nút ← không phải đường ra một chiều. */
   const isKds = loc.pathname === '/kitchen';
+  const badges: NavBadges = {
+    onlineWaiting: waitingCount,
+    kitchenPending: kitchenPendingCount,
+    pendingDeliveries: pendingDeliveriesCount,
+  };
+  const navSpec = role ? navForRole(role, badges) : null;
 
   return (
     <>
       {/* QR TRƯỚC dải đỏ: khách đang đứng chờ là việc phải làm NGAY. Chỉ màn Order duyệt được. */}
-      {onStaleBannerScreen && (
-        <GuestQrBanner data={guestPending} canApprove={loc.pathname === '/orders'} />
+      {/* Màn Order (2026-11-06): GỘP hai dải thành MỘT dòng "N yêu cầu QR · N bàn chưa trả ›",
+          bấm mở tấm danh sách. Màn Bếp giữ nguyên hai dải cũ (chưa đụng Bếp). */}
+      {loc.pathname === '/orders' && (
+        <GuestQrBanner data={guestPending} canApprove variant="compact" stale={staleUnpaid} />
       )}
-      {onStaleBannerScreen && <StaleTableBanner data={staleUnpaid} />}
+      {loc.pathname === '/kitchen' && <GuestQrBanner data={guestPending} canApprove={false} />}
+      {loc.pathname === '/kitchen' && <StaleTableBanner data={staleUnpaid} />}
       {!isKds && (
       <header className="header">
-        <span className="brand">
-          <span className="brand-short">🍴</span>
-          {/* "QUẢN TRỊ" phải có mặt ngay trong header: nhân viên mở cả trang khách lẫn trang
-              này trên cùng máy, và hai bên trước đây đều chỉ ghi tên quán. */}
-          <span className="brand-text">Quán Bà Lùn · QUẢN TRỊ</span>
-          {/* Khung màu quanh tên user — màu nền + viền theo role:
-              vàng = Admin, xanh dương = Order, xanh lá = Bếp */}
-          <span
-            className="user-chip"
-            title={roleStyle ? `${roleStyle.icon} ${roleStyle.label} · ${user.full_name} (${user.name})` : user.full_name}
-            style={roleStyle ? {
-              background: roleStyle.bg,
-              border: `2px solid ${roleStyle.border}`,
-              color: roleStyle.text,
-              fontWeight: 600,
-            } : undefined}
-          >
-            {roleStyle?.icon ?? '👤'} {user.full_name || user.name}
-          </span>
-        </span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <NotificationBell />
-          <button
-            className="secondary btn-icon-only"
-            onClick={logout}
-            title="Đăng xuất"
-            aria-label="Đăng xuất"
-            style={{ color: '#dc2626' }}
-          >
-            {/* Lucide log-out: arrow pointing out of door — clear semantic, không phụ thuộc OS emoji */}
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-              <polyline points="16 17 21 12 16 7" />
-              <line x1="21" y1="12" x2="9" y2="12" />
-            </svg>
-            <span className="btn-label">Đăng xuất</span>
-          </button>
+        {/* Nội dung header CÙNG độ rộng + lề (--page-gutter) với trang bên dưới (PAGES.width) →
+            tên trang thẳng hàng với mép nội dung (2026-11-06). */}
+        <div className={`header-inner page--${pageInfo?.width ?? 'narrow'}`}>
+          <div className="brand">
+            {/* Tên TRANG là <h1> duy nhất của màn, lấy từ lib/pages.ts — trang không tự đặt <h1>. */}
+            <h1 className="page-title">{pageInfo?.title ?? ''}</h1>
+          </div>
+          <div className="header-actions">
+            <NotificationBell variant="header" />
+            {/* Nhãn CHỮ vai trò (2026-11-06, chủ repo chọn): máy ở quán dùng chung, phải liếc là biết
+                máy đang đăng nhập quyền gì. Chữ, không màu — không phải nhớ màu nào là gì. Cũng thay
+                cho dòng "Quán … - Quản trị" đã bỏ: trang khách không bao giờ có nhãn này. */}
+            {role && <span className="role-tag">{ROLE_LABEL[role]}</span>}
+            {/* Avatar chữ cái = nút mở menu Tài khoản / Đăng xuất. */}
+            <UserMenu
+              fullName={user.full_name}
+              username={user.name}
+              roleLabel={role ? ROLE_LABEL[role] : null}
+              isAdmin={role === 'admin'}
+              onLogout={logout}
+            />
+          </div>
         </div>
       </header>
       )}
@@ -442,108 +444,77 @@ function ProtectedShell() {
       <Suspense fallback={<PageFallback />}>
         <Outlet />
       </Suspense>
-      {!isKds && role === 'admin' && (
-        <nav className="nav-bottom" aria-label="Điều hướng chính">
-          <NavLink to="/orders" title="Order"><span className="nav-icon-wrap"><span className="nav-icon">🍽</span><NavBadge count={openTablesCount} label="bàn đang mở" tone="info" /></span><span className="nav-label">Order</span></NavLink>
-          {/* Hoá đơn tự do đứng thứ HAI, không phải cuối: nav admin có 9 mục và thanh này trượt
-              ngang, nên từ mục thứ 7 trở đi nằm ngoài mép phải trên điện thoại — người dùng đầu
-              tiên thử tính năng đã không tìm ra nó (2026-09-30). */}
-          <NavLink to="/custom-receipt" title="Hoá đơn tự do — in một tờ hoá đơn không tính doanh thu"><span className="nav-icon">🧾</span><span className="nav-label">H/đơn</span></NavLink>
-          <NavLink to="/history" title="Lịch sử"><span className="nav-icon">📜</span><span className="nav-label">L/sử</span></NavLink>
-          <NavLink to="/kitchen" title="Bếp — món đang chờ làm"><span className="nav-icon-wrap"><span className="nav-icon">👨‍🍳</span><NavBadge count={kitchenPendingCount} label="món đang chờ bếp làm" /></span><span className="nav-label">Bếp</span></NavLink>
-          <NavLink to="/menu" title="Menu"><span className="nav-icon">📋</span><span className="nav-label">Menu</span></NavLink>
-          <NavLink to="/tables" title="Bàn"><span className="nav-icon">🪑</span><span className="nav-label">Bàn</span></NavLink>
-          {/* Nhãn "Online" chứ không phải "H/chờ": trang này gồm cả hàng chờ và cài đặt nhận đơn.
-              Đứng ở mục thứ 7 là theo yêu cầu của chủ quán (đổi chỗ với L/sử) — lưu ý từ mục
-              thứ 7 trở đi phải vuốt ngang mới thấy trên điện thoại, kể cả badge đơn đang chờ. */}
-          <NavLink to="/admin/online-orders" title="Đơn hàng online — hàng chờ duyệt + cài đặt nhận đơn"><span className="nav-icon-wrap"><span className="nav-icon">🛎</span><NavBadge count={waitingCount} label="đơn online đang chờ duyệt" /></span><span className="nav-label">Online</span></NavLink>
-          {/* Nhà cung cấp — thành mục thứ 8 (2026-09-06). Trước đây cố tình để ngoài nav vì sợ
-              bóp nhỏ các mục khác, nhưng thẻ ở Dashboard là đường vào quá kín: nhập hàng là việc
-              LÀM HÀNG NGÀY, không phải màn tra cứu thỉnh thoảng như Thống kê truy cập.
-              8 mục vẫn vừa: dưới 380px nhãn đã tự ẩn, chỉ còn icon 20px. */}
-          <NavLink to="/suppliers" title="Nhà cung cấp — nhập hàng, công nợ"><span className="nav-icon-wrap"><span className="nav-icon">🚚</span><NavBadge count={pendingDeliveriesCount} label="phiếu nhập đang chờ duyệt" /></span><span className="nav-label">NCC</span></NavLink>
-          <NavLink to="/admin/users" title="Nhân viên"><span className="nav-icon">👥</span><span className="nav-label">N/viên</span></NavLink>
-        </nav>
-      )}
-      {!isKds && role === 'order' && (
-        <nav className="nav-bottom" aria-label="Điều hướng chính">
-          <NavLink to="/orders" title="Order"><span className="nav-icon-wrap"><span className="nav-icon">🍽</span><NavBadge count={openTablesCount} label="bàn đang mở" tone="info" /></span><span className="nav-label">Order</span></NavLink>
-          {/* Hàng chờ duyệt — D-02 cho cả 3 role duyệt được, nên nav cũng phải có ở cả 3.
-              Role này KHÔNG thấy tab Cài đặt nên title chỉ nói về hàng chờ. */}
-          <NavLink to="/admin/online-orders" title="Đơn hàng online — hàng chờ duyệt"><span className="nav-icon-wrap"><span className="nav-icon">🛎</span><NavBadge count={waitingCount} label="đơn online đang chờ duyệt" /></span><span className="nav-label">Online</span></NavLink>
-          {/* Nhật ký bàn 48h gần nhất — KHÔNG có doanh thu (BE chặn /orders/stats) */}
-          <NavLink to="/history" title="Nhật ký bàn (48h)"><span className="nav-icon">📜</span><span className="nav-label">N/ký</span></NavLink>
-          <NavLink to="/custom-receipt" title="Hoá đơn tự do — in một tờ hoá đơn không tính doanh thu"><span className="nav-icon">🧾</span><span className="nav-label">H/đơn</span></NavLink>
-          <NavLink to="/account" title="Tài khoản"><span className="nav-icon">👤</span><span className="nav-label">T/khoản</span></NavLink>
-        </nav>
-      )}
-      {!isKds && role === 'kitchen' && (
-        <nav className="nav-bottom" aria-label="Điều hướng chính">
-          <NavLink to="/kitchen" title="Bếp — món đang chờ làm"><span className="nav-icon-wrap"><span className="nav-icon">👨‍🍳</span><NavBadge count={kitchenPendingCount} label="món đang chờ bếp làm" /></span><span className="nav-label">Bếp</span></NavLink>
-          <NavLink to="/admin/online-orders" title="Đơn hàng online — hàng chờ duyệt"><span className="nav-icon-wrap"><span className="nav-icon">🛎</span><NavBadge count={waitingCount} label="đơn online đang chờ duyệt" /></span><span className="nav-label">Online</span></NavLink>
-          <NavLink to="/orders" title="Order"><span className="nav-icon-wrap"><span className="nav-icon">🍽</span><NavBadge count={openTablesCount} label="bàn đang mở" tone="info" /></span><span className="nav-label">Order</span></NavLink>
-          <NavLink to="/menu" title="Menu"><span className="nav-icon">📋</span><span className="nav-label">Menu</span></NavLink>
-          {/* Nhật ký bàn 48h — giống nhân viên order, KHÔNG có tổng doanh thu */}
-          <NavLink to="/history" title="Nhật ký bàn (48h)"><span className="nav-icon">📜</span><span className="nav-label">N/ký</span></NavLink>
-          <NavLink to="/custom-receipt" title="Hoá đơn tự do — in một tờ hoá đơn không tính doanh thu"><span className="nav-icon">🧾</span><span className="nav-label">H/đơn</span></NavLink>
-          <NavLink to="/account" title="Tài khoản"><span className="nav-icon">👤</span><span className="nav-label">T/khoản</span></NavLink>
-        </nav>
-      )}
-      {/* Quyền Báo cáo — 5 mục, KHÔNG có Order/Bếp/Online: role này không thao tác được gì ở
-          những màn đó (BE trả 403 cho mọi POST), bày nút ra chỉ để người ta bấm rồi ăn lỗi.
-          Không có badge đếm vì cũng không có nút nào để gắn badge vào. */}
-      {!isKds && role === 'report' && (
-        <nav className="nav-bottom" aria-label="Điều hướng chính">
-          <NavLink to="/dashboard" title="Trang chính — lối vào các báo cáo"><span className="nav-icon">📊</span><span className="nav-label">B/cáo</span></NavLink>
-          <NavLink to="/history" title="Nhật ký bàn — doanh thu, đơn đã bán"><span className="nav-icon">📜</span><span className="nav-label">N/ký</span></NavLink>
-          <NavLink to="/suppliers" title="Nhà cung cấp — giá nhập, công nợ, giá vốn, món bán"><span className="nav-icon">🚚</span><span className="nav-label">NCC</span></NavLink>
-          <NavLink to="/admin/analytics" title="Truy cập & khách hàng"><span className="nav-icon">📈</span><span className="nav-label">T/cập</span></NavLink>
-          <NavLink to="/account" title="Tài khoản"><span className="nav-icon">👤</span><span className="nav-label">T/khoản</span></NavLink>
-        </nav>
-      )}
+      {/* Thanh nav dưới: ≤ 4 mục dùng khi đang phục vụ + "Thêm" (xem BottomNav.tsx). Danh sách
+          mục theo role dựng trong navForRole() bên dưới. */}
+      {!isKds && navSpec && <BottomNav {...navSpec} />}
     </>
   );
 }
 
-/** Hình tròn đếm, neo ở góc trên-PHẢI của một ô trong nav dưới. `count` null/0 → không vẽ gì
- * (thà không có số còn hơn hiện số sai).
- *
- * Màu phân biệt VIỆC PHẢI LÀM với THÔNG TIN: đỏ = đơn online đang chờ duyệt (khách đang đợi,
- * phải bấm), xanh = số bàn đang mở (chỉ để biết, không ai phải làm gì). Hai badge nằm cạnh nhau
- * trên cùng thanh nav nên cùng màu đỏ là nhân viên liếc qua tưởng cả hai đều cần xử lý.
- *
- * Style INLINE + `position:absolute` có chủ đích: badge tuyệt đối không được chiếm chỗ trong
- * flex column của nav item (icon/label) — bản đầu để class chờ CSS, lúc CSS chưa nạp con số
- * rơi xuống thành dòng thứ 3 làm vỡ cả thanh nav. Neo `position:relative` nằm ở `.nav-bottom a`. */
-/** Con số nhỏ ở GÓC TRÊN BÊN PHẢI icon của một mục nav.
- *
- * Hình dáng + vị trí nằm ở `.nav-badge` trong styles.css, không phải inline: badge được neo vào
- * `.nav-icon-wrap` (bọc riêng icon) chứ không vào cả ô nav — bản cũ dùng
- * `top: 2; left: calc(50% + 6px)` tính theo ô nav, mà từ 640px trở lên ô nav xếp NGANG
- * (icon | chữ) nên giữa ô rơi vào khoảng giữa icon và chữ: con số trôi lên sát mép trên, đè lên
- * vạch xanh của mục đang mở và trông như rụng khỏi icon (ảnh chủ quán gửi 2026-09-07).
- *
- * Chỉ còn màu là inline vì nó phụ thuộc `tone`. */
-function NavBadge({
-  count,
-  label,
-  tone = 'alert',
-}: {
-  count: number | null;
-  /** Đọc cho screen reader, dạng "3 <label>". */
-  label: string;
-  tone?: 'alert' | 'info';
-}) {
-  if (count === null || count <= 0) return null;
-  return (
-    <span
-      aria-label={`${count} ${label}`}
-      className="nav-badge"
-      style={{ background: tone === 'alert' ? '#dc2626' : '#2563eb' }}
-    >
-      {count > 99 ? '99+' : count}
-    </span>
-  );
+type NavBadges = {
+  onlineWaiting: number | null;
+  kitchenPending: number | null;
+  pendingDeliveries: number | null;
+};
+
+/** Mục nav dưới theo role. ≤ 4 mục chính (+ "Thêm") — dùng khi ĐANG PHỤC VỤ; màn quản lý ít dùng
+ *  (Menu, Bàn, NCC, Nhân sự) vào "Thêm". Role có đúng ≤ 5 mục thì để thẳng, không cần "Thêm".
+ *  ĐỦ mọi đích của bản cũ — bớt một mục là mất đường vào một màn. Role `print` không có nav. */
+function navForRole(role: Role, b: NavBadges): { primary: NavItem[]; more?: NavItem[] } | null {
+  const order: NavItem = {
+    // Không badge (2026-11-06): số bàn đang mở chỉ để biết, không phải việc cần xử lý.
+    to: '/orders', label: navLabel('/orders'), hint: 'Sơ đồ bàn - gọi món', icon: Utensils,
+  };
+  const kitchen: NavItem = {
+    to: '/kitchen', label: navLabel('/kitchen'), hint: 'Món đang chờ bếp làm', icon: ChefHat,
+    badge: { count: b.kitchenPending, label: 'món đang chờ bếp làm' },
+  };
+  const online: NavItem = {
+    to: '/admin/online-orders', label: navLabel('/admin/online-orders'), hint: 'Đơn online - hàng chờ duyệt', icon: ShoppingBag,
+    badge: { count: b.onlineWaiting, label: 'đơn online đang chờ duyệt' },
+  };
+  const receipt: NavItem = {
+    to: '/custom-receipt', label: navLabel('/custom-receipt'), hint: 'Hoá đơn tự do - in một tờ không tính doanh thu', icon: Receipt,
+  };
+  const account: NavItem = { to: '/account', label: navLabel('/account'), icon: UserRound };
+  const menu: NavItem = { to: '/menu', label: navLabel('/menu'), hint: 'Món ăn, giá, nhóm món', icon: BookOpen };
+  const diary: NavItem = { to: '/history', label: navLabel('/history'), hint: 'Nhật ký bàn 48 giờ gần nhất', icon: History };
+
+  switch (role) {
+    case 'admin':
+      return {
+        primary: [order, kitchen, online, { to: '/history', label: navLabel('/history'), hint: 'Lịch sử đơn, doanh thu', icon: History }],
+        more: [
+          { ...receipt, label: PAGES['/custom-receipt'].title },
+          menu,
+          { to: '/tables', label: PAGES['/tables'].title, hint: 'Thêm, sửa, sắp xếp bàn', icon: LayoutGrid },
+          {
+            to: '/suppliers', label: PAGES['/suppliers'].title, hint: 'Nhập hàng, công nợ', icon: Truck,
+            badge: { count: b.pendingDeliveries, label: 'phiếu nhập đang chờ duyệt' },
+          },
+          { to: '/admin/users', label: PAGES['/admin/users'].title, hint: 'Tài khoản nhân viên, quyền', icon: Users },
+        ],
+      };
+    case 'order':
+      return { primary: [order, online, diary, receipt, account] };
+    case 'kitchen':
+      return {
+        primary: [kitchen, online, order, diary],
+        more: [menu, { ...receipt, label: PAGES['/custom-receipt'].title }, account],
+      };
+    case 'report':
+      return {
+        primary: [
+          { to: '/dashboard', label: navLabel('/dashboard'), hint: 'Trang chính - lối vào các báo cáo', icon: BarChart3 },
+          { ...diary, hint: 'Nhật ký bàn - doanh thu, đơn đã bán' },
+          { to: '/suppliers', label: navLabel('/suppliers'), hint: 'Nhà cung cấp - giá nhập, công nợ', icon: Truck },
+          { to: '/admin/analytics', label: navLabel('/admin/analytics'), hint: 'Truy cập & khách hàng', icon: LineChart },
+          account,
+        ],
+      };
+    default:
+      return null;
+  }
 }
 
 /** Redirect '/' về landing page tương ứng role hiện tại. */

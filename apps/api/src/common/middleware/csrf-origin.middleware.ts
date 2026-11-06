@@ -1,5 +1,6 @@
 // P01.D-12 — CSRF Origin/Referer check on mutation requests
-// Cookie SameSite=Strict (F-17) is primary defense; this is defense-in-depth.
+// Cookie SameSite=Lax (F-17, đổi từ Strict 2026-11-06 — xem jwt.service.ts) chặn cookie trên
+// POST từ trang lạ; lớp kiểm Origin này là defense-in-depth.
 //
 // M2.D-67 — ALLOWED_ORIGIN là DANH SÁCH (apex cho trang quản lý + order.<domain> cho trang khách).
 // C-SEC-01 — so khớp phải CHÍNH XÁC protocol+host. Bản cũ dùng `origin.startsWith(allowed)`,

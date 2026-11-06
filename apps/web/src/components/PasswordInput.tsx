@@ -1,5 +1,6 @@
 // P01.D-19 — show/hide toggle + caps-lock warning + optional zxcvbn strength meter
 import { useState, KeyboardEvent } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
 
 type Props = {
   id: string;
@@ -51,25 +52,34 @@ export function PasswordInput({
   return (
     <div className="row password-row">
       <label htmlFor={id}>{label}</label>
-      <input
-        id={id}
-        type={show ? 'text' : 'password'}
-        autoComplete={autoComplete}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onKeyDown={onKey}
-        onBlur={onBlur}
-        aria-invalid={error ? 'true' : undefined}
-        aria-describedby={[error ? `${id}-err` : null, ariaDescribedBy].filter(Boolean).join(' ') || undefined}
-      />
-      <button
-        type="button"
-        className="toggle"
-        onClick={() => setShow((s) => !s)}
-        aria-label={show ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
-      >
-        {show ? '🙈' : '👁'}
-      </button>
+      {/* Bọc RIÊNG ô nhập + nút mắt: nút neo theo chiều cao Ô NHẬP chứ không theo cả hàng (trước
+          đây `top: 28px` tính từ đỉnh hàng → lệch lên khi nhãn đổi cỡ chữ). Icon SVG lucide thay
+          emoji 👁/🙈 — emoji mỗi hệ điều hành vẽ một kiểu, lại lệch đường cơ sở. */}
+      <div className="password-field">
+        <input
+          id={id}
+          type={show ? 'text' : 'password'}
+          autoComplete={autoComplete}
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onKeyDown={onKey}
+          onBlur={onBlur}
+          aria-invalid={error ? 'true' : undefined}
+          aria-describedby={[error ? `${id}-err` : null, ariaDescribedBy].filter(Boolean).join(' ') || undefined}
+        />
+        <button
+          type="button"
+          className="toggle"
+          onClick={() => setShow((s) => !s)}
+          aria-label={show ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+          aria-pressed={show}
+        >
+          {show ? <EyeOff size={22} aria-hidden="true" /> : <Eye size={22} aria-hidden="true" />}
+        </button>
+      </div>
       {error && (
         <div className="field-error" id={`${id}-err`}>
           {error}

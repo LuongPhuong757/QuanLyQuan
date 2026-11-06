@@ -210,7 +210,7 @@ export function Autocomplete({
                   minHeight: 44,
                   padding: '8px 12px',
                   cursor: 'pointer',
-                  background: i === cursor ? '#f0fdfa' : 'white',
+                  background: i === cursor ? '#fef6f3' : 'white',
                   color: '#1f2937',
                   fontSize: 14,
                   borderBottom: i < matches.length - 1 ? '1px solid #f3f4f6' : undefined,

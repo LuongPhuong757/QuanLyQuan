@@ -1,10 +1,16 @@
 // Lịch sử order — page xem mọi order (đã + chưa thanh toán), filter theo bàn/ngày/cashier/trạng thái.
-// Color-code: xanh lá = đã thanh toán, vàng = chưa thanh toán.
-// Expandable row: bấm vào row để mở chi tiết món + ai gọi.
+// Trạng thái = chấm màu + chữ, tô theo VIỆC CẦN LÀM (xem `history-page.css`).
+// Bấm cả dòng để mở chi tiết món + ai gọi.
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, Fragment } from 'react';
+import {
+  AlertTriangle, Camera, ChevronDown, ChevronUp, Landmark, MoreHorizontal, Printer,
+  SlidersHorizontal, X,
+} from 'lucide-react';
 import { api, extractError } from '../lib/api.ts';
 import { useToast } from '../components/Toast.tsx';
 import { CheckoutDialog } from '../components/CheckoutDialog.tsx';
+import { usePrompt } from '../components/ConfirmDialog.tsx';
+import { PageLayout } from '../components/PageLayout.tsx';
 import { useAuth } from '../lib/auth-context.tsx';
 import { ChartCard, BarChart, RankBars, Donut } from '../components/Charts.tsx';
 import { TimeRangeChips } from '../components/TimeRangeFilter.tsx';
@@ -12,7 +18,8 @@ import { catGioTrongHaiDau, nhanGio } from '../lib/gio-cao-diem.ts';
 import { DateRangePicker } from '../components/TimeRangeFilter.tsx';
 import { isPrevShiftCarryover, presetRange, vnDayIso, type DayRange } from '../lib/date-range.ts';
 import { anTien } from '../lib/an-tien.ts';
-import { PaymentMethodBadge, PaymentPhotos, PaymentSummaryBox } from './PaymentReconcilePanel.tsx';
+import { PaymentPhotos, PaymentSummaryBox } from './PaymentReconcilePanel.tsx';
+import './history-page.css';
 import {
   historyFilterKey,
   historyQuery,
@@ -101,6 +108,8 @@ type OrderItem = {
   qty: number;
   state: string;
   note: string | null;
+  /** Dòng GHI CHÚ gửi bếp ("lấy bát") — không tính tiền, không tính là một phần món. */
+  is_note?: boolean;
   cancelled_reason: string | null;
   created_by_full_name: string | null;
   served_by_full_name: string | null;
@@ -336,9 +345,15 @@ export function HistoryPage() {
    *  danh sách đơn đã đổi theo ngày mới trong khi biểu đồ vẫn là số của cả kỳ. */
   const listSeqRef = useRef(0);
   const statsSeqRef = useRef(0);
-  // Mặc định ẨN biểu đồ (chốt 2026-09-05): việc thường ngày ở màn này là soi danh sách đơn,
-  // biểu đồ đẩy nó xuống dưới màn hình. Ai cần thì bấm "Hiện biểu đồ thống kê".
-  const [showCharts, setShowCharts] = useState(false);
+  /** Ba góc nhìn của màn (2026-11-06, thay hai nút "Hiện biểu đồ" / khối đối soát nằm trên bảng).
+   *  Mặc định vẫn là DANH SÁCH (giữ quyết định 2026-09-05: việc thường ngày là soi đơn, biểu đồ
+   *  không được đẩy danh sách xuống). "Đối soát" chỉ admin — cùng lệ `canSeeReconcile`. */
+  const [view, setView] = useState<'list' | 'charts' | 'reconcile'>('list');
+  /** Tấm "Lọc" trượt từ đáy — chứa các bộ lọc ít dùng (bàn, thu ngân, hình thức thu…). Thời gian
+   *  và trạng thái luôn hiện ngoài, vì đó là hai câu hỏi mở màn này nhiều nhất. */
+  const [sheetOpen, setSheetOpen] = useState(false);
+  /** Top món xếp theo tiền hay theo số phần. */
+  const [topBy, setTopBy] = useState<'revenue' | 'qty'>('revenue');
   /** Hai biểu đồ cột vẽ theo TIỀN hay theo SỐ ĐƠN — một chip chung cho cả hai.
    *
    *  Chung chứ không mỗi biểu đồ một chip: hai câu hỏi "ngày nào thu nhiều nhất" và "giờ nào
@@ -514,11 +529,38 @@ export function HistoryPage() {
     setPage(1);
   };
 
+  /** Tiền món ĐÃ GIAO — số đi vào bill / thu nợ / chuyển nợ. Không đổi nghĩa. */
   const orderTotal = (o: HistoryOrder) => {
     return (o.items || [])
       .filter((i) => i.state === 'SERVED')
       .reduce((s, i) => s + i.menu_item_price * i.qty, 0);
   };
+
+  /** Lấy `needCheck` — số đơn CK "chưa khớp" trong bộ lọc hiện tại (trừ chính ô xác thực), để
+   *  chip "Cần kiểm tra (n)" nói trước có bao nhiêu đơn. Gọi lại đúng `/orders/history` với
+   *  `page_size=1` — chỉ cần `total`. */
+  const [needCheck, setNeedCheck] = useState<number | null>(null);
+  const needCheckKey = historyFilterKey({ ...filters, verified: '' });
+  useEffect(() => {
+    if (!canSeeMoney || !verifyOn) {
+      setNeedCheck(null);
+      return;
+    }
+    let alive = true;
+    const timer = window.setTimeout(() => {
+      api
+        .get<{ data: { items: HistoryOrder[]; total: number } }>(
+          `/orders/history?${historyQuery({ ...filters, verified: 'no' }, { page: { page: 1, page_size: 1 } })}`,
+        )
+        .then((res) => { if (alive) setNeedCheck(res.data.data.total); })
+        .catch(() => { if (alive) setNeedCheck(null); });
+    }, FILTER_DEBOUNCE_MS);
+    return () => {
+      alive = false;
+      window.clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [needCheckKey, canSeeMoney, verifyOn, reloadTick]);
 
   /** Đơn đang nợ được bấm "Thu nợ" — mở lại đúng hộp thoại thu tiền (2026-09-25, D-04). */
   const [settleTarget, setSettleTarget] = useState<HistoryOrder | null>(null);
@@ -539,16 +581,16 @@ export function HistoryPage() {
    * to màu xanh mà vẫn đề "Doanh thu đã thanh toán" là đọc sai hẳn báo cáo. */
   const tabView =
     misaFilter === 'copied'
-      ? { money: 'Doanh thu đã lên Misa', count: 'Đơn đã lên Misa', hint: 'Đơn đã thu tiền & đã gõ sang Misa', top: '🔥 Top món (đơn đã lên Misa)' }
+      ? { money: 'Doanh thu đã lên Misa', count: 'Đơn đã lên Misa', hint: 'Đơn đã thu tiền & đã gõ sang Misa', top: 'Top món (đơn đã lên Misa)' }
       : statusFilter === 'unpaid'
-        ? { money: 'Tiền đang chờ thu', count: 'Đơn chưa thanh toán', hint: 'Đơn đang mở · món chưa huỷ', top: '🔥 Top món đang chờ thu' }
+        ? { money: 'Tiền đang chờ thu', count: 'Đơn chưa thanh toán', hint: 'Đơn đang mở - món chưa huỷ', top: 'Top món đang chờ thu' }
         : statusFilter === 'cancelled'
-          ? { money: 'Giá trị đơn đã huỷ', count: 'Đơn bị huỷ', hint: 'Món bị huỷ ở các đơn kết bằng huỷ', top: '🔥 Top món bị huỷ' }
+          ? { money: 'Giá trị đơn đã huỷ', count: 'Đơn bị huỷ', hint: 'Món bị huỷ ở các đơn kết bằng huỷ', top: 'Top món bị huỷ' }
           : statusFilter === 'debt'
-            ? { money: 'Khách đang nợ', count: 'Đơn đang nợ', hint: 'Bàn đã trả, tiền chưa thu — CHƯA vào doanh thu', top: '🔥 Top món đang nợ' }
+            ? { money: 'Khách đang nợ', count: 'Đơn đang nợ', hint: 'Bàn đã trả, tiền chưa thu — CHƯA vào doanh thu', top: 'Top món đang nợ' }
           : statusFilter === 'paid'
-            ? { money: 'Doanh thu đã thanh toán', count: 'Đơn đã thanh toán', hint: 'Chỉ tính đơn đã thanh toán', top: '🔥 Top món bán chạy' }
-            : { money: 'Doanh thu đã thanh toán', count: 'Tổng đơn khớp lọc', hint: 'Chỉ tính đơn đã thanh toán', top: '🔥 Top món bán chạy' };
+            ? { money: 'Doanh thu đã thanh toán', count: 'Đơn đã thanh toán', hint: 'Chỉ tính đơn đã thanh toán', top: 'Top món bán chạy' }
+            : { money: 'Doanh thu đã thanh toán', count: 'Tổng đơn khớp lọc', hint: 'Chỉ tính đơn đã thanh toán', top: 'Top món bán chạy' };
 
   // Bếp xem được lịch sử nhưng không đối soát kế toán → chỉ thấy badge, không bấm được.
   // BE cũng chặn bằng RequireRoles('admin','order'); đây chỉ là lớp UX.
@@ -649,20 +691,23 @@ export function HistoryPage() {
   }, [rowMenu]);
   const rowMenuOrder = rowMenu ? orders.find((o) => o.id === rowMenu.id) ?? null : null;
 
-  /** Admin chuyển đơn ĐÃ THU sang nợ (thu ngân bấm nhầm). Hỏi tên khách bằng `prompt` — thao tác
-   *  hiếm, một hộp thoại riêng cho nó là thừa. */
+  /** Admin chuyển đơn ĐÃ THU sang nợ (thu ngân bấm nhầm). Hộp thoại của app (không phải
+   *  `window.prompt` của trình duyệt): nói rõ việc này RÚT tiền khỏi doanh thu, bắt gõ tên khách
+   *  rồi mới cho bấm — là bước xác nhận cho một thao tác đổi doanh thu (góp ý 2026-11-06). */
+  const prompt = usePrompt();
   const [markingDebt, setMarkingDebt] = useState<Set<string>>(new Set());
   const markAsDebt = async (o: HistoryOrder) => {
-    const note = window.prompt(
-      `Chuyển ${o.table_name} (${fmt(orderTotal(o) + (o.ship_fee || 0))}) sang GHI NỢ.\n` +
-        'Khoản này sẽ RÚT khỏi doanh thu và xoá phần chuyển khoản đã ghi.\n\nAi nợ? (tên khách)',
-      o.customer_name ?? '',
-    );
-    if (note === null) return;
-    if (!note.trim()) {
-      toast.push('error', 'Nhập tên khách nợ');
-      return;
-    }
+    const note = await prompt({
+      title: `Chuyển ${o.table_name} sang nợ`,
+      message:
+        `Đơn ${fmt(orderTotal(o) + (o.ship_fee || 0))} sẽ bị rút khỏi doanh thu, ` +
+        'phần chuyển khoản đã ghi cũng bị xoá - chỉ làm khi thu ngân bấm nhầm',
+      label: 'Ai nợ? (tên khách)',
+      defaultValue: o.customer_name ?? '',
+      confirmLabel: 'Chuyển sang nợ',
+      validate: (v) => (v.trim() ? null : 'Nhập tên khách nợ'),
+    });
+    if (note === null || !note.trim()) return;
     setMarkingDebt((s) => new Set(s).add(o.id));
     try {
       await api.patch(`/orders/${o.id}/debt`, { debt_note: note.trim() });
@@ -761,35 +806,42 @@ export function HistoryPage() {
     // người dùng cần nó nhất để quay về ca hiện tại.
     range.shift !== 'current';
 
-  return (
-    <div className="container txn-page with-bottom-nav">
-      {/* Cửa vào sổ webhook. Đặt ở ĐÂY chứ không thêm mục thứ 9 vào nav: nav đã 8 mục và dưới
-          380px nhãn đã phải tự ẩn, thêm nữa là bóp nhỏ tất cả. Người cần sổ webhook luôn đang
-          đứng ở màn này — họ vừa thấy một đơn "chưa xác thực" và muốn xem ngân hàng báo gì. */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-        <h1 style={{ margin: 0 }}>📊 Quản lý giao dịch</h1>
-        {canSeeReconcile && (
-          <a
-            href="/admin/bank-ledger"
-            className="secondary"
-            style={{
-              fontSize: 13,
-              fontWeight: 600,
-              padding: '6px 12px',
-              borderRadius: 8,
-              border: '1px solid #d1d5db',
-              textDecoration: 'none',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            🏦 Sổ webhook ngân hàng
-          </a>
-        )}
-      </div>
+  /** Số bộ lọc đang bật TRONG tấm "Lọc" — hiện trên nút để người dùng biết danh sách đang bị cắt
+   *  bởi thứ không nhìn thấy ngoài màn. Sắp xếp không tính: nó không bỏ bớt đơn nào. */
+  const sheetFilterCount = [
+    tableFilter,
+    cashierFilter,
+    canSeeMoney && paymentFilter,
+    canSeeMoney && verifyOn && verifiedFilter,
+    canSeeMoney && photoFilter,
+    canSeeMoney && qrAccountFilter,
+  ].filter(Boolean).length;
 
+  /** Bàn gom theo loại (bàn ngồi / mang về / ship) cho <optgroup>, giữ thứ tự BE trả. */
+  const tableGroups = Array.from(
+    tables.reduce((m, t) => m.set(t.kind, [...(m.get(t.kind) ?? []), t]), new Map<string, Table[]>()),
+  );
+
+  const showViewTabs = canSeeStats;
+  const listVisible = !showViewTabs || view === 'list';
+
+  return (
+    <PageLayout
+      className="history-page"
+      actions={
+        canSeeReconcile ? (
+          // Cửa vào sổ webhook — đưa lên hàng nút của trang (góp ý 2026-11-06) thay vì đứng cạnh
+          // một <h1> thứ hai trong màn. Người cần nó luôn đang đứng ở màn này: họ vừa thấy một đơn
+          // "chưa khớp" và muốn xem ngân hàng báo gì.
+          <a href="/admin/bank-ledger" className="hp-link-btn">
+            <Landmark size={20} aria-hidden />
+            Sổ webhook ngân hàng
+          </a>
+        ) : undefined
+      }
+    >
       {/* Thu nợ (2026-09-25): dùng lại NGUYÊN hộp thoại thu tiền — cùng ba hình thức, cùng mã QR,
-          cùng ảnh bill — chỉ khác endpoint. Đơn nợ đã chốt món từ hôm ghi nợ nên khối "soát bill"
-          là để đọc lại cho khách, không sửa được gì. */}
+          cùng ảnh bill — chỉ khác endpoint. */}
       {settleTarget && (
         <CheckoutDialog
           settleDebt
@@ -805,804 +857,434 @@ export function HistoryPage() {
         />
       )}
 
-      {/* Filters — TẤT CẢ trên một dòng (chốt 2026-09-05).
-          Trước đây xếp 3 tầng (pill / 2 select / 2 ô ngày) chiếm gần nửa màn hình trước khi
-          thấy đơn nào. `flexWrap` giữ cho mobile vẫn xuống dòng được thay vì tràn ngang. */}
-      <div
-        className="card txn-filters"
-        style={{
-          marginBottom: 16,
-          padding: 10,
-          display: 'flex',
-          flexWrap: 'wrap',
-          alignItems: 'center',
-          gap: 6,
-        }}
-      >
-        {/* Dãy tab trạng thái — MỘT DÒNG, kéo ngang khi không đủ chỗ (chỉ đạo chủ quán
-            2026-09-06). Trước để `flexWrap: wrap` nên trên điện thoại 5 viên thuốc gãy thành
-            2-3 hàng cao ~80px, và mỗi lần thêm một trạng thái là cao thêm một hàng nữa. Class
-            `tabstrip` (styles.css) giữ chúng trên một hàng và cho vuốt ngang — trên desktop
-            hàng vẫn vừa nên không có gì đổi.
-            `flex: 1 1 auto; minWidth: 0` là phần bắt buộc để `overflow-x` có tác dụng: thiếu
-            `minWidth: 0` thì flex item không co được xuống dưới bề rộng nội dung và cả dãy
-            tràn ra ngoài thẻ thay vì sinh thanh cuộn.
-            Đây là dãy tab LOẠI TRỪ lẫn nhau (kể cả Misa): chọn tab nào thì danh sách đơn đổi
-            theo đúng tab đó, không cộng dồn bộ lọc từ tab trước. */}
-        <div className="tabstrip" style={{ gap: 4, flex: '1 1 auto', minWidth: 0 }}>
-          <StatusPill active={!misaFilter && statusFilter === 'all'} onClick={() => selectTab('all')}>
-            Tất cả
-          </StatusPill>
-          {/* Order/Bếp có lại tab này từ 2026-10-22 — server chỉ trả đơn chính họ thu
-              (`paid_only_by_user_id`), nên với họ tab này là "đơn tôi đã thu". */}
-          <StatusPill
-            active={!misaFilter && statusFilter === 'paid'}
-            color="#059669"
-            bg="#d1fae5"
-            onClick={() => selectTab('paid')}
-          >
-            ✓ Đã thanh toán
-          </StatusPill>
-          <StatusPill
-            active={!misaFilter && statusFilter === 'unpaid'}
-            color="#b45309"
-            bg="#fef3c7"
-            onClick={() => selectTab('unpaid')}
-          >
-            ⏳ Chưa thanh toán
-          </StatusPill>
-          {/* Bàn kết thúc bằng huỷ (huỷ cả bàn hoặc huỷ hết từng món) — tab riêng
-              để chủ quán soi gian lận: gọi đồ rồi huỷ thay vì thu tiền. */}
-          <StatusPill
-            active={!misaFilter && statusFilter === 'cancelled'}
-            color="#b91c1c"
-            bg="#fee2e2"
-            onClick={() => selectTab('cancelled')}
-          >
-            🗑 Đã huỷ
-          </StatusPill>
-          {/* Đang nợ (2026-09-25): bàn đã trả mà chưa thu tiền — tab riêng để admin nhìn ra ngay
-              quán đang bị nợ những đơn nào; thu nợ cũng làm từ đây.
-              Order/Bếp không có tab này (chủ quán chốt 2026-10-20): chỉ admin thu nợ, và thu nợ
-              thì buộc phải nhìn số tiền. */}
-          {canSeeMoney && (
-            <StatusPill
-              active={!misaFilter && statusFilter === 'debt'}
-              color="#b45309"
-              bg="#ffedd5"
-              onClick={() => selectTab('debt')}
-            >
-              📒 Đang nợ
-            </StatusPill>
-          )}
+      {/* ── Bộ lọc (sắp lại 2026-11-06) ──────────────────────────────────────────────
+          Trước: ~19 điều khiển, 3 kiểu (chip / ô chọn / nút) trên 3–4 hàng → trên điện thoại đơn
+          đầu tiên nằm ở ~60% chiều cao màn. Nay chỉ còn HAI hàng luôn hiện:
+            1. Thời gian (lên đầu — câu hỏi đầu tiên khi mở màn: "xem buổi nào")
+            2. Trạng thái + "Cần kiểm tra (n)" + nút "Lọc (n)"
+          Mọi bộ lọc còn lại (bàn, thu ngân, hình thức thu, xác thực, ảnh bill, tài khoản nhận,
+          sắp xếp) vào tấm "Lọc" trượt từ đáy. Không bộ lọc nào bị bỏ. */}
+      <div className="hp-filters">
+        <DateRangePicker
+          label="Thời gian"
+          value={range}
+          shiftChip
+          onChange={(r) => { setRange(r); setPage(1); }}
+        />
 
-          {/* Tab Misa (2026-09-05) — các đơn đã đánh dấu "Misa". Từ 2026-10-15 chỉ tính đơn thu qua
-              mã QR HKD (server lọc). */}
-          {/* Đơn Misa luôn là đơn đã thu → Order/Bếp không có gì trong tab này (2026-10-20). */}
-          {canSeeMoney && (
-            <StatusPill
-              active={misaFilter === 'copied'}
-              color="#7c3aed"
-              bg="#ede9fe"
-              onClick={() => selectTab('misa')}
+        <div className="hp-filter-row">
+          {/* Dãy trạng thái LOẠI TRỪ lẫn nhau (kể cả Misa) — giữ luật `selectTab`. Một hàng vuốt
+              ngang trên điện thoại, mép phải mờ dần báo còn chip; ≥900px thì xuống dòng. */}
+          <div className="hp-scroll" role="group" aria-label="Lọc theo trạng thái đơn">
+            <FilterChip active={!misaFilter && statusFilter === 'all'} onClick={() => selectTab('all')}>
+              Tất cả
+            </FilterChip>
+            {/* Order/Bếp có lại tab này từ 2026-10-22 — server chỉ trả đơn chính họ thu. */}
+            <FilterChip active={!misaFilter && statusFilter === 'paid'} onClick={() => selectTab('paid')}>
+              Đã thanh toán
+            </FilterChip>
+            <FilterChip active={!misaFilter && statusFilter === 'unpaid'} onClick={() => selectTab('unpaid')}>
+              Chưa thanh toán
+            </FilterChip>
+            {/* Bàn kết thúc bằng huỷ — để chủ quán soi gọi đồ rồi huỷ thay vì thu tiền. */}
+            <FilterChip active={!misaFilter && statusFilter === 'cancelled'} onClick={() => selectTab('cancelled')}>
+              Đã huỷ
+            </FilterChip>
+            {/* Đang nợ: chỉ admin (chủ quán chốt 2026-10-20) — thu nợ phải nhìn số tiền. */}
+            {canSeeMoney && (
+              <FilterChip active={!misaFilter && statusFilter === 'debt'} onClick={() => selectTab('debt')}>
+                Đang nợ
+              </FilterChip>
+            )}
+            {/* Misa: chỉ đơn thu qua mã QR HKD (server lọc, 2026-10-15). */}
+            {canSeeMoney && (
+              <FilterChip active={misaFilter === 'copied'} onClick={() => selectTab('misa')}>
+                Đã lên Misa
+              </FilterChip>
+            )}
+          </div>
+
+          <div className="hp-filter-tools">
+            {/* "Cần kiểm tra (n)" (2026-11-06): lối tắt tới đơn chuyển khoản mà ngân hàng chưa
+                báo về — chính là ô lọc "Không thấy GD" trong tấm Lọc, đưa ra ngoài kèm số đếm để
+                đơn lệch không phải đi tìm. Chỉ hiện khi công tắc xác thực bật. */}
+            {canSeeMoney && verifyOn && (
+              <button
+                type="button"
+                className={`hp-chip hp-chip--warn${needCheck ? '' : ' hp-chip--zero'}`}
+                aria-pressed={verifiedFilter === 'no'}
+                onClick={() => { setVerifiedFilter(verifiedFilter === 'no' ? '' : 'no'); setPage(1); }}
+              >
+                <AlertTriangle size={18} aria-hidden />
+                Cần kiểm tra
+                <span className="hp-chip-count">{needCheck ?? '…'}</span>
+              </button>
+            )}
+            <button
+              type="button"
+              className="secondary hp-filter-btn"
+              aria-haspopup="dialog"
+              onClick={() => setSheetOpen(true)}
             >
-              📋 Misa
-            </StatusPill>
-          )}
+              <SlidersHorizontal size={20} aria-hidden />
+              Lọc{sheetFilterCount > 0 && <span className="hp-filter-btn-count">{sheetFilterCount}</span>}
+            </button>
+            {hasActiveFilter && (
+              <button type="button" className="secondary hp-filter-btn" onClick={onResetFilters}>
+                <X size={20} aria-hidden />
+                Xoá lọc
+              </button>
+            )}
+          </div>
         </div>
-
-        {/* Vạch ngăn: bên trái là TAB (đơn nào), bên phải là bộ lọc phạm vi (bàn/người/ngày). */}
-        <span className="txn-filter-sep" style={{ width: 1, alignSelf: 'stretch', background: '#e5e7eb', margin: '0 2px' }} />
-
-        <SearchableSelect
-          compact
-          width={150}
-          label="🍽"
-          placeholder="Tất cả bàn"
-          value={tableFilter}
-          options={tables.map((t) => ({
-            value: t.id,
-            label: t.name,
-            hint: t.code,
-            group: TABLE_KIND_LABEL[t.kind] || t.kind,
-          }))}
-          onChange={(v) => { setTableFilter(v); setPage(1); }}
-        />
-
-        <SearchableSelect
-          compact
-          width={160}
-          label="💵"
-          placeholder="Tất cả thu ngân"
-          value={cashierFilter}
-          options={cashiers.map((c) => ({ value: c.id, label: c.full_name }))}
-          onChange={(v) => { setCashierFilter(v); setPage(1); }}
-        />
-
-        {/* Bốn ô lọc dưới (hình thức thu, xác thực, ảnh bill, tài khoản nhận) chỉ có nghĩa với đơn
-            ĐÃ THU — Order/Bếp chỉ thấy đơn chính họ thu (2026-10-22), ít đơn không đáng thêm bốn ô,
-            và ô tài khoản nhận sẽ lộ tên mã QR bị ẩn với họ → vẫn ẩn cả cụm. */}
-        {canSeeMoney && (
-        <>
-        {/* Hình thức thu tiền (2026-09-14). Ba giá trị khớp đúng ba badge trong bảng — lọc và
-            badge phải nói cùng một thứ tiếng. */}
-        <select
-          className="txn-fsel"
-          aria-label="Lọc theo hình thức thu tiền"
-          title="Hình thức thu tiền"
-          value={paymentFilter}
-          onChange={(e) => { setPaymentFilter(e.target.value as HistoryPayment); setPage(1); }}
-          style={{ width: 168, minHeight: 34, height: 34, paddingTop: 0, paddingBottom: 0, paddingLeft: 10, fontSize: 13, flexShrink: 0 }}
-        >
-          <option value="">Mọi hình thức</option>
-          <option value="cash">💵 Tiền mặt</option>
-          <option value="transfer">🏦 Chuyển khoản</option>
-          <option value="mixed">💵+🏦 Cả hai</option>
-        </select>
-
-        {/* Ngân hàng đã xác nhận chưa (2026-09-23). Đứng ngay sau ô hình thức vì hai câu hỏi đi
-            liền nhau: "đơn nào chuyển khoản" rồi "cái nào ngân hàng đã báo về".
-            Hai giá trị đều chỉ xét đơn chuyển khoản — nói thẳng trong nhãn để không ai tưởng
-            "Chưa xác thực" gồm cả đơn tiền mặt.
-            ẨN khi công tắc tắt (2026-09-25): không ai đứng đợi xác thực ở quầy nữa thì lọc theo
-            nó chỉ tổ bày ra một câu hỏi không còn nghĩa. */}
-        {verifyOn && (
-        <select
-          className="txn-fsel"
-          aria-label="Lọc theo xác thực ngân hàng"
-          title="Ngân hàng đã xác nhận chưa (chỉ đơn chuyển khoản)"
-          value={verifiedFilter}
-          onChange={(e) => { setVerifiedFilter(e.target.value as HistoryVerified); setPage(1); }}
-          style={{ width: 186, minHeight: 34, height: 34, paddingTop: 0, paddingBottom: 0, paddingLeft: 10, fontSize: 13, flexShrink: 0 }}
-        >
-          <option value="">Mọi xác thực</option>
-          <option value="yes">✓ Đã xác thực (CK)</option>
-          <option value="no">✗ Không thấy GD (CK)</option>
-        </select>
-        )}
-
-        {/* Ảnh bill (2026-10-02). KHÔNG ẩn theo công tắc xác thực như ô trên: ảnh bill là việc
-            của quán (người thu có chụp hay không), còn xác thực là việc của ngân hàng — tắt
-            cái sau không làm cái trước mất nghĩa.
-            "Thiếu ảnh" gồm cả đơn đã gõ lý do "không chụp được": có lý do không làm tấm ảnh
-            xuất hiện, người đối soát vẫn phải xử lý đúng những đơn đó. */}
-        <select
-          className="txn-fsel"
-          aria-label="Lọc theo ảnh bill chuyển khoản"
-          title="Đơn chuyển khoản có ảnh bill hay không"
-          value={photoFilter}
-          onChange={(e) => { setPhotoFilter(e.target.value as HistoryPhoto); setPage(1); }}
-          style={{ width: 186, minHeight: 34, height: 34, paddingTop: 0, paddingBottom: 0, paddingLeft: 10, fontSize: 13, flexShrink: 0 }}
-        >
-          <option value="">Mọi ảnh bill</option>
-          <option value="has">📷 Có ảnh bill (CK)</option>
-          <option value="missing">⚠ Thiếu ảnh bill (CK)</option>
-        </select>
-
-        {/* Tài khoản nhận tiền (2026-09-15). Đứng NGAY SAU ô hình thức vì hai câu hỏi đi liền
-            nhau lúc đối soát: "đơn nào chuyển khoản" rồi "về tài khoản nào".
-            Ẩn hẳn khi danh sách rỗng — chưa cấu hình mã QR nào, hoặc người đang xem không được
-            phép thấy tài khoản của nhà chủ (BE trả 403). Bày một ô chọn không có gì để chọn chỉ
-            tổ làm người ta bấm thử rồi thắc mắc. */}
-        {qrAccounts.length > 0 && (
-          <select
-            className="txn-fsel"
-            aria-label="Lọc theo tài khoản nhận tiền"
-            title="Tài khoản nhận tiền chuyển khoản"
-            value={qrAccountFilter}
-            onChange={(e) => { setQrAccountFilter(e.target.value); setPage(1); }}
-            style={{ width: 180, minHeight: 34, height: 34, paddingTop: 0, paddingBottom: 0, paddingLeft: 10, fontSize: 13, flexShrink: 0 }}
-          >
-            <option value="">Mọi tài khoản nhận</option>
-            {qrAccounts.map((a) => (
-              <option key={a.id} value={a.id}>
-                🏦 {a.label}{a.is_active ? '' : ' (ngừng dùng)'}
-              </option>
-            ))}
-          </select>
-        )}
-        </>
-        )}
-
-        {/* Trục sắp xếp. Phải là Ô CHỌN chứ không chỉ là tiêu đề cột bấm được: dưới 640px
-            `table.responsive` ẩn hẳn `thead`, nên trên điện thoại sẽ không còn chỗ nào để bấm.
-            Đứng cạnh bộ lọc phạm vi vì nó cùng nói về "danh sách bên dưới trông thế nào". */}
-        <select
-          className="txn-fsel"
-          aria-label="Sắp xếp danh sách đơn"
-          title="Trục sắp xếp — luôn mới nhất trước"
-          value={sortBy}
-          onChange={(e) => changeSort(e.target.value as HistorySort)}
-          style={{ width: 186, minHeight: 34, height: 34, paddingTop: 0, paddingBottom: 0, paddingLeft: 10, fontSize: 13, flexShrink: 0 }}
-        >
-          <option value="opened">↓ Giờ vào ăn</option>
-          <option value="paid">↓ Giờ thanh toán</option>
-        </select>
-
-        {hasActiveFilter && (
-          <button
-            className="secondary"
-            onClick={onResetFilters}
-            title="Xoá toàn bộ bộ lọc"
-            style={{ padding: '0 10px', minHeight: 34, fontSize: 13, marginLeft: 'auto' }}
-          >
-            ✕ Xoá lọc
-          </button>
-        )}
       </div>
 
-      {/* Khoảng ngày đứng thành HÀNG RIÊNG, không nhồi vào thanh lọc dính phía trên — cùng
-          quyết định đã áp cho màn Đơn online: đây là trục lọc khác hẳn (bao nhiêu lâu) so với
-          bàn/thu ngân (của ai), và thanh trên đã chật tới mức phải gãy 3 dòng trên điện thoại.
-          Đổi sang `DateRangePicker` nên việc hay làm nhất — xem buổi bán đang chạy — còn MỘT
-          cú chạm thay vì mở lịch hai lần, và từ 2026-09-11 thì KHÔNG tốn cú chạm nào: chip
-          "Ca này" là mặc định. Nhãn để ngắn ("Thời gian") vì nhãn nằm ngoài vùng cuộn, dài
-          thêm một chữ là ăn mất một chip trên điện thoại. */}
-      <DateRangePicker
-        label="🕒 Thời gian"
-        value={range}
-        shiftChip
-        onChange={(r) => { setRange(r); setPage(1); }}
-      />
+      {sheetOpen && (
+        <div className="nav-sheet-overlay" onClick={() => setSheetOpen(false)}>
+          <div
+            className="nav-sheet hp-sheet"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Bộ lọc"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="nav-sheet-head">
+              <strong>Bộ lọc</strong>
+              <button
+                type="button"
+                className="secondary nav-sheet-close"
+                aria-label="Đóng"
+                onClick={() => setSheetOpen(false)}
+              >
+                <X size={22} aria-hidden />
+              </button>
+            </div>
+
+            <div className="hp-sheet-body">
+              {/* Ô chọn GỐC của máy (2026-11-06) thay cho dropdown tự vẽ: cao 48px, chữ 16px, trên
+                  điện thoại mở bộ chọn của hệ điều hành — dropdown cũ chữ 11–14px và bị khung cuộn
+                  của tấm Lọc cắt mất. Bàn nhóm theo loại bằng <optgroup>. */}
+              <label className="hp-field">
+                <span className="hp-field-label">Bàn</span>
+                <select value={tableFilter} onChange={(e) => { setTableFilter(e.target.value); setPage(1); }}>
+                  <option value="">Tất cả bàn</option>
+                  {tableGroups.map(([kind, ts]) => (
+                    <optgroup key={kind} label={TABLE_KIND_LABEL[kind] || kind}>
+                      {ts.map((t) => (
+                        <option key={t.id} value={t.id}>{t.name}</option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+              </label>
+
+              <label className="hp-field">
+                <span className="hp-field-label">Thu ngân</span>
+                <select value={cashierFilter} onChange={(e) => { setCashierFilter(e.target.value); setPage(1); }}>
+                  <option value="">Tất cả thu ngân</option>
+                  {cashiers.map((c) => (
+                    <option key={c.id} value={c.id}>{c.full_name}</option>
+                  ))}
+                </select>
+              </label>
+
+              {/* Bốn ô dưới chỉ có nghĩa với đơn ĐÃ THU và có thể lộ tên tài khoản nhận → chỉ người
+                  được xem tiền (giữ luật 2026-10-22). */}
+              {canSeeMoney && (
+                <>
+                  <label className="hp-field">
+                    <span className="hp-field-label">Hình thức thu tiền</span>
+                    <select
+                      value={paymentFilter}
+                      onChange={(e) => { setPaymentFilter(e.target.value as HistoryPayment); setPage(1); }}
+                    >
+                      <option value="">Mọi hình thức</option>
+                      <option value="cash">Tiền mặt</option>
+                      <option value="transfer">Chuyển khoản</option>
+                      <option value="mixed">Cả hai (tiền mặt + chuyển khoản)</option>
+                    </select>
+                  </label>
+
+                  {/* Ẩn khi công tắc xác thực tắt (2026-09-25). */}
+                  {verifyOn && (
+                    <label className="hp-field">
+                      <span className="hp-field-label">Ngân hàng xác nhận (chỉ đơn chuyển khoản)</span>
+                      <select
+                        value={verifiedFilter}
+                        onChange={(e) => { setVerifiedFilter(e.target.value as HistoryVerified); setPage(1); }}
+                      >
+                        <option value="">Tất cả</option>
+                        <option value="yes">Đã khớp với ngân hàng</option>
+                        <option value="no">Chưa khớp - chưa thấy giao dịch</option>
+                      </select>
+                    </label>
+                  )}
+
+                  {/* "Thiếu ảnh" gồm cả đơn đã gõ lý do "không chụp được" (2026-10-02). */}
+                  <label className="hp-field">
+                    <span className="hp-field-label">Ảnh bill (chỉ đơn chuyển khoản)</span>
+                    <select
+                      value={photoFilter}
+                      onChange={(e) => { setPhotoFilter(e.target.value as HistoryPhoto); setPage(1); }}
+                    >
+                      <option value="">Tất cả</option>
+                      <option value="has">Có ảnh bill</option>
+                      <option value="missing">Thiếu ảnh bill</option>
+                    </select>
+                  </label>
+
+                  {/* Ẩn khi danh sách rỗng (chưa có mã QR, hoặc BE trả 403). */}
+                  {qrAccounts.length > 0 && (
+                    <label className="hp-field">
+                      <span className="hp-field-label">Tài khoản nhận tiền</span>
+                      <select
+                        value={qrAccountFilter}
+                        onChange={(e) => { setQrAccountFilter(e.target.value); setPage(1); }}
+                      >
+                        <option value="">Mọi tài khoản</option>
+                        {qrAccounts.map((a) => (
+                          <option key={a.id} value={a.id}>
+                            {a.label}{a.is_active ? '' : ' (ngừng dùng)'}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
+                </>
+              )}
+
+              {/* Sắp xếp — ô chọn vì trên điện thoại không có tiêu đề cột để bấm. */}
+              <label className="hp-field">
+                <span className="hp-field-label">Sắp xếp (mới nhất trước)</span>
+                <select value={sortBy} onChange={(e) => changeSort(e.target.value as HistorySort)}>
+                  <option value="opened">Theo giờ vào ăn</option>
+                  <option value="paid">Theo giờ thanh toán</option>
+                </select>
+              </label>
+            </div>
+
+            <div className="hp-sheet-foot">
+              {sheetFilterCount > 0 && (
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => {
+                    setTableFilter('');
+                    setCashierFilter('');
+                    setPaymentFilter('');
+                    setVerifiedFilter('');
+                    setPhotoFilter('');
+                    setQrAccountFilter('');
+                    setPage(1);
+                  }}
+                >
+                  Bỏ các lọc này
+                </button>
+              )}
+              <button type="button" onClick={() => setSheetOpen(false)}>
+                Xem kết quả
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Nhân viên order: nói rõ phạm vi được xem để không tưởng là mất dữ liệu. */}
       {!canSeeStats && (
-        <div
-          style={{
-            background: '#eff6ff',
-            border: '1px solid #bfdbfe',
-            borderRadius: 8,
-            padding: 12,
-            marginBottom: 16,
-            fontSize: 13,
-            color: '#1e40af',
-          }}
-        >
-          📜 Bạn xem được nhật ký các bàn <strong>chưa thanh toán</strong> trong <strong>48 giờ
-          gần nhất</strong>: món gì, mấy phần, ai gọi, ai huỷ. Đơn đã thanh toán và số tiền chỉ
-          dành cho admin và quyền Báo cáo.
+        <div className="hp-note">
+          Bạn xem được nhật ký các bàn chưa thanh toán trong 48 giờ gần nhất (món gì, mấy phần, ai
+          gọi, ai huỷ) và các đơn chính bạn đã thu - doanh thu chỉ dành cho admin và quyền Báo cáo
         </div>
       )}
 
-      {/* Tổng quan — ĐÚNG 2 ô: tiền và số đơn của bộ lọc/tab đang chọn (chốt 2026-09-05).
-          Trước đây dãy này có 6 ô, trong đó 2 ô đếm đơn nói 2 con số khác nhau ("Đơn chưa thanh
-          toán 0" cạnh "Tổng đơn khớp lọc 30") — người xem không biết tin ô nào.
-          Ẩn hoàn toàn với nhân viên order: cả doanh thu lẫn số đơn tổng. */}
+      {/* Tổng quan — 2 ô (giữ quyết định 2026-09-05: không quay lại 6 ô nói hai con số khác nhau).
+          Màu TRUNG TÍNH (2026-11-06): nền hồng chữ đỏ trông như cảnh báo. */}
       {canSeeStats && (
-      <div
-        style={{
-          display: 'grid',
-          gap: 10,
-          gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-          marginBottom: 16,
-        }}
-      >
-        <StatTile
-          label={tabView.money}
-          value={statsLoading ? '…' : stats ? fmt(stats.paid_revenue) : '—'}
-          color={statusFilter === 'cancelled' && !misaFilter ? '#b91c1c' : '#0f766e'}
-          bg={statusFilter === 'cancelled' && !misaFilter ? '#fef2f2' : '#f0fdfa'}
-          border={statusFilter === 'cancelled' && !misaFilter ? '#fecaca' : '#ccfbf1'}
-        />
-        {/* Số đơn: cộng 3 count lại. Có tab đang chọn thì BE chỉ trả count của tab đó (2 count
-            còn lại = 0), nên tổng này luôn = số đơn thật của tab — khớp với danh sách bên dưới. */}
-        <StatTile
-          label={tabView.count}
-          value={
-            statsLoading
-              ? '…'
-              : stats
-                ? String(stats.paid_count + stats.unpaid_count + stats.cancelled_count + (stats.debt_count ?? 0))
-                : '—'
-          }
-          color="#334155"
-          bg="#f8fafc"
-          border="#e2e8f0"
-        />
-      </div>
-      )}
-
-      {/* Biểu đồ thống kê — doanh thu theo ngày/giờ/thu ngân, chỉ admin. */}
-      {canSeeStats && (
-      <div style={{ marginBottom: 16 }}>
-        <button
-          className="secondary"
-          onClick={() => setShowCharts((v) => !v)}
-          style={{ marginBottom: 10, padding: '6px 12px', fontSize: 13 }}
-        >
-          {showCharts ? '▲ Ẩn biểu đồ' : '▼ Hiện biểu đồ thống kê'}
-        </button>
-        {/* Chip đổi chỉ số — chỉ có nghĩa khi biểu đồ đang mở, nên ẩn cùng với chúng. */}
-        {showCharts && (
-          <TimeRangeChips
-            ariaLabel="Chọn chỉ số cho biểu đồ cột"
-            label="📊 Biểu đồ cột theo"
-            value={chiSo}
-            options={[
-              { value: 'revenue' as const, label: '💰 Doanh thu' },
-              { value: 'orders' as const, label: '🧾 Số đơn' },
-            ]}
-            onChange={setChiSo}
-            style={{ marginBottom: 10 }}
+        <div className="hp-stats">
+          <StatTile
+            label={tabView.money}
+            value={statsLoading ? '…' : stats ? fmt(stats.paid_revenue) : '—'}
           />
-        )}
-        {showCharts && stats && (
-          <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>
-            {/* Hai biểu đồ cột chiếm TRỌN bề ngang (`1 / -1`), không chia ô với ba khối kia:
-                ở lưới `minmax(300px, 1fr)` trên desktop 1360px mỗi ô chỉ ~330px, mà biểu đồ giờ
-                có tới 24 cột. Ba khối còn lại (top món, thu ngân, donut) là danh sách xếp hạng
-                — chúng đọc tốt ở bề ngang hẹp, nên vẫn để chúng chia ô như cũ. */}
-            <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <ChartCard title={`${chiSoView.icon} ${chiSoView.ten} theo ngày`} hint={tabView.hint}>
-                <BarChart
-                  ariaLabel={`${chiSoView.ten} theo ngày`}
-                  height={200}
-                  tiLeCot={0.58}
-                  rongCotToiDa={28}
-                  data={stats.revenue_by_day.map((d) => ({
-                    label: vnDayLabel(d.day).slice(0, 5),
-                    value: chiSo === 'revenue' ? d.revenue : d.orders,
-                    tip: [
-                      { id: 'rev', name: 'Doanh thu', color: '#0f766e', value: d.revenue },
-                      { id: 'ord', name: 'Số đơn', color: '#64748b', value: d.orders },
-                    ],
-                  }))}
-                  formatValue={chiSoView.format}
-                />
-              </ChartCard>
-
-              {/* Giờ cao điểm — cắt giờ rỗng ở hai đầu để cột dày lên; giờ trống ở GIỮA thì
-                  giữ, vì cái hõm nghỉ trưa là thông tin thật. Xem `lib/gio-cao-diem.ts`. */}
-              <ChartCard
-                title={`🕐 Giờ cao điểm — ${chiSoView.ten.toLowerCase()}`}
-                hint="Theo giờ thanh toán · mốc 30 phút · đã bỏ khung giờ đầu/cuối không có đơn nào"
-              >
-                <BarChart
-                  ariaLabel={`${chiSoView.ten} theo mốc 30 phút trong ngày`}
-                  height={200}
-                  tiLeCot={0.58}
-                  rongCotToiDa={28}
-                  color="#3b82f6"
-                  data={catGioTrongHaiDau(stats.by_half_hour).map((h) => ({
-                    label: nhanGio(h.start_min),
-                    value: chiSo === 'revenue' ? h.revenue : h.orders,
-                    tip: [
-                      { id: 'rev', name: 'Doanh thu', color: '#0f766e', value: h.revenue },
-                      { id: 'ord', name: 'Số đơn', color: '#64748b', value: h.orders },
-                    ],
-                  }))}
-                  formatValue={chiSoView.format}
-                />
-              </ChartCard>
-            </div>
-            <ChartCard title={tabView.top} hint={tabView.hint}>
-              <RankBars
-                data={stats.top_items.map((t) => ({ label: t.name, value: t.revenue, sub: `${t.qty} phần` }))}
-                formatValue={fmtShort}
-                color="#d97706"
-              />
-            </ChartCard>
-            <ChartCard title="💵 Doanh thu theo thu ngân">
-              <RankBars
-                data={stats.revenue_by_cashier.map((c) => ({ label: c.name, value: c.revenue, sub: `${c.orders} đơn` }))}
-                formatValue={fmtShort}
-              />
-            </ChartCard>
-            {/* Tiêu hao nguyên liệu (2026-09-05) — theo ĐÚNG bộ lọc ngày/bàn đang chọn ở trên,
-                nên "tháng này" hay "bàn này" chỉ là đổi bộ lọc, không cần màn riêng.
-
-                BẢNG chứ không phải biểu đồ thanh: các dòng có ĐƠN VỊ KHÁC NHAU (45.000 g cạnh
-                12 quả), vẽ chung một thang thì thanh dài ngắn không nói lên điều gì thật. */}
-            <ChartCard title="🥬 Tiêu hao nguyên liệu" hint="Chốt khi bếp bắt đầu nấu · món huỷ trước khi nấu không tính">
-              {consumption.length === 0 ? (
-                <div style={{ color: '#9ca3af', fontSize: 13, padding: '8px 0' }}>
-                  Chưa có số liệu — món phải được khai công thức thì mới tính được tiêu hao.
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {consumption.map((c) => (
-                    <div
-                      key={`${c.ingredient_name}¦${c.unit}`}
-                      style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 13, borderBottom: '1px solid #f3f4f6', paddingBottom: 4 }}
-                    >
-                      <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {c.ingredient_name}
-                        <span style={{ color: '#9ca3af' }}> · {c.portions} phần</span>
-                      </span>
-                      <strong style={{ whiteSpace: 'nowrap', color: '#0f766e' }}>
-                        {fmtIngredientQty(c.qty_total, c.unit)}
-                      </strong>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </ChartCard>
-            {/* Phân rã theo trạng thái — chỉ có nghĩa ở tab "Tất cả". Vào tab cụ thể, số liệu đã
-                cắt theo tab nên vòng tròn chỉ còn một lát 100% → ẩn hẳn thay vì vẽ ra. */}
-            {!tabActive && (
-            <ChartCard title="📈 Tỉ lệ thanh toán">
-              <Donut
-                segments={[
-                  { label: 'Đã thanh toán', value: stats.paid_count, color: '#10b981' },
-                  { label: 'Chưa thanh toán', value: stats.unpaid_count, color: '#f59e0b' },
-                  { label: 'Đã huỷ', value: stats.cancelled_count, color: '#dc2626' },
-                  { label: 'Đang nợ', value: stats.debt_count ?? 0, color: '#ea580c' },
-                ]}
-              />
-            </ChartCard>
-            )}
-          </div>
-        )}
-        {showCharts && statsLoading && (
-          <div style={{ color: '#9ca3af', fontSize: 13 }}>Đang tải số liệu...</div>
-        )}
-        {/* Phân biệt rõ "đang tải" với "tải không được": trước đây cả hai đều ra dòng "Đang tải
-            số liệu..." nên lỗi mạng/403 trông như đang chờ mãi không xong. */}
-        {showCharts && !statsLoading && !stats && (
-          <div style={{ color: '#9ca3af', fontSize: 13 }}>
-            Không tải được số liệu thống kê — thử đổi lại bộ lọc hoặc tải lại trang.
-          </div>
-        )}
-      </div>
-      )}
-
-      {loading && <p style={{ color: '#6b7280' }}>Đang tải...</p>}
-
-      {!loading && orders.length === 0 && (
-        <div className="empty-state card">Chưa có order nào khớp filter.</div>
-      )}
-
-      {!loading && orders.length > 0 && (
-        <>
-          {/* Đối soát tiền — đặt TRÊN bảng đơn: cuối ca người ta mở màn này để lấy hai con số
-              mang đi đếm két, không phải để đọc từng đơn. Khối tự ẩn khi khoảng đang xem không
-              có đồng chuyển khoản nào. */}
-          {/* CHỈ admin (chủ quán chốt 2026-09-14): đây là doanh thu toàn quán trong ca, không
-              phải phần của riêng người đang xem. BE đã chặn bằng AdminGuard — ẩn ở đây là để
-              nhân viên không thấy một khối luôn báo lỗi. */}
-          {canSeeReconcile && (
-            <PaymentSummaryBox
-              query={historyQuery(filters, { cashier: true }).toString()}
-              filterKey={filterKey}
-            />
+          {/* Có tab đang chọn thì BE chỉ trả count của tab đó → tổng luôn = số đơn của tab. */}
+          <StatTile
+            label={tabView.count}
+            value={
+              statsLoading
+                ? '…'
+                : stats
+                  ? String(stats.paid_count + stats.unpaid_count + stats.cancelled_count + (stats.debt_count ?? 0))
+                  : '—'
+            }
+          />
+          {/* Phí ship là tiền THU HỘ (M2.D-62) — ô riêng, không cộng vào doanh thu. */}
+          {stats && stats.ship_fee_total > 0 && (
+            <StatTile label="Phí ship thu hộ" value={fmt(stats.ship_fee_total)} />
           )}
+        </div>
+      )}
 
+      {showViewTabs && (
+        <div className="hp-views" role="tablist" aria-label="Chọn cách xem">
+          <button type="button" role="tab" aria-selected={view === 'list'} onClick={() => setView('list')}>
+            Danh sách
+          </button>
+          <button type="button" role="tab" aria-selected={view === 'charts'} onClick={() => setView('charts')}>
+            Biểu đồ
+          </button>
+          {canSeeReconcile && (
+            <button type="button" role="tab" aria-selected={view === 'reconcile'} onClick={() => setView('reconcile')}>
+              Đối soát
+            </button>
+          )}
+        </div>
+      )}
 
-          {/* `tableLayout: fixed` — bắt buộc để `colgroup` bên dưới được tôn trọng THẬT và để
-              `text-overflow: ellipsis` chạy: ở chế độ auto, một tên khách dài chỉ làm cột phình
-              ra hoặc gãy xuống dòng, cắt "…" không bao giờ xảy ra.
-              Mobile không bị ảnh hưởng: `table.responsive` cho td thành block ở <640px. */}
-          {/* `no-verify` khi công tắc tắt: bảng còn 8 cột thay vì 9, và lưới điện thoại trong
-              styles.css bám CỨNG vào `nth-child` nên phải biết mình đang ở dạng nào. Không có
-              class này thì ô "Thao tác" tụt vào chỗ của ô "Xác thực" và nút bấm rơi khỏi lưới. */}
-          <table
-            className={`responsive card txn-table${verifyOn ? '' : ' no-verify'}`}
-            style={{ padding: 0, tableLayout: 'fixed' }}
-          >
-            {/* Bề rộng cột CỐ ĐỊNH cho các cột nội dung ngắn (giờ, tiền, trạng thái) — không
-                khai thì bảng chia đều 100% bề ngang và cột nào cũng thừa chỗ, trong khi cột
-                "Trạng thái" lại hẹp đến mức mũi ▼ bị đẩy xuống dòng thứ hai.
-                KHÔNG cột nào để `auto` (sửa 2026-09-23). Trước đây cột "Bàn" để auto nên nó
-                hứng TOÀN BỘ phần dư: trên màn 1600px nó rộng gần 500px toàn khoảng trắng, trong
-                khi "Tổng" và "Trạng thái" chật tới mức chữ gãy xuống hai dòng. Khai bề rộng cho
-                mọi cột thì trình duyệt chia phần dư THEO TỶ LỆ, không cột nào nuốt hết.
-                Trên mobile thead ẩn và td thành block nên colgroup không ảnh hưởng gì. */}
+      {/* ── Tab Đối soát ── (CHỈ admin, chủ quán chốt 2026-09-14; BE có AdminGuard) */}
+      {showViewTabs && view === 'reconcile' && canSeeReconcile && (
+        <PaymentSummaryBox query={historyQuery(filters, { cashier: true }).toString()} filterKey={filterKey} />
+      )}
+
+      {/* ── Tab Biểu đồ ── */}
+      {showViewTabs && view === 'charts' && (
+        <ChartsView
+          stats={stats}
+          statsLoading={statsLoading}
+          consumption={consumption}
+          range={range}
+          chiSo={chiSo}
+          setChiSo={setChiSo}
+          chiSoView={chiSoView}
+          tabView={tabView}
+          tabActive={tabActive}
+          topBy={topBy}
+          setTopBy={setTopBy}
+        />
+      )}
+
+      {/* ── Tab Danh sách ── */}
+      {listVisible && loading && <p className="hp-muted">Đang tải danh sách đơn...</p>}
+
+      {listVisible && !loading && orders.length === 0 && (
+        <div className="empty-state card hp-empty">
+          <div>Không có đơn nào khớp bộ lọc - thử chọn khoảng thời gian rộng hơn</div>
+          {hasActiveFilter && (
+            <button type="button" className="secondary" onClick={onResetFilters}>
+              Xoá lọc
+            </button>
+          )}
+        </div>
+      )}
+
+      {listVisible && !loading && orders.length > 0 && (
+        <>
+          <p className="hp-hint">Bấm vào một đơn để xem món, người gọi và tiền đã nhận</p>
+          {/* Bảng 9 cột CỐ ĐỊNH (2026-11-06) — không còn biến thể 8/9 cột theo công tắc xác thực.
+              Từ 1280px trở lên là bảng; dưới 1280px (điện thoại + iPad) mỗi đơn thành một thẻ —
+              bảng 9 cột không vừa iPad 820–1190px và cột thao tác bị cắt. Lưới thẻ bám vào
+              `nth-child` trong history-page.css: thêm/bớt cột là phải sửa ở đó. */}
+          <table className="responsive card txn-table">
             <colgroup>
-              <col style={{ width: 80 }} />
-              <col style={{ width: 150 }} />
-              <col style={{ width: 160 }} />
-              <col style={{ width: 80 }} />
-              <col style={{ width: 70 }} />
+              <col style={{ width: 76 }} />
+              <col style={{ width: 180 }} />
+              <col style={{ width: 104 }} />
               <col style={{ width: 120 }} />
-              <col style={{ width: 190 }} />
-              {/* 170 chứ không 120: ô này mang CẢ dấu ✓/✗ lẫn cờ ảnh bill từ 2026-10-02. */}
-              {verifyOn && <col style={{ width: 170 }} />}
-              <col style={{ width: 160 }} />
+              <col style={{ width: 170 }} />
+              <col style={{ width: 210 }} />
+              <col style={{ width: 150 }} />
+              <col style={{ width: 120 }} />
+              <col style={{ width: 112 }} />
             </colgroup>
-            {/* `nowrap` cho MỌI ô tiêu đề: cột hẹp làm "Giờ vào" / "Thu ngân" gãy làm 2 dòng,
-                đẩy cả hàng tiêu đề cao gấp đôi trong khi chữ thì ngắn. */}
-            <thead style={{ whiteSpace: 'nowrap' }}>
+            <thead>
               <tr>
-                {/* Hai cột thời gian bấm được để đổi trục sắp xếp — lối tắt của ô chọn trên
-                    thanh lọc, và là chỗ DUY NHẤT nói ra danh sách đang xếp theo cột nào.
-                    Không có chiều tăng dần: bấm lại cột đang chọn thì không đổi gì (xem
-                    `sort` ở BE — màn tra cứu chỉ cần mới nhất trước). */}
-                <th
-                  onClick={() => changeSort('opened')}
-                  title="Sắp xếp theo giờ vào ăn, mới nhất trước"
-                  style={{ cursor: 'pointer', color: sortBy === 'opened' ? '#0f766e' : undefined }}
-                >
-                  Giờ vào{sortBy === 'opened' && ' ↓'}
+                {/* Hai cột thời gian bấm được để đổi trục sắp xếp (lối tắt của ô trong tấm Lọc). */}
+                <th aria-sort={sortBy === 'opened' ? 'descending' : undefined}>
+                  <button type="button" className="hp-th-btn" onClick={() => changeSort('opened')}>
+                    Giờ vào{sortBy === 'opened' && ' ↓'}
+                  </button>
                 </th>
                 <th>Bàn</th>
-                <th>Thu ngân</th>
-                <th
-                  onClick={() => changeSort('paid')}
-                  title="Sắp xếp theo giờ thanh toán, mới nhất trước — đơn chưa thanh toán xuống cuối"
-                  style={{ cursor: 'pointer', color: sortBy === 'paid' ? '#0f766e' : undefined }}
-                >
-                  Giờ TT{sortBy === 'paid' && ' ↓'}
-                </th>
                 <th>Món</th>
-                {/* Ô tiêu đề GIỮ LẠI (để trống) với Order/Bếp chứ không bỏ cột: lưới thẻ điện thoại
-                    trong styles.css bám `nth-child` theo thứ tự cột, bớt một cột là lệch hết. */}
-                <th style={{ textAlign: 'right' }}>Tổng</th>
-                {/* Căn giữa khớp với nội dung ô (xem `.txn-status-wrap` trong styles.css). */}
-                <th style={{ textAlign: 'center' }}>Trạng thái</th>
-                {/* Ngân hàng đã xác nhận chưa (2026-09-23) — thay cho khối đối soát đã gỡ. Cột
-                    riêng chứ không nhét dưới số tiền: nhét vào đó thì mỗi đơn cao thêm một dòng
-                    và người ta phải đọc mới thấy, còn cột thì liếc dọc là quét được cả trang. */}
-                {verifyOn && <th>Xác thực</th>}
-                {/* Cột thao tác: những thứ BẤM ĐƯỢC (đánh dấu Misa, mở chi tiết) tách khỏi cột
-                    trạng thái — cột kia chỉ để đọc. Trước đây 3 thứ chen chung 1 ô nên không
-                    rõ cái nào bấm được, và mũi ▼ hay bị đẩy xuống dòng. */}
-                <th style={{ textAlign: 'right' }}>Thao tác</th>
+                <th className="hp-num">Tổng</th>
+                <th>Trạng thái</th>
+                <th aria-sort={sortBy === 'paid' ? 'descending' : undefined}>
+                  <button type="button" className="hp-th-btn" onClick={() => changeSort('paid')}>
+                    Thanh toán{sortBy === 'paid' && ' ↓'}
+                  </button>
+                </th>
+                <th>Đối soát</th>
+                <th>Misa</th>
+                <th className="hp-num">
+                  <span className="sr-only">Thao tác</span>
+                </th>
               </tr>
             </thead>
             <tbody>
-              {dayGroups.map((g) => {
+              {dayGroups.map((g, gi) => {
                 const dayRev = dayRevenue.get(g.key);
+                // Tiêu đề ngày nói THẬT về trang (góp ý 2026-11-06): số đơn là số đơn TRÊN TRANG
+                // NÀY, còn doanh thu là của CẢ NGÀY (từ /orders/stats). Ngày bị cắt bởi chia trang
+                // thì nói rõ "còn ở trang trước/sau" thay vì để "1 đơn · 491.000đ" lệch nhau.
+                const contPrev = gi === 0 && page > 1;
+                const contNext = gi === dayGroups.length - 1 && page < totalPages;
                 return (
                   <Fragment key={g.key}>
-                    {/* `txn-day-row`: trên điện thoại `table.responsive` biến mọi `tr` thành THẺ TRẮNG —
-                        hàng tiêu đề ngày mà thành thẻ thì nó trông y hệt một đơn hàng. Class này trả nó
-                        về dạng dải phân cách (xem styles.css). */}
                     <tr className="txn-day-row">
-                      <td className="txn-day" colSpan={verifyOn ? 9 : 8}>
+                      <td className="txn-day" colSpan={9}>
                         {g.key === UNPAID_GROUP ? (
-                          <>⏳ Chưa thanh toán · {g.orders.length} đơn</>
+                          <>Chưa thanh toán - {g.orders.length} đơn</>
                         ) : (
                           <>
-                            📅 {vnDayLabel(g.key)}
-                            {/* Nói rõ dải này là ngày GÌ khi đang xếp theo giờ TT — nếu không,
-                                bàn mở tối 8/9 thu tiền sáng 9/9 nằm dưới dải "09/09" trông
-                                như số liệu sai. */}
-                            {sortBy === 'paid' && <span style={{ color: '#9ca3af' }}> (ngày TT)</span>}
-                            {' · '}{g.orders.length} đơn
-                            {dayRev != null && <> · doanh thu ngày: <strong>{fmt(dayRev)}</strong></>}
+                            <span className="hp-day-date">{vnDayLabel(g.key)}</span>
+                            {sortBy === 'paid' && <span className="hp-day-sub"> (ngày thanh toán)</span>}
+                            <span className="hp-day-sub">
+                              {' - '}{g.orders.length} đơn{contPrev || contNext ? ' ở trang này' : ''}
+                              {contPrev && ', còn ở trang trước'}
+                              {contNext && ', còn tiếp ở trang sau'}
+                            </span>
+                            {dayRev != null && (
+                              <span className="hp-day-rev">Đã thu cả ngày {fmt(dayRev)}</span>
+                            )}
                           </>
                         )}
                       </td>
                     </tr>
-                    {g.orders.map((o) => {
-                      const isOpen = expanded === o.id;
-                      const total = orderTotal(o);
-                      const servedCount = (o.items || []).filter((i) => i.state === 'SERVED').length;
-                      const cancelledCount = (o.items || []).filter((i) => i.state === 'CANCELLED').length;
-                      // 3 trạng thái: đã thanh toán / ĐÃ HUỶ / chưa thanh toán.
-                      // closed_at = đã kết đơn, is_paid = kết bằng thu tiền hay huỷ.
-                      // Đơn huỷ PHẢI hiện rõ để soi được nhân viên huỷ bàn thay vì thu tiền.
-                      const isPaid = !!o.closed_at && o.is_paid;
-                      // Đang NỢ (2026-09-25): kết đơn, chưa thu, có mốc ghi nợ. Phải tách khỏi
-                      // "đã huỷ" — cùng `is_paid = false` nhưng một bên là tiền chưa về, một bên
-                      // là tiền không bao giờ có.
-                      const isDebt = !!o.closed_at && !o.is_paid && o.debt_at != null;
-                      const isCancelled = !!o.closed_at && !o.is_paid && !isDebt;
-                      const showMoney = canSeeOrderMoney(o);
-                      return (
-                        <Fragment key={o.id}>
-                          <tr className="txn-row" onClick={() => setExpanded(isOpen ? null : o.id)}>
-                            <td data-label="Giờ vào">{fmtHm(o.opened_at)}</td>
-                            {/* Tên khách ship có thể dài tuỳ ý ("Khach 0909 D duyet ngay") — cắt
-                                bằng "…" trong 1 dòng, tên đầy đủ nằm ở `title` và ở khối chi tiết
-                                khi bấm mở. Cho xuống dòng là cả bảng cao gấp đôi ở đúng 1 đơn. */}
-                            <td data-label="Bàn">
-                              <div
-                                style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
-                                title={o.customer_name ? `${o.table_name} · ${o.customer_name}` : o.table_code}
-                              >
-                                <strong style={{ color: '#0f766e' }}>{o.table_name}</strong>
-                                {o.customer_name && <span style={{ color: '#6b7280' }}> · 🛵 {o.customer_name}</span>}
-                              </div>
-                            </td>
-                            <td
-                              data-label="Thu ngân"
-                              style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
-                            >
-                              {o.closed_at && o.checked_out_by_full_name ? (
-                                <span style={isCancelled ? { color: '#dc2626' } : undefined}>
-                                  {o.checked_out_by_full_name}
-                                  {isCancelled && ' (huỷ)'}
-                                </span>
-                              ) : (
-                                '—'
-                              )}
-                            </td>
-                            <td data-label="Giờ TT" style={{ whiteSpace: 'nowrap' }}>
-                              {/* Đơn thu nợ: mốc TIỀN là lúc thu nợ, không phải lúc trả bàn. */}
-                              {o.debt_paid_at != null ? fmtHm(o.debt_paid_at) : o.closed_at ? fmtHm(o.closed_at) : '—'}
-                            </td>
-                            <td data-label="Món" style={{ whiteSpace: 'nowrap' }}>
-                              ✓ {servedCount}
-                              {cancelledCount > 0 && <span style={{ color: '#dc2626' }}> · huỷ {cancelledCount}</span>}
-                            </td>
-                            <td data-label="Tổng" style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                              {showMoney && (
-                                <strong style={{ color: isPaid ? '#0f766e' : isCancelled ? '#dc2626' : '#b45309' }}>
-                                  {fmt(total)}
-                                </strong>
-                              )}
-                            </td>
-                            {/* Trạng thái VÀ hình thức thu đứng cạnh nhau (chủ quán chốt
-                                2026-09-23). Trước đây hình thức nằm dưới con số tiền, nên trên
-                                điện thoại "Chuyển khoản" trôi về góc phải một mình còn "Đã thanh
-                                toán" nằm tận dòng dưới — hai mẩu của cùng một câu ("đơn này đã
-                                trả, bằng cách nào") bị tách ra hai chỗ.
-                                `wrap`: trên cột hẹp của máy tính hai badge tự xuống dòng thay vì
-                                đẩy bảng cuộn ngang. */}
-                            <td data-label="Trạng thái">
-                              <div className="txn-status-wrap" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-                                {isPaid ? (
-                                  <span style={paidBadge}>✓ Đã thanh toán{o.debt_paid_at != null ? ' (thu nợ)' : ''}</span>
-                                ) : isDebt ? (
-                                  <span style={debtBadge} title={o.debt_note ?? undefined}>📒 Đang nợ{o.debt_note ? ` · ${o.debt_note}` : ''}</span>
-                                ) : isCancelled ? (
-                                  <span style={cancelledBadge}>🗑 Đã huỷ</span>
-                                ) : (
-                                  <span style={unpaidBadge}>⏳ Chưa thanh toán</span>
-                                )}
-                                {isPaid && (
-                                  <PaymentMethodBadge total={total} transferAmount={o.transfer_amount} />
-                                )}
-                                {/* Bàn ca trước quên thu, ca này mới thu (2026-11-05). Tiền vẫn cộng vào ca
-                                    thu cho khớp két — nhãn chỉ để giải thích vì sao ca này "nhiều"
-                                    hơn thực bán. Luật ở `isPrevShiftCarryover`. */}
-                                {isPrevShiftCarryover(o) && <span style={prevShiftBadge}>🌓 Ca trước</span>}
-                                {/* Cờ ảnh bill ở ĐÂY chỉ còn là đường lùi (2026-10-02): chỗ chính
-                                    của nó là ô "Xác thực" ngay dưới, đứng ngang dấu ✓/✗ — hai
-                                    thứ đó cùng trả lời một câu "đơn chuyển khoản này có bằng
-                                    chứng gì". Nhưng ô đó BIẾN MẤT khi công tắc xác thực tắt,
-                                    nên khi tắt thì cờ quay về dòng này, cạnh nhãn hình thức
-                                    thu. Hai nhánh loại trừ nhau — không bao giờ vẽ hai lần. */}
-                                {isPaid && !verifyOn && o.payment_photo_count !== null && (
-                                  <PaymentPhotoBadge
-                                    count={o.payment_photo_count}
-                                    skipReason={o.payment_photo_skip_reason}
-                                  />
-                                )}
-                              </div>
-                            </td>
-
-                            {/* Ngân hàng đã xác nhận chưa. Ba trạng thái, và dấu "—" cho đơn tiền
-                                mặt là CÓ Ý: ô trống trông như dữ liệu bị thiếu, còn "—" nói rõ
-                                "không có gì để xác nhận ở đây".
-                                Cả ô BIẾN MẤT khi công tắc tắt (2026-09-25) — bảng còn 8 cột, xem
-                                class `no-verify` ở thẻ <table>. */}
-                            {verifyOn && (
-                            <td data-label="Xác thực" style={{ whiteSpace: 'nowrap' }}>
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                              {o.bank_verified === null ? (
-                                /* Trên điện thoại ô này ẩn hẳn (xem `.txn-dash` trong styles.css):
-                                   ở bảng desktop dấu "—" nói "không có gì để xác nhận", nhưng
-                                   trong thẻ dọc của điện thoại nó chỉ là một dòng gạch vô nghĩa
-                                   trên MỌI đơn tiền mặt. */
-                                <span className="txn-dash" style={{ color: '#9ca3af' }}>—</span>
-                              ) : o.bank_verified ? (
-                                /* CHỈ dấu ✓, không chữ (chủ quán 2026-10-02) — cân với dấu ✗ ở
-                                   nhánh dưới. Người đọc màn này quét cả cột một lượt để tìm đơn
-                                   lệch, mà một cột toàn chữ thì không quét được.
-                                   Chỗ giải nghĩa hai dấu là ô lọc ngay trên bảng ("✓ Đã xác
-                                   thực (CK)" / "✗ Không thấy GD (CK)") — đừng bỏ chữ ở đó nốt,
-                                   không thì không còn nơi nào nói dấu nào nghĩa gì. */
-                                <span style={{ color: '#15803d', fontWeight: 700, fontSize: 18 }}>✓</span>
-                              ) : (
-                                /* CHỈ dấu ✗, không chữ (chủ quán 2026-10-02). Nhãn đi kèm nằm ở
-                                   `data-label` của ô nên thẻ dọc trên điện thoại vẫn đọc được là
-                                   cột "Xác thực"; và ô lọc ngay trên bảng vẫn ghi đủ chữ "Không
-                                   thấy GD" nên dấu này không đứng một mình không ai giải nghĩa.
-                                   Cố ý KHÔNG nói "chuyển tiền thất bại" ở bất cứ đâu — ta chỉ
-                                   biết mình chưa tìm thấy giao dịch, tiền có thể đã về rồi. */
-                                <span style={{ color: '#b91c1c', fontWeight: 700, fontSize: 18 }}>✗</span>
-                              )}
-                              {/* Cờ ảnh bill đứng ngang dấu xác thực (chủ quán 2026-10-02): cùng
-                                  một câu hỏi "đơn này có bằng chứng gì", để hai dòng rời thì
-                                  thẻ đơn trên điện thoại cao thêm một dòng cho mỗi đơn CK. */}
-                              {isPaid && o.payment_photo_count !== null && (
-                                <PaymentPhotoBadge
-                                  count={o.payment_photo_count}
-                                  skipReason={o.payment_photo_skip_reason}
-                                  inline
-                                />
-                              )}
-                              </span>
-                            </td>
-                            )}
-                            {/* Cột thao tác — dồn về phải, cùng chiều cao 1 dòng. */}
-                            <td
-                              data-label="Thao tác"
-                              style={{ whiteSpace: 'nowrap', textAlign: 'right' }}
-                            >
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                                {/* THU NỢ (2026-09-25): mở lại đúng hộp thoại thu tiền cho đơn
-                                    đang nợ. Từ 2026-10-20 chỉ admin: hộp thu nợ phải hiện số tiền,
-                                    mà Order/Bếp không được thấy tiền trên màn này. */}
-                                {isDebt && canMarkMisa && canSeeMoney && (
-                                  <button
-                                    type="button"
-                                    title={`Thu nợ ${o.debt_note ?? ''}`}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setSettleTarget(o);
-                                    }}
-                                    style={{ padding: '2px 10px', fontSize: 13, lineHeight: 1.6, background: '#b45309' }}
-                                  >
-                                    💰 Thu nợ
-                                  </button>
-                                )}
-                                {/* Cờ Misa chỉ có nghĩa với đơn đã thu tiền — đơn huỷ / đang dùng
-                                    không có bill để gõ sang AMIS nên không hiện gì.
-                                    Và chỉ đơn thu qua mã QR HKD (2026-10-15): đơn tiền mặt / mã
-                                    người nhà không phải kê. Đơn cũ đã lỡ tick trước luật này vẫn
-                                    hiện để còn gỡ ra được. */}
-                                {isPaid && (o.is_hkd || o.misa_copied_at != null) && (
-                                  <MisaBadge
-                                    copied={o.misa_copied_at != null}
-                                    by={o.misa_copied_by_full_name}
-                                    disabled={!canMarkMisa}
-                                    onToggle={() => toggleMisa(o)}
-                                  />
-                                )}
-                                {/* ⋯ gom "In lại hoá đơn" + "Chuyển sang nợ" (xem `rowMenu`). Chỉ đơn
-                                    đã thu mới có gì để làm; quyền hiện từng mục xét trong menu.
-                                    Order/Bếp: chỉ đơn chính họ thu mới tới đây (xem `canSeeOrderMoney`),
-                                    và trong menu họ chỉ có "In lại" — "Chuyển sang nợ" vẫn là việc
-                                    của admin (người duy nhất thu nợ). */}
-                                {isPaid && canReprint && (
-                                  <button
-                                    type="button"
-                                    className="secondary"
-                                    title="Thêm thao tác"
-                                    aria-label="Thêm thao tác"
-                                    aria-expanded={rowMenu?.id === o.id}
-                                    onClick={(e) => {
-                                      // Cả dòng là nút mở chi tiết — không chặn thì bấm ⋯ cũng
-                                      // bung luôn khối chi tiết bên dưới.
-                                      e.stopPropagation();
-                                      if (rowMenu?.id === o.id) {
-                                        setRowMenu(null);
-                                        return;
-                                      }
-                                      const r = e.currentTarget.getBoundingClientRect();
-                                      // Giữ CẢ hai mép của nút: chỗ đặt menu còn phụ thuộc chiều
-                                      // cao của chính nó, mà lúc này nó chưa vào DOM để đo.
-                                      setRowMenu({
-                                        id: o.id,
-                                        anchorTop: r.top,
-                                        anchorBottom: r.bottom,
-                                        right: window.innerWidth - r.right,
-                                      });
-                                    }}
-                                    style={{ padding: '2px 10px', fontSize: 16, lineHeight: 1.3, minHeight: 0 }}
-                                  >
-                                    {reprinting.has(o.id) || markingDebt.has(o.id) ? '…' : '⋯'}
-                                  </button>
-                                )}
-                                <span
-                                  aria-hidden
-                                  title={isOpen ? 'Thu gọn' : 'Xem chi tiết'}
-                                  style={{ color: '#9ca3af', fontSize: 12, width: 14, textAlign: 'center' }}
-                                >
-                                  {isOpen ? '▲' : '▼'}
-                                </span>
-                              </span>
-                            </td>
-                          </tr>
-                          {isOpen && (
-                            <tr>
-                              <td className="txn-full" colSpan={verifyOn ? 9 : 8}>
-                                <HistoryOrderDetail order={o} showMoney={showMoney} />
-                              </td>
-                            </tr>
-                          )}
-                        </Fragment>
-                      );
-                    })}
+                    {g.orders.map((o) => (
+                      <HistoryRow
+                        key={o.id}
+                        o={o}
+                        isOpen={expanded === o.id}
+                        onToggle={() => setExpanded(expanded === o.id ? null : o.id)}
+                        showMoney={canSeeOrderMoney(o)}
+                        canSeeMoney={canSeeMoney}
+                        verifyOn={verifyOn}
+                        canMarkMisa={canMarkMisa}
+                        canReprint={canReprint}
+                        busy={reprinting.has(o.id) || markingDebt.has(o.id)}
+                        menuOpen={rowMenu?.id === o.id}
+                        servedTotal={orderTotal(o)}
+                        onSettle={() => setSettleTarget(o)}
+                        onToggleMisa={() => toggleMisa(o)}
+                        onOpenMenu={(r) => {
+                          if (rowMenu?.id === o.id) {
+                            setRowMenu(null);
+                            return;
+                          }
+                          setRowMenu({
+                            id: o.id,
+                            anchorTop: r.top,
+                            anchorBottom: r.bottom,
+                            right: window.innerWidth - r.right,
+                          });
+                        }}
+                      />
+                    ))}
                   </Fragment>
                 );
               })}
             </tbody>
           </table>
-          {/* Menu ⋯ của dòng đơn — vẽ NGOÀI bảng vì bảng cuộn ngang sẽ cắt nó. */}
+
+          {/* Menu ⋯ của dòng đơn — vẽ NGOÀI bảng (toạ độ fixed) để không bị khung cuộn cắt. */}
           {rowMenu && rowMenuOrder && (
             <>
               <div
@@ -1614,23 +1296,17 @@ export function HistoryPage() {
               />
               <div
                 ref={rowMenuRef}
-                className="drawer-menu"
+                className="drawer-menu hp-row-menu"
                 style={{
                   position: 'fixed',
                   top: rowMenuTop ?? rowMenu.anchorBottom + 6,
                   right: rowMenu.right,
-                  // TRÊN cả `.nav-bottom` (z-index 100). Đặt nội tuyến chứ không sửa `.drawer-menu`
-                  // trong styles.css: class đó còn dùng cho các menu nằm TRONG luồng trang, nâng
-                  // chung là cho chúng quyền đè lên thanh điều hướng mà không ai yêu cầu.
+                  // TRÊN cả `.nav-bottom` (z-index 100) — xem chú thích `rowMenuTop`.
                   zIndex: 101,
-                  // Lần vẽ đầu chưa đo được chiều cao nên vị trí có thể sai — ẩn đúng một nhịp
-                  // thay vì cho người ta thấy nó nhảy.
                   visibility: rowMenuTop === null ? 'hidden' : 'visible',
                 }}
                 onClick={(e) => e.stopPropagation()}
               >
-                {/* In lại: admin + order + bếp, khớp `RequireRoles` ở BE — người đứng quầy phải tự
-                    in lại được. */}
                 <button
                   type="button"
                   disabled={reprinting.has(rowMenuOrder.id)}
@@ -1639,38 +1315,42 @@ export function HistoryPage() {
                     void reprintReceipt(rowMenuOrder);
                   }}
                 >
-                  🖨 In lại hoá đơn
+                  <Printer size={20} aria-hidden />
+                  In lại hoá đơn
                 </button>
-                {/* CHUYỂN SANG NỢ (admin): thu ngân bấm "Tiền mặt" nhầm cho bàn khách đi mà chưa
-                    trả. Rút khoản này khỏi doanh thu đã chốt. */}
+                {/* CHUYỂN SANG NỢ (admin) — tách bằng vạch ngăn + chữ đỏ dạng nguy hiểm, và có
+                    hộp xác nhận (2026-11-06): thao tác này rút tiền khỏi doanh thu, không được
+                    nằm sát "In lại" như một việc vô hại. */}
                 {canSeeReconcile && (
-                  <button
-                    type="button"
-                    disabled={markingDebt.has(rowMenuOrder.id)}
-                    onClick={() => {
-                      setRowMenu(null);
-                      void markAsDebt(rowMenuOrder);
-                    }}
-                    style={{ color: '#b45309' }}
-                  >
-                    📒 Chuyển sang nợ
-                  </button>
+                  <>
+                    <div className="drawer-menu-sep" role="separator" />
+                    <button
+                      type="button"
+                      className="drawer-menu-danger"
+                      disabled={markingDebt.has(rowMenuOrder.id)}
+                      onClick={() => {
+                        setRowMenu(null);
+                        void markAsDebt(rowMenuOrder);
+                      }}
+                    >
+                      Chuyển sang nợ...
+                    </button>
+                  </>
                 )}
               </div>
             </>
           )}
 
-          {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex" style={{ marginTop: 16, justifyContent: 'center', gap: 8 }}>
+            <div className="hp-pager">
               <button
                 className="secondary"
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
               >
-                ← Trước
+                ← Trang trước
               </button>
-              <span style={{ alignSelf: 'center', color: '#6b7280', fontSize: 14 }}>
+              <span>
                 Trang {page} / {totalPages}
               </span>
               <button
@@ -1678,126 +1358,489 @@ export function HistoryPage() {
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page >= totalPages}
               >
-                Sau →
+                Trang sau →
               </button>
             </div>
           )}
         </>
       )}
-    </div>
+    </PageLayout>
   );
 }
 
-function StatTile({
-  label,
-  value,
-  color,
-  bg,
-  border,
+// ─── Số liệu tiện ích cho một đơn ──────────────────────────────────────────
+
+/** Số PHẦN món (cộng `qty`, bỏ dòng ghi chú) — cùng cách đếm với thẻ bàn ở Sơ đồ bàn. Trước
+ *  2026-11-06 cột này đếm số DÒNG món, nên "✓3" ở đây và "13 món" ở sơ đồ bàn không khớp. */
+function portionsOf(o: HistoryOrder) {
+  let alive = 0;
+  let served = 0;
+  let cancelled = 0;
+  for (const i of o.items || []) {
+    if (i.is_note) continue;
+    if (i.state === 'CANCELLED') cancelled += i.qty;
+    else {
+      alive += i.qty;
+      if (i.state === 'SERVED') served += i.qty;
+    }
+  }
+  return { alive, served, cancelled };
+}
+
+/** Tổng HIỂN THỊ ở cột "Tổng".
+ *  - Đơn đang mở: CẢ ĐƠN (mọi món chưa huỷ) — khớp số trên sơ đồ bàn. Trước 2026-11-06 cột này chỉ
+ *    cộng món đã giao, nên bàn vừa gọi 13 món chưa ra món nào hiện 0đ trong khi sơ đồ ghi 428.000đ.
+ *  - Đơn đã kết: món ĐÃ GIAO — đúng số trên bill / số đi vào doanh thu (không đổi). */
+function displayTotalOf(o: HistoryOrder): number {
+  const open = !o.closed_at;
+  return (o.items || [])
+    .filter((i) => !i.is_note && (open ? i.state !== 'CANCELLED' : i.state === 'SERVED'))
+    .reduce((s, i) => s + i.menu_item_price * i.qty, 0);
+}
+
+type PayKind = 'cash' | 'transfer' | 'mixed';
+/** Hình thức thu + tách hai phần của đơn "Cả hai". Tổng thu = món đã giao + ship (y như BE
+ *  `paymentSummary`); tiền mặt luôn SUY RA: tổng − chuyển khoản. */
+function paymentSplit(servedTotal: number, o: HistoryOrder): { kind: PayKind; cash: number; transfer: number; total: number } {
+  const total = servedTotal + (o.ship_fee || 0);
+  const transfer = Math.max(0, o.transfer_amount || 0);
+  if (transfer <= 0) return { kind: 'cash', cash: total, transfer: 0, total };
+  if (transfer >= total) return { kind: 'transfer', cash: 0, transfer, total };
+  return { kind: 'mixed', cash: total - transfer, transfer, total };
+}
+const PAY_LABEL: Record<PayKind, string> = {
+  cash: 'Tiền mặt',
+  transfer: 'Chuyển khoản',
+  mixed: 'Cả hai',
+};
+
+// ─── Một dòng đơn ──────────────────────────────────────────────────────────
+
+function HistoryRow({
+  o,
+  isOpen,
+  onToggle,
+  showMoney,
+  canSeeMoney,
+  verifyOn,
+  canMarkMisa,
+  canReprint,
+  busy,
+  menuOpen,
+  servedTotal,
+  onSettle,
+  onToggleMisa,
+  onOpenMenu,
 }: {
-  label: string;
-  value: string;
-  color: string;
-  bg: string;
-  border: string;
+  o: HistoryOrder;
+  isOpen: boolean;
+  onToggle: () => void;
+  showMoney: boolean;
+  canSeeMoney: boolean;
+  verifyOn: boolean;
+  canMarkMisa: boolean;
+  canReprint: boolean;
+  busy: boolean;
+  menuOpen: boolean;
+  servedTotal: number;
+  onSettle: () => void;
+  onToggleMisa: () => void;
+  onOpenMenu: (anchor: DOMRect) => void;
 }) {
+  // 4 trạng thái: đã thanh toán / đang nợ / đã huỷ / chưa thanh toán.
+  // closed_at = đã kết đơn, is_paid = kết bằng thu tiền; nợ = kết, chưa thu, có mốc ghi nợ.
+  const isPaid = !!o.closed_at && o.is_paid;
+  const isDebt = !!o.closed_at && !o.is_paid && o.debt_at != null;
+  const isCancelled = !!o.closed_at && !o.is_paid && !isDebt;
+  const p = portionsOf(o);
+  const pay = paymentSplit(servedTotal, o);
+  // Đơn thu nợ: mốc TIỀN là lúc thu nợ, không phải lúc trả bàn.
+  const moneyAt = o.debt_paid_at ?? o.closed_at;
+  const isCk = isPaid && o.transfer_amount > 0;
+
+  const status = isPaid
+    ? { tone: 'paid', text: o.debt_paid_at != null ? 'Đã thanh toán (thu nợ)' : 'Đã thanh toán' }
+    : isDebt
+      ? { tone: 'debt', text: 'Đang nợ' }
+      : isCancelled
+        ? { tone: 'cancelled', text: 'Đã huỷ' }
+        : { tone: 'open', text: 'Chưa thanh toán' };
+
   return (
-    <div className="card" style={{ padding: '12px 14px', background: bg, border: `1px solid ${border}` }}>
-      <div style={{ fontSize: 12, color: '#6b7280' }}>{label}</div>
-      <div style={{ fontSize: 20, fontWeight: 700, color, marginTop: 2 }}>{value}</div>
+    <>
+      <tr
+        className={`txn-row${isOpen ? ' is-open' : ''}`}
+        onClick={onToggle}
+      >
+        <td data-label="Giờ vào" className="hp-c-time">{fmtHm(o.opened_at)}</td>
+
+        {/* Tên khách ship dài → cắt "…" trên bảng (tên đầy đủ ở khối chi tiết); thẻ thì xuống dòng. */}
+        <td data-label="Bàn" className="hp-c-table">
+          <div title={o.customer_name ? `${o.table_name} - ${o.customer_name}` : o.table_name}>
+            <strong>{o.table_name}</strong>
+            {o.customer_name && <span className="hp-muted"> - {o.customer_name}</span>}
+          </div>
+        </td>
+
+        <td data-label="Món" className="hp-c-items">
+          {/* Đơn đang mở: "đã giao x/y phần" — trả lời luôn câu "bàn này ra đủ món chưa". */}
+          {!o.closed_at ? (
+            <span>giao {p.served}/{p.alive} phần</span>
+          ) : (
+            <span>{p.served} phần</span>
+          )}
+          {p.cancelled > 0 && <span className="hp-muted"> - huỷ {p.cancelled}</span>}
+        </td>
+
+        <td data-label="Tổng" className="hp-num hp-c-total">
+          {showMoney && <strong>{fmt(displayTotalOf(o))}</strong>}
+        </td>
+
+        {/* MỘT trạng thái mỗi ô (2026-11-06): chấm màu + chữ. "Ca trước" và hình thức thu chuyển
+            sang cột Thanh toán — trước đây 2–3 badge chồng nhau làm dòng đã thu cao 62px. */}
+        <td data-label="Trạng thái" className="hp-c-status">
+          <span className={`hp-status hp-status--${status.tone}`} title={isDebt ? o.debt_note ?? undefined : undefined}>
+            {status.text}
+          </span>
+          {isDebt && o.debt_note && <span className="hp-sub">{o.debt_note}</span>}
+        </td>
+
+        {/* Cột "Thanh toán" gộp Thu ngân + Giờ TT + hình thức (2026-11-06): ba cột cũ đều là "—"
+            với đơn chưa thanh toán. */}
+        <td data-label="Thanh toán" className="hp-c-pay">
+          {o.closed_at ? (
+            <div>
+              {isPaid && showMoney ? (
+                <span className={`hp-pay hp-pay--${pay.kind}`}>{PAY_LABEL[pay.kind]}</span>
+              ) : isCancelled ? (
+                <span>Huỷ bàn</span>
+              ) : isDebt ? (
+                <span>Ghi nợ</span>
+              ) : null}
+              <span className="hp-sub">
+                {[o.checked_out_by_full_name, moneyAt ? fmtHm(moneyAt) : null].filter(Boolean).join(' - ')}
+                {/* Bàn ca trước quên thu, ca này mới thu (2026-11-05) — luật ở `isPrevShiftCarryover`. */}
+                {isPrevShiftCarryover(o) && ' - bàn ca trước'}
+              </span>
+            </div>
+          ) : (
+            <span className="hp-muted">Đang ăn</span>
+          )}
+        </td>
+
+        {/* Đối soát: ngân hàng đã xác nhận chưa + ảnh bill. Ghi bằng CHỮ (2026-11-06) — dấu ✓/✗
+            trần không có chú thích; "Chưa khớp" nằm trên nền cảnh báo để nhảy ra khỏi cột.
+            Cố ý KHÔNG nói "chuyển tiền thất bại": ta chỉ biết chưa thấy giao dịch. */}
+        <td data-label="Đối soát" className="hp-c-check">
+          {isCk && (
+            <span className="hp-check">
+              {verifyOn && o.bank_verified === false && (
+                <span className="hp-warn" title="Chưa thấy giao dịch này trong báo cáo ngân hàng">
+                  <AlertTriangle size={16} aria-hidden />
+                  Chưa khớp
+                </span>
+              )}
+              {verifyOn && o.bank_verified === true && <span className="hp-ok">Đã khớp</span>}
+              {o.payment_photo_count !== null && (
+                <PaymentPhotoBadge count={o.payment_photo_count} skipReason={o.payment_photo_skip_reason} />
+              )}
+            </span>
+          )}
+        </td>
+
+        {/* Misa — cột riêng, CỐ ĐỊNH, để nút ⋯ không bị đẩy lệch giữa các dòng. Chỉ đơn thu qua
+            mã QR HKD (2026-10-15); đơn cũ đã lỡ tick vẫn hiện để gỡ được. */}
+        <td data-label="Misa" className="hp-c-misa">
+          {isPaid && (o.is_hkd || o.misa_copied_at != null) && (
+            <MisaBadge
+              copied={o.misa_copied_at != null}
+              by={o.misa_copied_by_full_name}
+              disabled={!canMarkMisa}
+              onToggle={onToggleMisa}
+            />
+          )}
+        </td>
+
+        <td data-label="Thao tác" className="hp-num hp-c-actions">
+          <span className="hp-actions">
+            {/* THU NỢ: chỉ admin (2026-10-20) — hộp thu nợ phải hiện số tiền. */}
+            {isDebt && canMarkMisa && canSeeMoney && (
+              <button
+                type="button"
+                className="hp-settle"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSettle();
+                }}
+              >
+                Thu nợ
+              </button>
+            )}
+            {/* ⋯ gom "In lại hoá đơn" + "Chuyển sang nợ" — chỉ đơn đã thu. */}
+            {isPaid && canReprint && (
+              <button
+                type="button"
+                className="secondary hp-icon-btn"
+                aria-label="Thêm thao tác"
+                aria-expanded={menuOpen}
+                onClick={(e) => {
+                  // Cả dòng là nút mở chi tiết — không chặn thì bấm ⋯ cũng bung chi tiết.
+                  e.stopPropagation();
+                  onOpenMenu(e.currentTarget.getBoundingClientRect());
+                }}
+              >
+                {busy ? '…' : <MoreHorizontal size={22} aria-hidden />}
+              </button>
+            )}
+            {/* Nút mở chi tiết cho bàn phím/trình đọc màn hình — chuột/ngón tay bấm cả dòng. */}
+            <button
+              type="button"
+              className="secondary hp-icon-btn hp-chevron"
+              aria-label={isOpen ? 'Thu gọn chi tiết' : 'Xem chi tiết đơn'}
+              aria-expanded={isOpen}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggle();
+              }}
+            >
+              {isOpen ? <ChevronUp size={22} aria-hidden /> : <ChevronDown size={22} aria-hidden />}
+            </button>
+          </span>
+        </td>
+      </tr>
+      {isOpen && (
+        <tr className="hp-detail-row">
+          <td className="txn-full" colSpan={9}>
+            <HistoryOrderDetail order={o} showMoney={showMoney} servedTotal={servedTotal} />
+          </td>
+        </tr>
+      )}
+    </>
+  );
+}
+
+// ─── Tab Biểu đồ ───────────────────────────────────────────────────────────
+
+/** MỘT màu cho mọi số liệu doanh thu (2026-11-06): trước đây 4 màu cho cùng một loại số, trong đó
+ *  có đỏ — đỏ ở app này là cảnh báo / nút chính. Xám đậm trung tính. */
+const CHART_COLOR = '#6b7280';
+
+/** Lấp ngày TRỐNG bằng cột 0 (2026-11-06): BE chỉ trả ngày có đơn, nên trước đây trục ngang nhảy
+ *  14/10 → 16/10 mà không ai thấy ngày 15 vắng. Khoảng lấy theo bộ lọc; bộ lọc bỏ ngỏ đầu nào thì
+ *  lấy theo ngày có số liệu ở đầu đó. Chặn 400 ngày để "Tất cả" không vẽ cả nghìn cột. */
+function fillEmptyDays(
+  rows: Array<{ day: string; revenue: number; orders: number }>,
+  range: DayRange,
+): Array<{ day: string; revenue: number; orders: number }> {
+  if (rows.length === 0) return rows;
+  const first = !range.shift && range.from ? range.from : rows[0].day;
+  const last = !range.shift && range.to ? range.to : rows[rows.length - 1].day;
+  const byDay = new Map(rows.map((r) => [r.day, r]));
+  const out: Array<{ day: string; revenue: number; orders: number }> = [];
+  const cur = new Date(`${first}T00:00:00Z`);
+  const end = new Date(`${last}T00:00:00Z`);
+  if (Number.isNaN(cur.getTime()) || Number.isNaN(end.getTime()) || cur > end) return rows;
+  for (let n = 0; cur <= end && n < 400; n++) {
+    const key = cur.toISOString().slice(0, 10);
+    out.push(byDay.get(key) ?? { day: key, revenue: 0, orders: 0 });
+    cur.setUTCDate(cur.getUTCDate() + 1);
+  }
+  return out;
+}
+
+function ChartsView({
+  stats,
+  statsLoading,
+  consumption,
+  range,
+  chiSo,
+  setChiSo,
+  chiSoView,
+  tabView,
+  tabActive,
+  topBy,
+  setTopBy,
+}: {
+  stats: Stats | null;
+  statsLoading: boolean;
+  consumption: ConsumptionRow[];
+  range: DayRange;
+  chiSo: 'revenue' | 'orders';
+  setChiSo: (v: 'revenue' | 'orders') => void;
+  chiSoView: { ten: string; format: (v: number) => string };
+  tabView: { hint: string; top: string };
+  tabActive: boolean;
+  topBy: 'revenue' | 'qty';
+  setTopBy: (v: 'revenue' | 'qty') => void;
+}) {
+  if (statsLoading) return <p className="hp-muted">Đang tải số liệu...</p>;
+  // Phân biệt "đang tải" với "tải không được" — trước đây cả hai đều "Đang tải..." mãi.
+  if (!stats) {
+    return <p className="hp-muted">Không tải được số liệu thống kê - thử đổi lại bộ lọc hoặc tải lại trang</p>;
+  }
+  const days = fillEmptyDays(stats.revenue_by_day, range);
+  const topItems = [...stats.top_items].sort((a, b) =>
+    topBy === 'revenue' ? b.revenue - a.revenue : b.qty - a.qty,
+  );
+  return (
+    <div className="hp-charts">
+      <TimeRangeChips
+        ariaLabel="Chọn chỉ số cho biểu đồ cột"
+        label="Biểu đồ cột theo"
+        value={chiSo}
+        options={[
+          { value: 'revenue' as const, label: 'Doanh thu' },
+          { value: 'orders' as const, label: 'Số đơn' },
+        ]}
+        onChange={setChiSo}
+      />
+      <div className="hp-charts-grid">
+        {/* Hai biểu đồ cột chiếm TRỌN bề ngang — biểu đồ giờ có tới 24+ cột. */}
+        <div className="hp-chart-wide">
+          <ChartCard title={`${chiSoView.ten} theo ngày`} hint={`${tabView.hint} - ngày không có đơn vẫn hiện cột 0`}>
+            <BarChart
+              ariaLabel={`${chiSoView.ten} theo ngày`}
+              height={200}
+              tiLeCot={0.58}
+              rongCotToiDa={28}
+              color={CHART_COLOR}
+              data={days.map((d) => ({
+                label: vnDayLabel(d.day).slice(0, 5),
+                value: chiSo === 'revenue' ? d.revenue : d.orders,
+                tip: [
+                  { id: 'rev', name: 'Doanh thu', color: CHART_COLOR, value: d.revenue },
+                  { id: 'ord', name: 'Số đơn', color: '#9ca3af', value: d.orders },
+                ],
+              }))}
+              formatValue={chiSoView.format}
+            />
+          </ChartCard>
+
+          {/* Giờ cao điểm — cắt giờ rỗng ở hai đầu, giữ giờ trống ở GIỮA (hõm nghỉ trưa là thật). */}
+          <ChartCard
+            title={`Giờ cao điểm - ${chiSoView.ten.toLowerCase()}`}
+            hint="Theo giờ thanh toán - mốc 30 phút - đã bỏ khung giờ đầu/cuối không có đơn nào"
+          >
+            <BarChart
+              ariaLabel={`${chiSoView.ten} theo mốc 30 phút trong ngày`}
+              height={200}
+              tiLeCot={0.58}
+              rongCotToiDa={28}
+              color={CHART_COLOR}
+              data={catGioTrongHaiDau(stats.by_half_hour).map((h) => ({
+                label: nhanGio(h.start_min),
+                value: chiSo === 'revenue' ? h.revenue : h.orders,
+                tip: [
+                  { id: 'rev', name: 'Doanh thu', color: CHART_COLOR, value: h.revenue },
+                  { id: 'ord', name: 'Số đơn', color: '#9ca3af', value: h.orders },
+                ],
+              }))}
+              formatValue={chiSoView.format}
+            />
+          </ChartCard>
+        </div>
+
+        <ChartCard title={tabView.top} hint={tabView.hint}>
+          <TimeRangeChips
+            ariaLabel="Xếp top món theo"
+            value={topBy}
+            options={[
+              { value: 'revenue' as const, label: 'Doanh thu' },
+              { value: 'qty' as const, label: 'Số phần' },
+            ]}
+            onChange={setTopBy}
+            style={{ marginBottom: 10 }}
+          />
+          <RankBars
+            data={topItems.map((t) =>
+              topBy === 'revenue'
+                ? { label: t.name, value: t.revenue, sub: `${t.qty} phần` }
+                : { label: t.name, value: t.qty, sub: fmtShort(t.revenue) },
+            )}
+            formatValue={topBy === 'revenue' ? fmtShort : (v) => `${v} phần`}
+            color={CHART_COLOR}
+          />
+        </ChartCard>
+
+        <ChartCard title="Doanh thu theo thu ngân">
+          <RankBars
+            data={stats.revenue_by_cashier.map((c) => ({ label: c.name, value: c.revenue, sub: `${c.orders} đơn` }))}
+            formatValue={fmtShort}
+            color={CHART_COLOR}
+          />
+        </ChartCard>
+
+        {/* Phân rã theo trạng thái — chỉ có nghĩa ở tab "Tất cả" (vào tab cụ thể là một lát 100%). */}
+        {!tabActive && (
+          <ChartCard title="Tỉ lệ thanh toán">
+            <Donut
+              segments={[
+                { label: 'Đã thanh toán', value: stats.paid_count, color: '#16a34a' },
+                { label: 'Chưa thanh toán', value: stats.unpaid_count, color: '#9ca3af' },
+                { label: 'Đã huỷ', value: stats.cancelled_count, color: '#b4231d' },
+                { label: 'Đang nợ', value: stats.debt_count ?? 0, color: '#f59e0b' },
+              ]}
+            />
+          </ChartCard>
+        )}
+
+        {/* Tiêu hao nguyên liệu — BẢNG chứ không biểu đồ (các dòng khác đơn vị). Không có số liệu
+            thì chỉ còn MỘT dòng chữ nhỏ thay vì cả khung trống (2026-11-06). */}
+        {consumption.length > 0 ? (
+          <ChartCard title="Tiêu hao nguyên liệu" hint="Chốt khi bếp bắt đầu nấu - món huỷ trước khi nấu không tính">
+            <div className="hp-consume">
+              {consumption.map((c) => (
+                <div key={`${c.ingredient_name}¦${c.unit}`} className="hp-consume-row">
+                  <span className="hp-consume-name">
+                    {c.ingredient_name}
+                    <span className="hp-muted"> - {c.portions} phần</span>
+                  </span>
+                  <strong>{fmtIngredientQty(c.qty_total, c.unit)}</strong>
+                </div>
+              ))}
+            </div>
+          </ChartCard>
+        ) : (
+          <p className="hp-muted hp-chart-wide">
+            Tiêu hao nguyên liệu: chưa có số liệu - món phải được khai công thức thì mới tính được
+          </p>
+        )}
+      </div>
     </div>
   );
 }
 
-function StatusPill({
+// ─── Phần tử nhỏ ───────────────────────────────────────────────────────────
+
+function StatTile({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="card hp-stat">
+      <div className="hp-stat-label">{label}</div>
+      <div className="hp-stat-value">{value}</div>
+    </div>
+  );
+}
+
+function FilterChip({
   active,
-  color = '#0f766e',
-  bg = '#f0fdfa',
   onClick,
   children,
 }: {
   active: boolean;
-  color?: string;
-  bg?: string;
   onClick: () => void;
   children: React.ReactNode;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      style={{
-        padding: '0 11px',
-        minHeight: 34,
-        height: 34,
-        fontSize: 13,
-        fontWeight: active ? 700 : 500,
-        background: active ? color : bg,
-        color: active ? 'white' : color,
-        border: `1px solid ${active ? color : color}`,
-        borderRadius: 999,
-        cursor: 'pointer',
-        whiteSpace: 'nowrap',
-      }}
-    >
+    <button type="button" className="hp-chip" aria-pressed={active} onClick={onClick}>
       {children}
     </button>
   );
 }
 
-const paidBadge: React.CSSProperties = {
-  fontSize: 11,
-  fontWeight: 700,
-  color: '#059669',
-  background: '#d1fae5',
-  padding: '2px 8px',
-  borderRadius: 999,
-};
-
-const unpaidBadge: React.CSSProperties = {
-  fontSize: 11,
-  fontWeight: 700,
-  color: '#b45309',
-  background: '#fef3c7',
-  padding: '2px 8px',
-  borderRadius: 999,
-};
-
-/** Bàn ca trước sang ca này mới thu — tím nhạt, không lẫn với vàng "chưa
- *  thanh toán" hay cam "đang nợ": đơn này ĐÃ thu đủ, nhãn chỉ nói nó thuộc buổi bán nào. */
-const prevShiftBadge: React.CSSProperties = {
-  fontSize: 11,
-  fontWeight: 700,
-  color: '#6d28d9',
-  background: '#ede9fe',
-  padding: '2px 8px',
-  borderRadius: 999,
-};
-
-/** Bàn kết thúc bằng HUỶ, không thu tiền — đỏ đậm để chủ quán nhìn là thấy ngay. */
-const cancelledBadge: React.CSSProperties = {
-  fontSize: 11,
-  fontWeight: 700,
-  color: '#b91c1c',
-  background: '#fee2e2',
-  padding: '2px 8px',
-  borderRadius: 999,
-};
-
-/** Đang NỢ — cam, không lẫn với đỏ của huỷ (tiền không có) và vàng của đang mở (khách còn ngồi). */
-const debtBadge: React.CSSProperties = {
-  fontSize: 11,
-  fontWeight: 700,
-  color: '#9a3412',
-  background: '#ffedd5',
-  padding: '2px 8px',
-  borderRadius: 999,
-};
-
-/** Badge đối soát MISA — bấm để tick / bỏ tick ngay trên dòng lịch sử (2026-09-05).
+/** Badge đối soát MISA — bấm để tick / bỏ tick ngay trên dòng (2026-09-05).
  *
- * `stopPropagation`: dòng lịch sử có onClick mở/đóng chi tiết. Thiếu nó thì mỗi lần tick, bảng
- * lại bung ra một khối chi tiết — người đối soát 30 đơn cuối ca sẽ phải cuộn lại từ đầu. */
+ * `stopPropagation`: dòng có onClick mở/đóng chi tiết. Thiếu nó thì mỗi lần tick, bảng lại bung
+ * ra một khối chi tiết — người đối soát 30 đơn cuối ca sẽ phải cuộn lại từ đầu. */
 function MisaBadge({
   copied,
   by,
@@ -1809,28 +1852,20 @@ function MisaBadge({
   disabled: boolean;
   onToggle: () => void;
 }) {
-  const label = copied ? '📋 Misa ✓' : '📋 Chưa Misa';
+  const label = copied ? 'Đã lên Misa' : 'Chưa Misa';
   const title = copied
-    ? `Đã sao chép sang Misa${by ? ` · ${by}` : ''}${disabled ? '' : ' — bấm để bỏ đánh dấu'}`
+    ? `Đã sao chép sang Misa${by ? ` - ${by}` : ''}${disabled ? '' : ' - bấm để bỏ đánh dấu'}`
     : disabled
       ? 'Chưa sao chép sang Misa'
-      : 'Chưa sao chép sang Misa — bấm để đánh dấu đã gõ';
-  const style: React.CSSProperties = {
-    fontSize: 11,
-    fontWeight: 700,
-    padding: '2px 8px',
-    borderRadius: 999,
-    border: 'none',
-    color: copied ? '#6d28d9' : '#9ca3af',
-    background: copied ? '#ede9fe' : '#f3f4f6',
-    cursor: disabled ? 'default' : 'pointer',
-  };
-  if (disabled) return <span style={style} title={title}>{label}</span>;
+      : 'Chưa sao chép sang Misa - bấm để đánh dấu đã gõ';
+  const cls = `hp-misa${copied ? ' is-copied' : ''}`;
+  if (disabled) return <span className={cls} title={title}>{label}</span>;
   return (
     <button
       type="button"
-      style={style}
+      className={cls}
       title={title}
+      aria-pressed={copied}
       onClick={(e) => { e.stopPropagation(); onToggle(); }}
     >
       {label}
@@ -1839,63 +1874,28 @@ function MisaBadge({
 }
 
 /**
- * CỜ ẢNH BILL của một đơn chuyển khoản (2026-10-02, chủ quán yêu cầu).
- *
- * Chỉ dựng cho đơn CK — đơn tiền mặt không có bill nào để chụp, gắn cờ "thiếu ảnh" lên chúng
- * là tạo ra một đống cảnh báo sai. Chỗ gọi đã chặn bằng `payment_photo_count !== null`.
- *
- * Ba trạng thái, và chúng KHÔNG cùng mức độ gấp:
- *  - có ảnh  → xám nhạt, kèm số tấm. Đây là đường bình thường, nó không được nhảy ra khỏi
- *    dòng: tô đậm cái bình thường thì cái bất thường mất chỗ đứng.
- *  - thiếu ảnh, CÓ lý do → vàng. Người thu đã chủ động khai, quán biết chuyện gì xảy ra.
- *  - thiếu ảnh, KHÔNG lý do → đỏ. Đơn cũ trước 2026-10-02 (hồi ảnh còn tuỳ chọn) rơi vào đây,
- *    và đó đúng là tập đơn không có bằng chứng lẫn lời giải thích.
- *
- * Số tấm hiện luôn chứ không chỉ một dấu tích: hai tấm và một tấm là khác nhau khi đối soát
- * một đơn trả làm nhiều lần chuyển.
+ * CỜ ẢNH BILL của một đơn chuyển khoản (2026-10-02). Chỉ dựng cho đơn CK.
+ *  - có ảnh  → xám nhạt kèm số tấm (đường bình thường, không được nhảy ra khỏi dòng)
+ *  - thiếu ảnh, CÓ lý do → viền cảnh báo (người thu đã khai)
+ *  - thiếu ảnh, KHÔNG lý do → nền cảnh báo (không bằng chứng lẫn lời giải thích)
  */
-function PaymentPhotoBadge({
-  count,
-  skipReason,
-  inline,
-}: {
-  count: number;
-  skipReason: string | null;
-  /** `true` = đứng NGANG dấu ✓/✗ trong ô "Xác thực" (chỗ mặc định từ 2026-10-02). Bỏ hai lề
-   *  vốn dành cho lúc nó đi sau nhãn hình thức thu ở dòng trạng thái. */
-  inline?: boolean;
-}) {
-  const style = {
-    display: 'inline-block',
-    marginTop: inline ? 0 : 3,
-    marginLeft: inline ? 0 : 6,
-    padding: '1px 6px',
-    borderRadius: 999,
-    fontSize: 12,
-    fontWeight: 600,
-    whiteSpace: 'nowrap' as const,
-    lineHeight: 1.5,
-  };
+function PaymentPhotoBadge({ count, skipReason }: { count: number; skipReason: string | null }) {
   if (count > 0) {
     return (
-      <span style={{ ...style, background: '#f1f5f9', color: '#475569' }} title={`${count} ảnh bill`}>
-        📷 {count}
+      <span className="hp-photo" title={`${count} ảnh bill`}>
+        <Camera size={16} aria-hidden />
+        {count} ảnh
       </span>
     );
   }
   const coLyDo = !!skipReason;
   return (
     <span
-      style={
-        coLyDo
-          ? { ...style, background: '#fef3c7', color: '#92400e' }
-          : { ...style, background: '#fee2e2', color: '#991b1b' }
-      }
-      // `title` mang nguyên văn lý do: người đối soát hỏi "vì sao thiếu" ngay tại dòng này,
-      // bắt họ mở rộng đơn mới đọc được là thêm một cú chạm cho mỗi đơn cần soát.
+      className={coLyDo ? 'hp-photo hp-photo--reason' : 'hp-warn'}
+      // `title` mang nguyên văn lý do — trên điện thoại lý do còn ở khối chi tiết.
       title={coLyDo ? `Không chụp được bill: ${skipReason}` : 'Đơn chuyển khoản không có ảnh bill'}
     >
-      ⚠ Thiếu ảnh
+      Thiếu ảnh
     </span>
   );
 }
@@ -1903,13 +1903,31 @@ function PaymentPhotoBadge({
 /** `showMoney = false` (Order/Bếp, 2026-10-20): giữ nguyên mọi HOẠT ĐỘNG — món, số phần, ai gọi /
  *  giao / huỷ, ghi nợ, nhật ký — chỉ bỏ con số tiền. Từ 2026-10-22 đơn đã thanh toán (chỉ đơn
  *  chính họ thu) thì `true`. Xem `canSeeOrderMoney` ở `HistoryPage`. */
-function HistoryOrderDetail({ order, showMoney }: { order: HistoryOrder; showMoney: boolean }) {
+function HistoryOrderDetail({
+  order,
+  showMoney,
+  servedTotal,
+}: {
+  order: HistoryOrder;
+  showMoney: boolean;
+  servedTotal: number;
+}) {
   const items = order.items || [];
   const grouped = {
     SERVED: items.filter((i) => i.state === 'SERVED'),
     CANCELLED: items.filter((i) => i.state === 'CANCELLED'),
     INPROGRESS: items.filter((i) => !['SERVED', 'CANCELLED'].includes(i.state)),
   };
+  const isPaid = !!order.closed_at && order.is_paid;
+  const isOpen = !order.closed_at;
+
+  /** Người gọi / người giao GOM LÊN ĐẦU (2026-11-06): trước đây dòng "NV gọi / Người giao" màu đỏ
+   *  lặp ở mọi món. Chỉ một người gọi + một người giao (đa số đơn) → nói một lần ở đầu, bỏ khỏi
+   *  từng món. Nhiều người → vẫn ghi từng món (để soi ai gọi/huỷ món nào), nhưng chữ xám. */
+  const uniq = (xs: Array<string | null>) => Array.from(new Set(xs.filter((x): x is string => !!x)));
+  const callers = uniq(items.filter((i) => !i.is_note).map((i) => i.created_by_full_name));
+  const servers = uniq(grouped.SERVED.map((i) => i.served_by_full_name));
+  const perItemPeople = callers.length > 1 || servers.length > 1;
 
   // Nhật ký hoạt động — fetch khi mở rộng đơn (component chỉ mount khi expand).
   const [activity, setActivity] = useState<Activity[] | null>(null);
@@ -1923,164 +1941,159 @@ function HistoryOrderDetail({ order, showMoney }: { order: HistoryOrder; showMon
     return () => { alive = false; };
   }, [order.id]);
 
+  const pay = paymentSplit(servedTotal, order);
+  const openTotal = displayTotalOf(order);
+
+  const people = (i: OrderItem, served: boolean) =>
+    perItemPeople && (i.created_by_full_name || (served && i.served_by_full_name)) ? (
+      <div className="hp-item-sub">
+        {i.created_by_full_name && <>Gọi: {i.created_by_full_name}</>}
+        {served && i.served_by_full_name && <> - Giao: {i.served_by_full_name}</>}
+      </div>
+    ) : null;
+
   return (
-    <div style={{ padding: '12px 14px 16px', background: '#f9fafb', borderTop: '1px solid #e5e7eb' }}>
-      {/* Thu bằng chuyển khoản (2026-09-14) — nội dung CK hiện NGUYÊN VĂN vì đó chính là chuỗi
-          phải dò trong sao kê ngân hàng. */}
-      {order.transfer_amount > 0 && (
-        <div style={{ marginBottom: 12, padding: 10, background: '#e0f2fe', borderRadius: 8, fontSize: 13 }}>
-          <strong>🏦 Chuyển khoản{showMoney && ` ${order.transfer_amount.toLocaleString('vi-VN')}đ`}</strong>
-          {order.payment_qr_label && <span> → {order.payment_qr_label}</span>}
-          {order.transfer_note && (
-            <div style={{ marginTop: 2, fontFamily: 'monospace' }}>Nội dung: {order.transfer_note}</div>
-          )}
-          {/* Đơn CK không có ảnh bill thì PHẢI nói ra ngay trong khối tiền, không giấu dưới nhật
-              ký: đây là đơn duy nhất của ngày mà việc đối soát chỉ còn dựa vào lời kể. */}
-          {order.payment_photo_skip_reason && (
-            <div
-              style={{
-                marginTop: 8,
-                padding: '8px 10px',
-                background: '#fef3c7',
-                border: '1px solid #fde68a',
-                borderRadius: 6,
-                color: '#92400e',
-              }}
-            >
-              ⚠ Không chụp được bill — {order.payment_photo_skip_reason}
+    <div className="hp-detail">
+      {(callers.length > 0 || servers.length > 0) && (
+        <div className="hp-detail-people">
+          {callers.length > 0 && <div>Người gọi: <strong>{callers.join(', ')}</strong></div>}
+          {servers.length > 0 && <div>Người giao: <strong>{servers.join(', ')}</strong></div>}
+        </div>
+      )}
+
+      {/* Ghi nợ (2026-09-25): ai nợ, nợ từ lúc nào, và (nếu đã thu) ai thu lúc nào. */}
+      {order.debt_at != null && (
+        <div className="hp-box">
+          <strong>Ghi nợ{order.debt_note ? `: ${order.debt_note}` : ''}</strong>
+          <span className="hp-muted"> - từ {fmtDate(order.debt_at)}</span>
+          {order.debt_paid_at != null ? (
+            <div>
+              Đã thu nợ {fmtDate(order.debt_paid_at)}
+              {order.debt_paid_by_full_name && <> - {order.debt_paid_by_full_name}</>}
             </div>
+          ) : (
+            <div>Chưa thu{showMoney && ' - chưa vào doanh thu'}</div>
           )}
-          {/* Ảnh bill chuyển khoản in rõ số tiền — Order/Bếp không xem (2026-10-20). */}
+        </div>
+      )}
+
+      {/* Khách ship */}
+      {order.customer_name && (
+        <div className="hp-box">
+          <strong>{order.customer_name}</strong>
+          {order.customer_phone && <> - <a href={`tel:${order.customer_phone}`}>{order.customer_phone}</a></>}
+          {order.customer_address && <div>{order.customer_address}</div>}
+        </div>
+      )}
+
+      {/* Món đang làm (chỉ ở đơn chưa thanh toán) */}
+      {grouped.INPROGRESS.length > 0 && (
+        <div className="hp-item-group">
+          <div className="hp-item-head">Đang làm ({grouped.INPROGRESS.length})</div>
+          {aggregateItems(grouped.INPROGRESS).map((g) => (
+            <div key={g.key} className="hp-item">
+              <div className="hp-item-main">
+                <div><strong>{g.count}×</strong> {g.rep.menu_item_name} <span className="hp-muted">({stateLabel(g.rep.state)})</span></div>
+                {people(g.rep, false)}
+                {g.rep.note && <div className="hp-item-sub hp-item-note">Ghi chú: {g.rep.note}</div>}
+              </div>
+              {showMoney && <div className="hp-num hp-muted">{fmt(g.rep.menu_item_price * g.count)}</div>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {grouped.SERVED.length > 0 && (
+        <div className="hp-item-group">
+          <div className="hp-item-head">Đã giao ({grouped.SERVED.length})</div>
+          {aggregateItems(grouped.SERVED).map((g) => (
+            <div key={g.key} className="hp-item">
+              <div className="hp-item-main">
+                <div><strong>{g.count}×</strong> {g.rep.menu_item_name}</div>
+                {people(g.rep, true)}
+                {g.rep.note && <div className="hp-item-sub hp-item-note">Ghi chú: {g.rep.note}</div>}
+              </div>
+              {showMoney && <div className="hp-num">{fmt(g.rep.menu_item_price * g.count)}</div>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {grouped.CANCELLED.length > 0 && (
+        <div className="hp-item-group">
+          <div className="hp-item-head">Đã huỷ ({grouped.CANCELLED.length})</div>
+          {aggregateItems(grouped.CANCELLED).map((g) => (
+            <div key={g.key} className="hp-item is-cancelled">
+              <div className="hp-item-main">
+                <div className="hp-strike"><strong>{g.count}×</strong> {g.rep.menu_item_name}</div>
+                {g.rep.cancelled_reason && <div className="hp-item-sub">Lý do: {g.rep.cancelled_reason}</div>}
+                {people(g.rep, false)}
+              </div>
+              {showMoney && <div className="hp-num hp-strike hp-muted">{fmt(g.rep.menu_item_price * g.count)}</div>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* DÒNG TỔNG KẾT (2026-11-06): tạm tính, ship, tổng, đã nhận — đơn "Cả hai" ghi rõ mỗi phần
+          (trước đây chỉ ghi phần chuyển khoản, tổng 415k mà chi tiết chỉ thấy 365k). Không có
+          dòng "giảm giá": đơn không có trường giảm giá. */}
+      {showMoney && (
+        <div className="hp-summary">
+          {isOpen ? (
+            <>
+              <SumRow label="Tạm tính cả đơn" value={fmt(openTotal)} />
+              <SumRow label="Trong đó đã giao" value={fmt(servedTotal)} />
+            </>
+          ) : (
+            <>
+              <SumRow label="Tiền món" value={fmt(servedTotal)} />
+              {(order.ship_fee || 0) > 0 && <SumRow label="Phí ship (thu hộ)" value={fmt(order.ship_fee)} />}
+              <SumRow label="Tổng" value={fmt(pay.total)} strong />
+              {isPaid && pay.kind !== 'transfer' && <SumRow label="Đã nhận tiền mặt" value={fmt(pay.cash)} />}
+              {isPaid && pay.kind !== 'cash' && <SumRow label="Đã nhận chuyển khoản" value={fmt(pay.transfer)} />}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Chuyển khoản — nội dung CK hiện NGUYÊN VĂN vì đó là chuỗi phải dò trong sao kê. */}
+      {order.transfer_amount > 0 && (
+        <div className="hp-box">
+          <strong>Chuyển khoản{showMoney && ` ${fmt(order.transfer_amount)}`}</strong>
+          {order.payment_qr_label && <span> vào {order.payment_qr_label}</span>}
+          {order.transfer_note && <div className="hp-mono">Nội dung: {order.transfer_note}</div>}
+          {/* Đơn CK không có ảnh bill thì PHẢI nói ra ngay trong khối tiền. */}
+          {order.payment_photo_skip_reason && (
+            <div className="hp-warn-box">Không chụp được bill - {order.payment_photo_skip_reason}</div>
+          )}
+          {/* Ảnh bill in rõ số tiền — Order/Bếp không xem (2026-10-20). */}
           {showMoney && <PaymentPhotos orderId={order.id} />}
         </div>
       )}
 
-      {/* Ghi nợ (2026-09-25): ai nợ, nợ từ lúc nào, và (nếu đã thu) ai thu lúc nào. Mốc thu nợ là
-          mốc TIỀN thật của đơn — khác "Giờ TT" ở cột bảng vốn là lúc trả bàn. */}
-      {order.debt_at != null && (
-        <div
-          style={{
-            marginBottom: 12,
-            padding: 10,
-            background: order.debt_paid_at != null ? '#f0fdf4' : '#ffedd5',
-            borderRadius: 8,
-            fontSize: 13,
-          }}
-        >
-          <strong>📒 Ghi nợ{order.debt_note ? `: ${order.debt_note}` : ''}</strong>
-          <span style={{ color: '#6b7280' }}> · từ {fmtDate(order.debt_at)}</span>
-          {order.debt_paid_at != null ? (
-            <div style={{ marginTop: 2, color: '#166534' }}>
-              ✓ Đã thu nợ {fmtDate(order.debt_paid_at)}
-              {order.debt_paid_by_full_name && <> · {order.debt_paid_by_full_name}</>}
-            </div>
-          ) : (
-            <div style={{ marginTop: 2, color: '#9a3412' }}>Chưa thu{showMoney && ' — chưa vào doanh thu'}.</div>
-          )}
-        </div>
-      )}
-
-      {/* Customer info (delivery) */}
-      {order.customer_name && (
-        <div style={{ marginBottom: 12, padding: 10, background: '#d1fae5', borderRadius: 8, fontSize: 13 }}>
-          <strong>🛵 {order.customer_name}</strong>
-          {order.customer_phone && <> · <a href={`tel:${order.customer_phone}`} style={{ color: '#0f766e' }}>{order.customer_phone}</a></>}
-          {order.customer_address && <div style={{ color: '#374151', marginTop: 2 }}>📍 {order.customer_address}</div>}
-        </div>
-      )}
-
-      {/* In-progress items (chỉ xuất hiện ở order chưa thanh toán) */}
-      {grouped.INPROGRESS.length > 0 && (
-        <div style={{ marginBottom: 10 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: '#b45309', marginBottom: 6, textTransform: 'uppercase' }}>
-            ⏳ Đang xử lý ({grouped.INPROGRESS.length})
-          </div>
-          {aggregateItems(grouped.INPROGRESS).map((g) => (
-            <div key={g.key} style={detailRow}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div><strong>{g.count}×</strong> {g.rep.menu_item_name} <span style={{ fontSize: 11, color: '#9ca3af' }}>({stateLabel(g.rep.state)})</span></div>
-                {g.rep.created_by_full_name && (
-                  <div style={{ fontSize: 11, color: '#0f766e' }}>👤 NV: {g.rep.created_by_full_name}</div>
-                )}
-                {g.rep.note && <div style={{ fontSize: 11, color: '#6b7280', fontStyle: 'italic' }}>📝 {g.rep.note}</div>}
-              </div>
-              {showMoney && <div style={{ fontWeight: 600, color: '#9ca3af' }}>{fmt(g.rep.menu_item_price * g.count)}</div>}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Served items */}
-      {grouped.SERVED.length > 0 && (
-        <div style={{ marginBottom: 10 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: '#059669', marginBottom: 6, textTransform: 'uppercase' }}>
-            ✓ Đã giao ({grouped.SERVED.length})
-          </div>
-          {aggregateItems(grouped.SERVED).map((g) => (
-            <div key={g.key} style={detailRow}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div><strong>{g.count}×</strong> {g.rep.menu_item_name}</div>
-                {g.rep.created_by_full_name && (
-                  <div style={{ fontSize: 11, color: '#0f766e' }}>👤 NV gọi: {g.rep.created_by_full_name}</div>
-                )}
-                {g.rep.served_by_full_name && (
-                  <div style={{ fontSize: 11, color: '#059669' }}>🍽 Người giao: {g.rep.served_by_full_name}</div>
-                )}
-                {g.rep.note && <div style={{ fontSize: 11, color: '#6b7280', fontStyle: 'italic' }}>📝 {g.rep.note}</div>}
-              </div>
-              {showMoney && <div style={{ fontWeight: 600 }}>{fmt(g.rep.menu_item_price * g.count)}</div>}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Cancelled items */}
-      {grouped.CANCELLED.length > 0 && (
-        <div>
-          <div style={{ fontSize: 12, fontWeight: 700, color: '#dc2626', marginBottom: 6, textTransform: 'uppercase' }}>
-            ✕ Đã huỷ ({grouped.CANCELLED.length})
-          </div>
-          {aggregateItems(grouped.CANCELLED).map((g) => (
-            <div key={g.key} style={{ ...detailRow, opacity: 0.7 }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ textDecoration: 'line-through' }}><strong>{g.count}×</strong> {g.rep.menu_item_name}</div>
-                {g.rep.cancelled_reason && <div style={{ fontSize: 11, color: '#dc2626' }}>↳ {g.rep.cancelled_reason}</div>}
-                {g.rep.created_by_full_name && (
-                  <div style={{ fontSize: 11, color: '#6b7280' }}>👤 NV: {g.rep.created_by_full_name}</div>
-                )}
-              </div>
-              {showMoney && <div style={{ color: '#9ca3af', textDecoration: 'line-through' }}>{fmt(g.rep.menu_item_price * g.count)}</div>}
-            </div>
-          ))}
-        </div>
-      )}
-
       {/* Nhật ký hoạt động đơn */}
-      <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px dashed #d1d5db' }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: '#4b5563', marginBottom: 8, textTransform: 'uppercase' }}>
-          🧾 Nhật ký đơn
-          <span style={{ fontWeight: 400, textTransform: 'none', color: '#9ca3af' }}>
-            {' '}· {order.table_name} · mở {fmtDate(order.opened_at)}
-          </span>
+      <div className="hp-log">
+        <div className="hp-item-head">
+          Nhật ký đơn
+          <span className="hp-muted hp-log-meta"> - {order.table_name} - mở {fmtDate(order.opened_at)}</span>
         </div>
-        {actErr && <div style={{ fontSize: 12, color: '#dc2626' }}>{actErr}</div>}
-        {!actErr && activity === null && <div style={{ fontSize: 12, color: '#9ca3af' }}>Đang tải nhật ký...</div>}
+        {actErr && <div className="hp-err">{actErr}</div>}
+        {!actErr && activity === null && <div className="hp-muted">Đang tải nhật ký...</div>}
         {activity !== null && activity.length === 0 && (
-          <div style={{ fontSize: 12, color: '#9ca3af' }}>Chưa có hoạt động nào được ghi (đơn cũ trước khi bật tính năng).</div>
+          <div className="hp-muted">Chưa có hoạt động nào được ghi (đơn cũ trước khi bật tính năng)</div>
         )}
         {activity !== null && activity.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div className="hp-log-list">
             {activity.map((a) => (
-              <div key={a.id} style={{ display: 'flex', gap: 8, fontSize: 13, alignItems: 'baseline' }}>
-                <span style={{ fontSize: 14, flexShrink: 0 }}>{EVENT_ICON[a.event_kind] || '•'}</span>
-                <div style={{ flex: 1, minWidth: 0 }}>
+              <div key={a.id} className="hp-log-row">
+                <span aria-hidden className="hp-log-icon">{EVENT_ICON[a.event_kind] || '•'}</span>
+                <div className="hp-log-text">
                   {/* Câu nhật ký do BE viết sẵn, câu thanh toán có tiền nằm giữa — che đi. */}
                   <span>{showMoney ? a.message : anTien(a.message)}</span>
-                  {a.actor_name && <span style={{ color: '#0f766e' }}> · 👤 {a.actor_name}</span>}
+                  {a.actor_name && <span className="hp-muted"> - {a.actor_name}</span>}
                 </div>
-                <span style={{ fontSize: 11, color: '#9ca3af', flexShrink: 0, whiteSpace: 'nowrap' }}>
-                  {fmtTime(a.created_at)}
-                </span>
+                <span className="hp-log-time">{fmtTime(a.created_at)}</span>
               </div>
             ))}
           </div>
@@ -2090,323 +2103,17 @@ function HistoryOrderDetail({ order, showMoney }: { order: HistoryOrder; showMon
   );
 }
 
-const detailRow: React.CSSProperties = {
-  display: 'flex',
-  gap: 8,
-  padding: '6px 8px',
-  fontSize: 13,
-  borderBottom: '1px solid #f3f4f6',
-};
-
-const TABLE_KIND_LABEL: Record<string, string> = {
-  'dine-in': '🪑 Bàn ngồi',
-  'takeaway': '🥡 Mang về',
-  'delivery': '🛵 Ship',
-};
-
-// ─── SearchableSelect: trigger button + dropdown có search ──────────────
-type SelectOption = {
-  value: string;
-  label: string;
-  hint?: string;     // text phụ (ví dụ: mã bàn)
-  group?: string;    // tên nhóm để gom (ví dụ: kind bàn)
-};
-
-function SearchableSelect({
-  label,
-  placeholder,
-  value,
-  options,
-  onChange,
-  compact = false,
-  width,
-}: {
-  label: string;
-  placeholder: string;
-  value: string;
-  options: SelectOption[];
-  onChange: (v: string) => void;
-  /** Một dòng thay vì 2 tầng (nhãn trên, giá trị dưới) — dùng cho thanh lọc 1 dòng. */
-  compact?: boolean;
-  /** Bề rộng cố định; cần vì trong flex row wrapper không tự có bề rộng như ở grid. */
-  width?: number;
-}) {
-  const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState('');
-  const wrapperRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const selected = options.find((o) => o.value === value);
-
-  // Filter + group options
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return options;
-    return options.filter((o) =>
-      o.label.toLowerCase().includes(q) ||
-      (o.hint && o.hint.toLowerCase().includes(q)),
-    );
-  }, [options, search]);
-
-  const grouped = useMemo(() => {
-    const map = new Map<string, SelectOption[]>();
-    for (const o of filtered) {
-      const g = o.group || '';
-      if (!map.has(g)) map.set(g, []);
-      map.get(g)!.push(o);
-    }
-    return Array.from(map.entries());
-  }, [filtered]);
-
-  // Click outside → close
-  useEffect(() => {
-    if (!open) return;
-    const onDoc = (e: MouseEvent) => {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
-    };
-    document.addEventListener('mousedown', onDoc);
-    document.addEventListener('keydown', onKey);
-    // Auto-focus search khi mở
-    setTimeout(() => inputRef.current?.focus(), 50);
-    return () => {
-      document.removeEventListener('mousedown', onDoc);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [open]);
-
-  const pick = (v: string) => {
-    onChange(v);
-    setOpen(false);
-    setSearch('');
-  };
-
+function SumRow({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
   return (
-    <div ref={wrapperRef} className={compact ? 'txn-fsel' : undefined} style={{ position: 'relative', width, flexShrink: 0 }}>
-      {/* Trigger button */}
-      <button
-        type="button"
-        title={label}
-        onClick={() => setOpen((v) => !v)}
-        style={{
-          width: '100%',
-          minHeight: compact ? 34 : 48,
-          height: compact ? 34 : undefined,
-          padding: compact ? '0 8px' : '8px 12px',
-          background: 'white',
-          border: `1.5px solid ${selected ? '#0f766e' : '#d1d5db'}`,
-          borderRadius: compact ? 8 : 10,
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          gap: compact ? 5 : 8,
-          textAlign: 'left',
-          color: '#1f2937',
-          fontWeight: 500,
-          fontSize: 14,
-        }}
-      >
-        {/* compact: nhãn thành tiền tố CÙNG DÒNG với giá trị — 34px thay vì 48px, và không còn
-            dòng nhãn nào chiếm chỗ khi thanh lọc đã ép hết vào một hàng. */}
-        {compact && <span style={{ fontSize: 13, flexShrink: 0 }}>{label}</span>}
-        <div style={{ flex: 1, minWidth: 0, lineHeight: 1.2 }}>
-          {!compact && <div style={{ fontSize: 11, color: '#6b7280', fontWeight: 500 }}>{label}</div>}
-          <div
-            style={{
-              fontSize: compact ? 13 : 15,
-              fontWeight: selected ? 700 : 400,
-              color: selected ? '#0f766e' : '#9ca3af',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {selected ? selected.label : placeholder}
-            {selected?.hint && !compact && (
-              <span style={{ fontSize: 11, color: '#6b7280', fontWeight: 400, marginLeft: 6 }}>
-                {selected.hint}
-              </span>
-            )}
-          </div>
-        </div>
-        {selected ? (
-          <span
-            role="button"
-            aria-label="Xoá lọc"
-            onClick={(e) => { e.stopPropagation(); pick(''); }}
-            style={{
-              width: compact ? 20 : 26,
-              height: compact ? 20 : 26,
-              borderRadius: '50%',
-              background: '#f3f4f6',
-              color: '#6b7280',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: 14,
-              cursor: 'pointer',
-              flexShrink: 0,
-            }}
-          >
-            ✕
-          </span>
-        ) : (
-          <span style={{ color: '#9ca3af', fontSize: 14, flexShrink: 0 }}>▾</span>
-        )}
-      </button>
-
-      {/* Dropdown panel */}
-      {open && (
-        <div
-          style={{
-            position: 'absolute',
-            top: 'calc(100% + 6px)',
-            left: 0,
-            right: 0,
-            // Nút bấm ở chế độ compact chỉ rộng 150px — panel phải rộng hơn nút, nếu không tên
-            // bàn / tên thu ngân bị cắt ngay trong danh sách đang chọn.
-            minWidth: compact ? 240 : undefined,
-            background: 'white',
-            border: '1px solid #e5e7eb',
-            borderRadius: 10,
-            boxShadow: '0 10px 30px rgba(0,0,0,0.15)',
-            zIndex: 1000,
-            overflow: 'hidden',
-            display: 'flex',
-            flexDirection: 'column',
-            maxHeight: 360,
-          }}
-        >
-          {/* Search */}
-          <div style={{ padding: 8, borderBottom: '1px solid #f3f4f6' }}>
-            <input
-              ref={inputRef}
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="🔍 Gõ để tìm..."
-              style={{
-                width: '100%',
-                minHeight: 38,
-                padding: '6px 10px',
-                fontSize: 14,
-                border: '1px solid #e5e7eb',
-                borderRadius: 6,
-                outline: 'none',
-              }}
-            />
-          </div>
-
-          {/* List */}
-          <div style={{ flex: 1, overflowY: 'auto' }}>
-            {/* Tất cả option */}
-            <button
-              type="button"
-              onClick={() => pick('')}
-              style={{
-                width: '100%',
-                background: !value ? '#f0fdfa' : 'white',
-                border: 'none',
-                borderBottom: '1px solid #f3f4f6',
-                padding: '10px 14px',
-                textAlign: 'left',
-                cursor: 'pointer',
-                fontSize: 14,
-                color: !value ? '#0f766e' : '#374151',
-                fontWeight: !value ? 700 : 500,
-              }}
-            >
-              {!value && '✓ '}{placeholder}
-            </button>
-
-            {filtered.length === 0 && (
-              <div style={{ padding: 16, textAlign: 'center', color: '#9ca3af', fontSize: 13 }}>
-                Không có kết quả khớp
-              </div>
-            )}
-
-            {grouped.map(([groupName, opts]) => (
-              <div key={groupName}>
-                {groupName && (
-                  <div
-                    style={{
-                      padding: '6px 14px 4px',
-                      fontSize: 11,
-                      color: '#6b7280',
-                      textTransform: 'uppercase',
-                      letterSpacing: 0.4,
-                      fontWeight: 700,
-                      background: '#fafafa',
-                    }}
-                  >
-                    {groupName}
-                  </div>
-                )}
-                {opts.map((o) => {
-                  const active = o.value === value;
-                  return (
-                    <button
-                      key={o.value}
-                      type="button"
-                      onClick={() => pick(o.value)}
-                      style={{
-                        width: '100%',
-                        background: active ? '#f0fdfa' : 'white',
-                        border: 'none',
-                        borderBottom: '1px solid #f3f4f6',
-                        padding: '10px 14px',
-                        textAlign: 'left',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 8,
-                      }}
-                    >
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div
-                          style={{
-                            fontSize: 14,
-                            color: active ? '#0f766e' : '#1f2937',
-                            fontWeight: active ? 700 : 500,
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          {active && '✓ '}{o.label}
-                        </div>
-                        {o.hint && (
-                          <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 1 }}>
-                            {o.hint}
-                          </div>
-                        )}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            ))}
-          </div>
-
-          {/* Footer count */}
-          <div
-            style={{
-              padding: '6px 12px',
-              borderTop: '1px solid #f3f4f6',
-              fontSize: 11,
-              color: '#9ca3af',
-              background: '#fafafa',
-              textAlign: 'right',
-            }}
-          >
-            {filtered.length} / {options.length} mục
-          </div>
-        </div>
-      )}
+    <div className={`hp-sum-row${strong ? ' is-strong' : ''}`}>
+      <span>{label}</span>
+      <span className="hp-num">{value}</span>
     </div>
   );
 }
+
+const TABLE_KIND_LABEL: Record<string, string> = {
+  'dine-in': 'Bàn ngồi',
+  'takeaway': 'Mang về',
+  'delivery': 'Ship',
+};

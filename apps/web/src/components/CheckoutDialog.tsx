@@ -15,6 +15,39 @@ import { stepBlockReason, type CheckoutStep, type PayMode } from '../lib/checkou
 import { rejectIfTooLarge, shrinkImage } from '../lib/shrink-image.ts';
 import { api, extractError } from '../lib/api.ts';
 import { useToast } from './Toast.tsx';
+import { Check, ChevronDown } from 'lucide-react';
+
+/** Tài khoản QR dùng lần trước TRÊN MÁY NÀY — mở sẵn ở màn QR (chủ repo 2026-11-06, thay "luôn bắt
+ *  chọn"). Tên tài khoản hiện rõ ngay dưới mã + nút Đổi, nên chọn nhầm vẫn thấy trước khi thu. */
+const LAST_QR_KEY = 'qlq.lastPayQrId';
+function readLastQr(): string | null {
+  try { return localStorage.getItem(LAST_QR_KEY); } catch { return null; }
+}
+function saveLastQr(id: string) {
+  try { localStorage.setItem(LAST_QR_KEY, id); } catch { /* máy chặn lưu — bỏ qua */ }
+}
+
+/** Lỗi API → câu cho người thu (2026-11-06). Trường sai → nói đúng trường; lỗi hệ thống → kèm
+ *  mã để báo quản lý. Trước đây chỉ có "Dữ liệu thiếu hoặc sai định dạng" và toast đè tiêu đề. */
+const FIELD_VN: Record<string, string> = {
+  paid_to_account_id: 'Tài khoản nhận tiền không hợp lệ - chọn lại tài khoản ở bước quét mã',
+  transfer_amount: 'Số tiền chuyển khoản không hợp lệ',
+  debt_note: 'Tên khách nợ không hợp lệ',
+  transfer_note: 'Nội dung chuyển khoản không hợp lệ',
+  payment_photo_skip_reason: 'Lý do không chụp bill không hợp lệ',
+};
+function describePayError(err: unknown): string {
+  const e = extractError(err) as ReturnType<typeof extractError> & { request_id?: string };
+  if (e.field_errors?.length) {
+    return e.field_errors.map((f) => FIELD_VN[f.field] ?? `${f.field}: ${f.message}`).join(' · ');
+  }
+  if (e.code === 'INTERNAL_ERROR' || e.code === 'BAD_GATEWAY' || e.code === 'BAD_RESPONSE') {
+    return e.request_id
+      ? `Lỗi hệ thống, báo quản lý (mã: ${e.request_id.slice(0, 8)})`
+      : e.message;
+  }
+  return e.message;
+}
 import { Row, Section } from './checkout-ui.tsx';
 
 type QrOption = {
@@ -136,7 +169,17 @@ export function CheckoutDialog({
    * QR, chi tiết món và Misa vào cùng một khối cuộn — người thu phải vuốt tìm giữa lúc khách
    * đứng đợi, và ảnh QR (thứ phải GIƠ RA cho khách) thì nằm lấp giữa chừng.
    */
-  const [step, setStep] = useState<CheckoutStep>('items');
+  /* 2026-11-06 (chủ repo): GỘP soát bill + "trả bằng gì" thành MỘT màn mở đầu ('mode'). Danh sách
+     món thu gọn ngay dưới tổng tiền (mở sẵn nếu còn món chưa mang ra), hình thức bên dưới. Chạm
+     Chuyển khoản / Cả hai là sang màn QR luôn; Tiền mặt và Ghi nợ chốt ngay tại màn này. Màn
+     'items' cũ không còn được dùng. */
+  const [step, setStep] = useState<CheckoutStep>('mode');
+  /** Tiền khách đưa (tiền mặt) — chỉ để tính tiền thối, KHÔNG gửi lên server. */
+  const [given, setGiven] = useState('');
+  /** Lỗi khi chốt — hiện NGAY trong hộp thoại, trên hàng nút. */
+  const [formError, setFormError] = useState<string | null>(null);
+  /** Màn QR: đang mở danh sách để đổi tài khoản. */
+  const [changingQr, setChangingQr] = useState(false);
 
   const picked = qrOptions.find((o) => o.id === pickedId) ?? null;
 
@@ -213,8 +256,12 @@ export function CheckoutDialog({
       .get<{ data: { items: QrOption[] } }>('/payment-qr')
       .then((res) => {
         if (!alive) return;
-        setQrOptions(res.data.data.items);
+        const items = res.data.data.items;
+        setQrOptions(items);
         setQrLoadFailed(false);
+        // Mở sẵn tài khoản dùng lần trước (nếu còn trong danh sách của người này).
+        const last = readLastQr();
+        setPickedId((cur) => cur ?? (last && items.some((o) => o.id === last) ? last : null));
       })
       .catch(() => {
         // KHÔNG toast: người thu đang đứng trước khách, một thông báo đỏ ở đây chỉ làm họ hoảng.
@@ -362,7 +409,7 @@ export function CheckoutDialog({
    *  mỗi bàn. */
   const goNext = () => {
     if (blockReason) {
-      toast.push('error', blockReason);
+      setFormError(blockReason);
       return;
     }
     if (step === 'items') {
@@ -392,9 +439,9 @@ export function CheckoutDialog({
    *  sửa một thứ, không phải để bắt đầu lại. Ảnh đã đẩy vẫn nằm trên server gắn với đơn — nó
    *  không phụ thuộc vào việc hộp thoại đang ở màn nào. */
   const goBack = () => {
+    setFormError(null);
     if (step === 'bill') setStep('qr');
     else if (step === 'qr') setStep('mode');
-    else if (step === 'mode') setStep('items');
     else onCancel();
   };
 
@@ -405,22 +452,21 @@ export function CheckoutDialog({
   //  nút 💰 ngoài màn bàn: người thu không biết (và không cần biết) rằng mình đang bỏ qua một màn
   //  mà đồng nghiệp có quyền hơn thì phải đi qua.
   const nextLabel =
-    step === 'items'
-      ? settleDebt
-        ? '💰 Thu nợ'
-        : '💰 Thanh toán'
-      : step === 'mode' && mode === 'DEBT'
-        ? '📒 Xác nhận ghi nợ'
-        : step === 'bill' || (step === 'mode' && mode === 'CASH')
-          ? 'Xác nhận thu tiền'
-          : 'Tiếp tục →';
+    step === 'mode' && mode === 'DEBT'
+      ? 'Xác nhận ghi nợ'
+      : step === 'bill' || (step === 'mode' && mode === 'CASH')
+        ? settleDebt
+          ? 'Xác nhận thu nợ'
+          : 'Xác nhận thu tiền'
+        : 'Tiếp tục';
 
   const submit = async () => {
     if (blockReason) {
-      toast.push('error', blockReason);
+      setFormError(blockReason);
       return;
     }
     setSubmitting(true);
+    setFormError(null);
     try {
       const res = await api.post<{ data: CheckoutResult }>(`/orders/${orderId}/${settleDebt ? 'settle-debt' : 'checkout'}`, {
         // Ghi nợ: chỉ gửi cờ + tên khách. Không gửi cụm chuyển khoản — BE cũng bỏ qua nó.
@@ -439,9 +485,10 @@ export function CheckoutDialog({
             }
           : {}),
       });
+      if (transferAmount > 0 && picked) saveLastQr(picked.id);
       onDone(res.data.data);
     } catch (err) {
-      toast.push('error', extractError(err).message);
+      setFormError(describePayError(err));
       setSubmitting(false);
     }
   };
@@ -485,110 +532,112 @@ export function CheckoutDialog({
           boxShadow: '0 20px 50px rgba(0,0,0,0.25)',
         }}
       >
-        <div
-          style={{
-            padding: '14px 18px',
-            display: 'flex',
-            gap: 12,
-            alignItems: 'center',
-            background: activeItems.length > 0 ? '#fef3c7' : '#ecfdf5',
-            borderBottom: '1px solid rgba(0,0,0,.06)',
-          }}
-        >
-          <span style={{ fontSize: 26 }}>
-            {step === 'items' ? '🧾' : step === 'mode' ? '💰' : step === 'qr' ? '📱' : '✅'}
-          </span>
-          {/* Tiêu đề đổi theo màn — đây là thứ DUY NHẤT nói cho người thu biết họ đang đứng ở
-              đâu trong chuỗi. Cố ý KHÔNG đánh số "bước 1/3": luồng tiền mặt chỉ có đúng một màn,
-              đếm tới 3 ở đó là hứa hai màn không bao giờ tới. */}
-          <h2 id="pay-title" style={{ margin: 0, fontSize: 17, color: activeItems.length > 0 ? '#92400e' : '#059669' }}>
-            {step === 'mode'
-              ? `Khách trả bằng gì? — ${table.name}`
-              : step === 'qr'
-                ? `Khách quét mã — ${table.name}`
-                : step === 'bill'
-                  ? `Xác nhận thu tiền — ${table.name}`
-                  : settleDebt
-                    ? `Thu nợ ${table.name}`
-                    : `Thanh toán ${table.name}`}
+        {/* Đầu hộp TRUNG TÍNH (2026-11-06) — bỏ nền vàng/xanh + emoji: màu cảnh báo đã nằm ở mục
+            "món chưa mang ra" ngay bên dưới. */}
+        <div className="pay-head">
+          <h2 id="pay-title">
+            {step === 'qr'
+              ? `Khách quét mã - ${table.name}`
+              : step === 'bill'
+                ? `Xác nhận thu tiền - ${table.name}`
+                : settleDebt
+                  ? `Thu nợ - ${table.name}`
+                  : `Thanh toán - ${table.name}`}
           </h2>
         </div>
 
         <div style={{ padding: 18, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {/* Tổng cần thu đứng đầu ở HAI màn trước khi chọn hình thức — người thu đọc con số này
-              cho khách nghe, rồi mới hỏi trả bằng gì. Hai màn sau không lặp lại nó: ở đó số tiền
-              đã có khối riêng nói về phần chuyển khoản, bày thêm một con số nữa chỉ gây nhầm.
-              Giữ nguyên việc tách phí ship: đọc một con số gộp thì cuối ngày không đối soát được
-              tiền thu hộ shipper (M2.D-62). */}
-          {(step === 'items' || step === 'mode') && (
-            <div style={{ background: '#f0fdfa', borderRadius: 10, padding: 14, textAlign: 'center', border: '1px solid #ccfbf1' }}>
-              <div style={{ fontSize: 13, color: '#6b7280' }}>Tổng cần thu</div>
-              <div style={{ fontSize: 28, fontWeight: 700, color: '#0f766e', marginTop: 4 }}>{fmt(total)}</div>
-              <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
-                {shipFee > 0
-                  ? `${servedUnits} món ${fmt(itemsTotal)} + phí ship ${fmt(shipFee)}`
-                  : `${billableUnits} món`}
-              </div>
-            </div>
-          )}
-
-          {step === 'items' ? (
-            /* ── MÀN 1: soát bill ── */
+          {step === 'mode' ? (
+            /* ── MÀN ĐẦU (gộp 2026-11-06): tổng tiền → món (thu gọn) → khách trả bằng gì ── */
             <>
-              <OrderLines
-                servedItems={servedItems}
-                activeItems={activeItems}
-                cancelledItems={cancelledItems}
-                activeUnits={activeUnits}
-              />
-              {/* Ô tick Misa ĐÃ BỎ khỏi hộp thoại thu tiền (2026-10-15): chỉ đơn thu qua mã QR
-                  HKD mới phải gõ sang MISA, mà màn này chưa biết khách trả qua mã nào. Đánh dấu
-                  ở màn Lịch sử — nút ở đó chỉ hiện với đơn HKD. */}
-              {/* Người KHÔNG được thu chuyển khoản chốt tiền mặt ngay màn này và không bao giờ
-                  thấy màn "trả bằng gì" — nhưng ghi nợ là quyền của mọi người (D-05). Một đường
-                  phụ nhỏ dẫn thẳng tới màn 2 với nút Ghi nợ đã chọn; đường chính (tiền mặt) vẫn
-                  là một cú bấm như cũ. */}
-              {!canCollectTransfer && !settleDebt && (
-                <button
-                  type="button"
-                  className="secondary"
-                  onClick={() => {
-                    setMode('DEBT');
-                    setStep('mode');
-                  }}
-                  style={{ minHeight: 40, fontSize: 14 }}
-                >
-                  📒 Khách nợ, ghi sổ →
-                </button>
-              )}
-            </>
-          ) : step === 'mode' ? (
-            /* ── MÀN 2: "Khách trả bằng gì?" ──
-               Màn này CHỈ có đúng một câu hỏi. Không chi tiết món (đã soát ở màn trước), không mã
-               QR (màn sau), không ô nhập tiền — mỗi thứ thêm vào đây là một thứ phải đọc lướt qua
-               trong lúc khách đang đứng chờ. */
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>Khách trả bằng gì?</div>
-              <div className="pay-modes">
-                <ModeButton active={mode === 'CASH'} onClick={() => setMode('CASH')} label="💵 Tiền mặt" />
-                {/* Hai nút chuyển khoản chỉ hiện cho người có công tắc Thu CK; người không có
-                    vẫn tới được màn này qua đường "Khách nợ" ở màn soát bill. */}
-                {canCollectTransfer && (
-                  <>
-                    <ModeButton active={mode === 'TRANSFER'} onClick={() => setMode('TRANSFER')} label="🏦 Chuyển khoản" />
-                    <ModeButton active={mode === 'SPLIT'} onClick={() => setMode('SPLIT')} label="💵+🏦 Cả hai" />
-                  </>
-                )}
-                {/* NÚT THỨ TƯ, không phải ô tích (D-01): nợ là nợ toàn bộ, nên "tiền mặt hay
-                    chuyển khoản" không còn là câu hỏi — ô tích đi kèm ba nút kia sẽ khiến người
-                    thu phải chọn một hình thức cho khoản tiền không tồn tại. */}
-                {!settleDebt && (
-                  <ModeButton active={mode === 'DEBT'} onClick={() => setMode('DEBT')} label="📒 Ghi nợ" />
-                )}
+              {/* Tổng cần thu: nền TRUNG TÍNH — hồng + chữ đỏ trông như cảnh báo. Giữ tách phí ship
+                  (đối soát tiền thu hộ shipper, M2.D-62). */}
+              <div className="pay-total">
+                <div className="pay-total-label">Tổng cần thu</div>
+                <div className="pay-total-value">{fmt(total)}</div>
+                <div className="pay-total-sub">
+                  {shipFee > 0
+                    ? `${servedUnits} món ${fmt(itemsTotal)} + phí ship ${fmt(shipFee)}`
+                    : `${billableUnits} món`}
+                </div>
               </div>
+
+              <details className="pay-lines" open={activeUnits > 0}>
+                <summary>
+                  {activeUnits > 0 ? `Xem món - còn ${activeUnits} món chưa mang ra` : `Xem ${billableUnits} món`}
+                  <ChevronDown size={18} aria-hidden="true" />
+                </summary>
+                <OrderLines
+                  servedItems={servedItems}
+                  activeItems={activeItems}
+                  cancelledItems={cancelledItems}
+                  activeUnits={activeUnits}
+                />
+              </details>
+
+              <div>
+                <div className="pay-q">Khách trả bằng gì?</div>
+                <div className="pay-modes">
+                  <ModeButton active={mode === 'CASH'} onClick={() => setMode('CASH')} label="Tiền mặt" />
+                  {/* Chuyển khoản / Cả hai: chạm là SANG MÀN QR LUÔN — không cần nút "Tiếp tục". */}
+                  {canCollectTransfer && (
+                    <>
+                      <ModeButton
+                        active={mode === 'TRANSFER'}
+                        onClick={() => { setMode('TRANSFER'); setFormError(null); setStep('qr'); }}
+                        label="Chuyển khoản"
+                      />
+                      <ModeButton
+                        active={mode === 'SPLIT'}
+                        onClick={() => { setMode('SPLIT'); setFormError(null); setStep('qr'); }}
+                        label="Cả hai"
+                      />
+                    </>
+                  )}
+                  {/* NÚT riêng, không phải ô tích (D-01): nợ là nợ toàn bộ. */}
+                  {!settleDebt && (
+                    <ModeButton active={mode === 'DEBT'} onClick={() => setMode('DEBT')} label="Ghi nợ" />
+                  )}
+                </div>
+              </div>
+
+              {/* TIỀN MẶT: khách đưa bao nhiêu → thối lại bao nhiêu (2026-11-06). Chỉ là máy tính
+                  cho người thu — không gửi lên server, không chặn nút thu. */}
+              {mode === 'CASH' && (() => {
+                const givenNum = Number(given.replace(/\D/g, '') || 0);
+                const quick = Array.from(
+                  new Set([50_000, 100_000, 200_000, 500_000].map((step) => Math.ceil(total / step) * step)),
+                ).filter((v) => v > total).slice(0, 3);
+                return (
+                  <div className="pay-cash">
+                    <label htmlFor="pay-given">Khách đưa</label>
+                    <input
+                      id="pay-given"
+                      inputMode="numeric"
+                      value={given ? Number(given.replace(/\D/g, '')).toLocaleString('vi-VN') : ''}
+                      onChange={(e) => setGiven(e.target.value)}
+                      placeholder="Nhập số tiền khách đưa"
+                    />
+                    <div className="pay-cash-quick">
+                      <button type="button" className="secondary" onClick={() => setGiven(String(total))}>Đủ tiền</button>
+                      {quick.map((v) => (
+                        <button key={v} type="button" className="secondary" onClick={() => setGiven(String(v))}>
+                          {v >= 1_000_000 ? `${(v / 1_000_000).toLocaleString('vi-VN')}tr` : `${v / 1000}k`}
+                        </button>
+                      ))}
+                    </div>
+                    {givenNum > 0 && (
+                      <div className={`pay-change${givenNum < total ? ' is-short' : ''}`}>
+                        {givenNum >= total ? `Thối lại: ${fmt(givenNum - total)}` : `Còn thiếu: ${fmt(total - givenNum)}`}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
               {mode === 'DEBT' && (
-                <div style={{ marginTop: 12 }}>
-                  <label htmlFor="pay-debt-note" style={{ fontSize: 13, fontWeight: 600 }}>
+                <div>
+                  <label htmlFor="pay-debt-note" style={{ fontSize: 15, fontWeight: 600 }}>
                     Ai nợ? (tên khách / ghi chú)
                   </label>
                   <input
@@ -598,14 +647,14 @@ export function CheckoutDialog({
                     onChange={(e) => setDebtNote(e.target.value)}
                     maxLength={255}
                     placeholder="VD: Anh Tuấn bàn quen, 0912..."
-                    style={{ width: '100%', fontSize: 17, minHeight: 44 }}
+                    style={{ width: '100%', fontSize: 17, minHeight: 48 }}
                   />
-                  <div style={{ fontSize: 13, marginTop: 6, color: '#b45309' }}>
-                    Bàn sẽ trống ngay. Khoản {fmt(total)} CHƯA vào doanh thu cho tới khi bấm "Thu nợ" ở màn Lịch sử.
+                  <div style={{ fontSize: 14, marginTop: 6, color: '#92400e' }}>
+                    Bàn sẽ trống ngay. Khoản {fmt(total)} CHƯA vào doanh thu cho tới khi bấm "Thu nợ" ở màn Lịch sử
                   </div>
                 </div>
               )}
-            </div>
+            </>
           ) : step === 'qr' ? (
             /* ── MÀN 3: chìa mã cho khách quét ── */
             <>
@@ -625,7 +674,7 @@ export function CheckoutDialog({
                     placeholder="0"
                     style={{ width: '100%', fontSize: 20, textAlign: 'right', minHeight: 44 }}
                   />
-                  <div style={{ fontSize: 14, marginTop: 6, color: '#0f766e', fontWeight: 600 }}>
+                  <div style={{ fontSize: 14, marginTop: 6, color: '#b82a1e', fontWeight: 600 }}>
                     Còn lại thu tiền mặt: {fmt(cashAmount)}
                   </div>
                 </div>
@@ -634,7 +683,9 @@ export function CheckoutDialog({
                 options={qrOptions}
                 loadFailed={qrLoadFailed}
                 pickedId={pickedId}
-                onPick={setPickedId}
+                onPick={(id) => { setPickedId(id); setChangingQr(false); }}
+                changing={changingQr}
+                onChange={() => setChangingQr(true)}
                 picked={picked}
                 qrDataUrl={qrDataUrl}
                 transferAmount={transferAmount}
@@ -660,6 +711,9 @@ export function CheckoutDialog({
           )}
         </div>
 
+        {formError && (
+          <div className="pay-error" role="alert">{formError}</div>
+        )}
         <div style={{ display: 'flex', gap: 10, padding: 14, borderTop: '1px solid #e5e7eb' }}>
           <button
             type="button"
@@ -671,7 +725,7 @@ export function CheckoutDialog({
                thoát, nhường chỗ cho nút người ta thật sự bấm. */
             style={{ flex: 1, minHeight: 44, whiteSpace: 'nowrap', padding: '0 8px' }}
           >
-            {step === 'mode' ? 'Huỷ' : '← Quay lại'}
+            {step === 'mode' ? 'Huỷ' : 'Quay lại'}
           </button>
           {/* CỐ Ý không dùng thuộc tính `disabled`: nút `disabled` thì trình duyệt KHÔNG bắn sự
               kiện bấm, nên nó không bao giờ nói được vì sao nó mờ — người dùng bấm vào chỗ chết
@@ -728,6 +782,8 @@ function groupUnits(list: ItemLike[]): Array<{ rep: ItemLike; count: number }> {
 function ModeButton({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
   return (
     <button type="button" className="pay-mode" onClick={onClick} aria-pressed={active}>
+      {/* Đang chọn: ✓ + nền nhạt — không chỉ viền đỏ (dễ đọc thành "lỗi"). */}
+      {active && <Check size={20} aria-hidden="true" />}
       {label}
     </button>
   );
@@ -752,6 +808,8 @@ export function QrStep({
   qrDataUrl,
   transferAmount,
   note,
+  changing = false,
+  onChange,
 }: {
   options: QrOption[];
   loadFailed: boolean;
@@ -761,102 +819,90 @@ export function QrStep({
   qrDataUrl: string | null;
   transferAmount: number;
   note: string;
-  /** Kết quả xác thực với ngân hàng — xem effect 'XÁC THỰC GIAO DỊCH' ở component cha. */
+  /** Đang mở danh sách để đổi tài khoản. */
+  changing?: boolean;
+  onChange?: () => void;
 }) {
+  /* MÃ QR + SỐ TIỀN LÊN ĐẦU (2026-11-06): màn này được GIƠ cho khách quét — bản trước 5 nút tài
+     khoản chiếm nửa trên, mã và số tiền bị đẩy xuống phải cuộn. Tài khoản đang dùng thu thành MỘT
+     dòng "TK Quán – MB Bank · Đổi" ngay dưới mã. Chưa chọn (lần đầu) hoặc bấm Đổi → hiện danh sách. */
+  const showList = !picked || changing;
   return (
     <div>
-      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Chọn mã QR để khách quét</div>
-
       {loadFailed && (
-        <div style={{ background: '#fef3c7', padding: 10, borderRadius: 8, fontSize: 13, color: '#92400e' }}>
-          {/* Câu này phải nói ĐÚNG thứ luật cho phép: không chọn được mã thì KHÔNG ghi chuyển
-              khoản được (xem `checkoutBlockReason`). Bản cũ mời "vẫn bấm Thanh toán được" trong
-              khi nút đó đang bị chính luật kia khoá — người thu bấm vào chỗ chết. */}
+        <div style={{ background: '#fef3c7', padding: 10, borderRadius: 8, fontSize: 14, color: '#92400e' }}>
           Không tải được danh sách mã QR. Kiểm mạng rồi thử lại. Nếu khách chưa chuyển thì quay lại
-          chọn Tiền mặt vẫn thu được.
+          chọn Tiền mặt vẫn thu được
         </div>
       )}
 
       {!loadFailed && options.length === 0 && (
-        <div style={{ background: '#f3f4f6', padding: 10, borderRadius: 8, fontSize: 13, color: '#6b7280' }}>
-          {/* Rỗng có hai nguồn (2026-10-20): quán chưa có mã nào, HOẶC chủ quán đã ẩn hết mã với
-              người đang thu (màn Nhân viên). Server không nói là nguồn nào — câu phải chỉ cả hai
-              đường để người thu nhờ đúng việc. */}
+        <div style={{ background: '#f3f4f6', padding: 10, borderRadius: 8, fontSize: 14, color: '#6b7280' }}>
+          {/* Rỗng có hai nguồn: quán chưa có mã, HOẶC chủ quán đã ẩn hết mã với người đang thu. */}
           Không có mã QR nào cho bạn. Nhờ chủ quán thêm mã ở Cài đặt → Mã QR nhận tiền, hoặc bật mã
-          cho bạn ở màn Nhân viên.
+          cho bạn ở màn Nhân viên
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-        {options.map((o) => (
-          <button
-            key={o.id}
-            type="button"
-            onClick={() => onPick(o.id)}
-            aria-pressed={pickedId === o.id}
-            style={{
-              padding: '8px 12px',
-              minHeight: 44,
-              borderRadius: 999,
-              border: pickedId === o.id ? '2px solid #0d9488' : '1px solid #e5e7eb',
-              background: pickedId === o.id ? '#f0fdfa' : 'white',
-              color: '#1f2937',
-              fontSize: 14,
-            }}
-          >
-            {o.label}
-          </button>
-        ))}
-      </div>
-
-      {picked && (
-        <div style={{ marginTop: 12, textAlign: 'center' }}>
-          {/* QR to hết chiều ngang: màn này được GIƠ RA cho khách quét bằng điện thoại của
-              họ, không phải để nhân viên đọc. */}
+      {picked && !changing && (
+        <div style={{ textAlign: 'center' }}>
           {picked.kind === 'BANK' && qrDataUrl && (
-            <img
-              src={qrDataUrl}
-              alt="Mã QR chuyển khoản"
-              style={{ width: '100%', maxWidth: 300, aspectRatio: '1', background: 'white' }}
-            />
+            <img src={qrDataUrl} alt="Mã QR chuyển khoản" className="pay-qr-img" />
           )}
           {picked.kind === 'IMAGE' && picked.image_url && (
-            <img
-              src={picked.image_url}
-              alt="Mã QR"
-              style={{ width: '100%', maxWidth: 300, background: 'white' }}
-            />
+            <img src={picked.image_url} alt="Mã QR" className="pay-qr-img" style={{ aspectRatio: 'auto' }} />
           )}
           {picked.kind === 'BANK' && !qrDataUrl && (
-            <div style={{ fontSize: 13, color: '#dc2626' }}>
-              Không dựng được mã QR cho tài khoản này — kiểm lại mã ngân hàng ở Cài đặt.
+            <div style={{ fontSize: 14, color: '#b4231d' }}>
+              Không dựng được mã QR cho tài khoản này - kiểm lại mã ngân hàng ở Cài đặt
             </div>
           )}
-
-          <div style={{ marginTop: 8, fontSize: 15 }}>
-            <div style={{ fontWeight: 700, fontSize: 20, color: '#0f766e' }}>{fmt(transferAmount)}</div>
-            {picked.kind === 'BANK' ? (
-              <>
-                <div style={{ color: '#4b5563' }}>
-                  {picked.bank_name} · {picked.account_no}
-                </div>
-                <div style={{ color: '#4b5563' }}>{picked.account_name}</div>
-                {/* Nội dung to và rõ: khách hay gõ tay lại thay vì để app điền sẵn. */}
-                <div style={{ marginTop: 6, fontWeight: 700, letterSpacing: 0.5 }}>{note}</div>
-              </>
-            ) : (
-              <div style={{ color: '#92400e', fontSize: 13, marginTop: 4 }}>
-                Mã ảnh không kèm được số tiền — nhắc khách gõ {fmt(transferAmount)} và nội
-                dung “{note}”.
+          <div className="pay-qr-amount">{fmt(transferAmount)}</div>
+          {picked.kind === 'BANK' ? (
+            <>
+              <div className="pay-qr-acc">
+                {picked.bank_name} · {picked.account_no}
+                {picked.account_name ? ` · ${picked.account_name}` : ''}
               </div>
-            )}
-          </div>
+              {/* Nội dung to và rõ: khách hay gõ tay lại thay vì để app điền sẵn. */}
+              <div className="pay-qr-note">{note}</div>
+            </>
+          ) : (
+            <div style={{ color: '#92400e', fontSize: 14, marginTop: 4 }}>
+              Mã ảnh không kèm được số tiền - nhắc khách gõ {fmt(transferAmount)} và nội dung “{note}”
+            </div>
+          )}
+          {options.length > 1 && (
+            <button type="button" className="secondary pay-qr-change" onClick={onChange}>
+              <span>Nhận vào: <strong>{picked.label}</strong></span>
+              <span className="pay-qr-change-go">Đổi <ChevronDown size={18} aria-hidden="true" /></span>
+            </button>
+          )}
         </div>
       )}
 
-      {/* ⚠ ĐÃ GỠ (2026-10-02): ba dải trạng thái xác thực — xám "Đang xác thực…", xanh "Đã
-          thanh toán thành công", đỏ "Chưa xác thực được". Màn chìa mã nay im lặng; kết quả đối
-          soát xem ở cột "Xác thực" màn Lịch sử. Xem ghi chú ở `CheckoutDialog`. */}
+      {showList && options.length > 0 && (
+        <>
+          <div style={{ fontSize: 15, fontWeight: 600, margin: '4px 0 8px' }}>Chọn tài khoản nhận tiền</div>
+          <div className="pay-qr-list">
+            {options.map((o) => (
+              <button
+                key={o.id}
+                type="button"
+                className="secondary"
+                onClick={() => onPick(o.id)}
+                aria-pressed={pickedId === o.id}
+              >
+                {pickedId === o.id && <Check size={18} aria-hidden="true" />}
+                {o.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* ⚠ ĐÃ GỠ (2026-10-02): ba dải trạng thái xác thực. Kết quả đối soát xem ở cột "Xác thực"
+          màn Lịch sử. Chủ repo giữ quyết định này (2026-11-06). */}
     </div>
   );
 }

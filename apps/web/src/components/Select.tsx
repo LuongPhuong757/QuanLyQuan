@@ -139,7 +139,7 @@ export function Select<T extends string>({
           background: 'white',
           // Viền teal đậm hơn khi đang lọc thật — liếc qua thanh lọc là biết ô nào đang có tác
           // dụng mà không phải đọc chữ.
-          border: `${isNeutral ? 1 : 1.5}px solid ${isNeutral ? '#d1d5db' : '#0f766e'}`,
+          border: `${isNeutral ? 1 : 1.5}px solid ${isNeutral ? '#d1d5db' : '#b82a1e'}`,
           borderRadius: 8,
           color: '#1f2937',
           fontSize: 14,
@@ -217,8 +217,8 @@ export function Select<T extends string>({
                   minHeight: 44,
                   padding: '8px 12px',
                   cursor: 'pointer',
-                  background: hover ? '#f0fdfa' : 'white',
-                  color: active ? '#0f766e' : '#1f2937',
+                  background: hover ? '#fef6f3' : 'white',
+                  color: active ? '#b82a1e' : '#1f2937',
                   fontWeight: active ? 700 : 400,
                   fontSize: 14,
                   borderBottom: i < options.length - 1 ? '1px solid #f3f4f6' : undefined,
@@ -249,7 +249,7 @@ function Check(): ReactNode {
       height="16"
       viewBox="0 0 24 24"
       fill="none"
-      stroke="#0f766e"
+      stroke="#b82a1e"
       strokeWidth="3"
       strokeLinecap="round"
       strokeLinejoin="round"

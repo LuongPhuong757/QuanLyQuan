@@ -21,7 +21,7 @@ export type TableLike = {
 };
 
 /** Generic để GIỮ NGUYÊN kiểu thật của entity truyền vào — caller cần đọc tiếp các cột khác
- *  (`kiotviet_locked`…) mà `TableLike` cố ý không khai, vì hàm này chỉ cần 5 cột để so khớp. */
+ *  mà `TableLike` cố ý không khai, vì hàm này chỉ cần 5 cột để so khớp. */
 export type TableMatch<T extends TableLike = TableLike> =
   | { kind: 'ONE'; table: T }
   | { kind: 'NONE' }

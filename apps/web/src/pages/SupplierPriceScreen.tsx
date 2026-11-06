@@ -77,13 +77,13 @@ function ChartGia({ pts }: { pts: Array<{ d: string; v: number }> }) {
             </text>
           </g>
         ))}
-        <path d={area} fill="#ccfbf1" />
-        <path d={line} fill="none" stroke="#0f766e" strokeWidth={2.6} strokeLinejoin="round" strokeLinecap="round" />
+        <path d={area} fill="#fbe4de" />
+        <path d={line} fill="none" stroke="#b82a1e" strokeWidth={2.6} strokeLinejoin="round" strokeLinecap="round" />
         <line x1={lastX} y1={padT} x2={lastX} y2={padT + ph} stroke="#c2410c" strokeWidth={1.5} strokeDasharray="4 4" />
         {pts.map((p, i) => {
           const last = i === n - 1;
           return <circle key={i} cx={X(i)} cy={Y(p.v)} r={last ? 5.5 : 4}
-                         fill={last ? '#c2410c' : '#ffffff'} stroke={last ? '#c2410c' : '#0f766e'} strokeWidth={2.5} />;
+                         fill={last ? '#c2410c' : '#ffffff'} stroke={last ? '#c2410c' : '#b82a1e'} strokeWidth={2.5} />;
         })}
         {pts.map((p, i) => (
           <text key={i} x={X(i)} y={padT + ph + 24} textAnchor="middle" fill="#6b7280" fontSize="12.5" fontWeight="600">
