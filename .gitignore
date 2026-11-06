@@ -135,6 +135,9 @@ packages/utils/dist/
 # nên nó không thể dời vào docs/ để ăn ngoại lệ ở trên. Thiếu dòng này là file bị bỏ qua
 # trong im lặng, đúng cái bẫy mô tả ở mục 2 phía trên.
 !CLAUDE.md
+# Skill dự án (.claude/skills/*/SKILL.md + tài liệu đi kèm) — đưa lên repo 2026-11-06 để dùng
+# được ở máy khác (vd skill /cai-thien-man). Không có bí mật trong các skill này (đã quét).
+!.claude/skills/**/*.md
 
 # Báo cáo do lệnh sinh ra (codemap-diff…), không phải source.
 .reports/
