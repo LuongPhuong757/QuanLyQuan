@@ -118,12 +118,64 @@ Bản vẽ: `docs/design/dot-1.html`. Luật: `docs/DESIGN-SYSTEM.md` §3 §4 §
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (điền khi tạo roadmap) | | |
+| NEN-01 | Phase 1 | Pending |
+| NEN-02 | Phase 1 | Pending |
+| NEN-03 | Phase 1 | Pending |
+| NEN-04 | Phase 1 | Pending |
+| NEN-05 | Phase 1 | Pending |
+| NEN-06 | Phase 1 | Pending |
+| NEN-07 | Phase 1 | Pending |
+| KHUNG-01 | Phase 2 | Pending |
+| KHUNG-02 | Phase 2 | Pending |
+| KHUNG-03 | Phase 2 | Pending |
+| KHUNG-04 | Phase 2 | Pending |
+| KHUNG-05 | Phase 2 | Pending |
+| KHUNG-06 | Phase 2 | Pending |
+| KHUNG-07 | Phase 2 | Pending |
+| BAN-01 | Phase 3 | Pending |
+| BAN-02 | Phase 3 | Pending |
+| BAN-03 | Phase 3 | Pending |
+| BAN-04 | Phase 3 | Pending |
+| BAN-05 | Phase 3 | Pending |
+| BAN-06 | Phase 3 | Pending |
+| CT-01 | Phase 4 | Pending |
+| CT-02 | Phase 4 | Pending |
+| CT-03 | Phase 4 | Pending |
+| CT-04 | Phase 4 | Pending |
+| CT-05 | Phase 4 | Pending |
+| CT-06 | Phase 4 | Pending |
+| CT-07 | Phase 4 | Pending |
+| GM-01 | Phase 5 | Pending |
+| GM-02 | Phase 5 | Pending |
+| GM-03 | Phase 5 | Pending |
+| GM-04 | Phase 5 | Pending |
+| TT-01 | Phase 6 | Pending |
+| TT-02 | Phase 6 | Pending |
+| TT-03 | Phase 6 | Pending |
+| TT-04 | Phase 6 | Pending |
+| TT-05 | Phase 6 | Pending |
+| TT-06 | Phase 6 | Pending |
+| BEP-01 | Phase 7 | Pending |
+| BEP-02 | Phase 7 | Pending |
+| BEP-03 | Phase 7 | Pending |
+| BEP-04 | Phase 7 | Pending |
+| BEP-05 | Phase 7 | Pending |
+| DB-01 | Phase 8 | Pending |
+| TH-01 | Phase 9 | Pending |
+| TH-02 | Phase 9 | Pending |
+| TH-03 | Phase 9 | Pending |
+| TH-04 | Phase 9 | Pending |
+| TH-05 | Phase 9 | Pending |
+| CHUNG-01 | Phase 1 | Pending |
+| CHUNG-02 | Phase 1 | Pending |
+| CHUNG-03 | Phase 1 | Pending |
+| CHUNG-04 | Phase 1 | Pending |
 
 **Coverage:**
 - v1 requirements: 52 total
-- Mapped to phases: 0 (chờ roadmap)
+- Mapped to phases: 52 (100%)
+- Ghi chú: CHUNG-01..04 gắn Phase 1 (công cụ kiểm) nhưng là tiêu chí thành công của mọi phase 2–7
 
 ---
 *Requirements defined: 2026-11-06*
-*Last updated: 2026-11-06 after initial definition*
+*Last updated: 2026-11-06 after roadmap creation*
