@@ -22,7 +22,7 @@ created: 2026-11-06
 | Preset | không áp dụng |
 | Component library | tự dựng trong `packages/ui` (xuất mã nguồn, không build), class `.ui-*`, biến thể `.ui-x--y` |
 | Icon library | `lucide-react@0.460.0` (ghim cứng), import từng tên icon, nét 2px, luôn `aria-hidden`, luôn kèm chữ |
-| Font | Be Vietnam Pro tự host woff2 (latin / latin-ext / vietnamese) ở `packages/ui/src/fonts/`; 3 độ đậm tĩnh 400 / 500 / 600, mỗi độ đậm một `@font-face` riêng (KHÔNG gộp dải `400 600` — font tĩnh); không gọi Google Fonts. Baloo 2 giữ ở shop. |
+| Font | Be Vietnam Pro tự host woff2 (latin / latin-ext / vietnamese) ở `packages/ui/src/fonts/`; hợp đồng component dùng 2 độ đậm 400 / 600; 500 chỉ được tải sẵn (CONTEXT khoá) để `--fw-medium` không rơi về 400, component phase 1 không dùng. Mỗi độ đậm một `@font-face` riêng (KHÔNG gộp dải `400 600`) — LỆCH có chủ đích so với ghi chú CONTEXT "giữ cách khai gộp dải của shop": Be Vietnam Pro là font tĩnh (mỗi độ đậm một file), gộp dải sẽ làm trình duyệt tổng hợp đậm giả (RESEARCH Pitfall 2); gộp dải chỉ đúng cho Baloo 2 biến thiên. Không gọi Google Fonts. Baloo 2 giữ ở shop. |
 
 Nguồn: pre-populate từ DESIGN-SYSTEM §2–§3 + CONTEXT (Claude's Discretion: font).
 
@@ -39,10 +39,10 @@ Bội số của 4. Dùng token `--sp-*` đã có.
 | md (`--sp-4`) | 16px | đệm ngang mặc định của trang / thẻ trên điện thoại |
 | lg (`--sp-6`) | 24px | đệm thẻ, khoảng giữa các khối |
 | xl (`--sp-8`) | 32px | khoảng cách bố cục ≥ 900px |
-| 2xl (`--sp-10`) | 40px | ngắt khối lớn (trang `/__ui`) |
+| 2xl (`--sp-12`) | 48px | ngắt khối lớn (trang `/__ui`, bố cục ghép) |
 | 3xl | 64px | chỉ cho chiều cao nút chính (không dùng làm khoảng cách) |
 
-Các token trung gian `--sp-3` 12, `--sp-5` 20, `--sp-7` 28, `--sp-9` 36 vẫn hợp lệ (bội 4).
+Các token `--sp-3` 12, `--sp-5` 20, `--sp-7` 28, `--sp-9` 36, `--sp-10` 40 là **nội bộ component** (bội 4, dùng bên trong component chung khi cần); KHÔNG dùng làm khoảng cách bố cục trên `/__ui` hay màn ghép — ở đó chỉ dùng 4/8/16/24/32/48/64 (ngắt khối lớn dùng 48, không dùng 40).
 
 Ngoại lệ có chủ đích (kích thước chạm, không phải khoảng cách):
 - `--tap-min` = 48px: sàn chiều cao mọi nút / ô bấm / mục menu / chip / `IconButton` (48×48).
@@ -92,6 +92,7 @@ Accent (`--color-primary`) CHỈ dành cho:
 4. Viền + vòng focus (`--focus-ring` 3px, primary 40%) trên mọi phần tử tương tác.
 5. Công tắc `Switch` ở trạng thái bật; `Stepper` nút ±; liên kết chữ.
 6. Màu `--color-info` (= primary) cho Badge info.
+7. Nền `CountBadge` tone mặc định (`primary`) — chỉ là số đếm nhỏ (24px) trên chuông / mục điều hướng / chip; tone `danger` / `qr` dùng màu trạng thái cố định.
 
 Cấm: dùng accent cho nền thẻ, nền header, icon trang trí, tiêu đề.
 
@@ -118,7 +119,7 @@ Quy ước chung: mọi phần tử bấm cao ≥ 48px; focus thấy rõ (`--foc
 | `Stepper` (có) | `− SL +`, nút 48×48, giá trị giữa không nhập tay; chặn `min`/`max` (nút chạm mốc thì bị chặn, có `aria-disabled`). Cỡ lớn 64 cho màn Gọi món. |
 | `Card` / `CardButton` (có) | Nền `--bg-surface`, viền `--border`, bo `--r-lg`, đệm 16 (điện thoại) / 24; `CardButton` là `<button>` cao ≥ 48. Không bóng ở phase này, trừ `--shadow-sm`. |
 | `Badge` (có, thêm tone `qr`) | Tone: neutral, info, success, warning, danger, **qr**. Chữ 16px 600, nowrap, icon 16 tuỳ chọn; luôn có chữ (không chỉ màu). |
-| `AppHeader` | Cao 64, `--bg-surface`, `--z-header`, viền dưới `--border`. Trái: logo + tên quán (cắt gọn tên quán dài bằng ellipsis một dòng — ngoại lệ duy nhất của luật không cắt, vì header cố định chiều cao; tên đầy đủ ở màn Cài đặt). Phải: các `IconButton` (chuông có `CountBadge`, Đăng xuất). Vừa 360px không tràn. Slot nội dung do màn truyền; không chứa logic vai trò. |
+| `AppHeader` | Cao 64, `--bg-surface`, `--z-header`, viền dưới `--border`. Trái: logo + tên quán (tên quán là nội dung tự do, không có đường hover: chữ 16px/600, tối đa 2 dòng bằng `line-clamp: 2` / `-webkit-line-clamp: 2`, line-height 1.3 → 42px, vừa header 64; KHÔNG dùng ellipsis 1 dòng; tên quá 2 dòng mới bị cắt và khi đó tên đầy đủ có ở màn Cài đặt). Phải: các `IconButton` (chuông có `CountBadge`, Đăng xuất). Vừa 360px không tràn. Slot nội dung do màn truyền; không chứa logic vai trò. |
 | `NavBar` (điều hướng) | Điện thoại (< 900): thanh đáy cao 72 + safe-area, cuộn ngang khi nhiều mục, mỗi mục tối thiểu 72 rộng × 72 cao, icon 24 trên + nhãn 16px dưới (nowrap), mục mở = accent + vạch 4px; có `CountBadge` tuỳ chọn trên mục. ≥ 900: thanh bên dọc, mục cao 48, icon 24 cạnh nhãn. Số mục do màn truyền (đủ mục theo vai trò, không giới hạn 5). |
 | `Strip` (dải cảnh báo) | Dải ngang dưới header, cao ≥ 48, icon 20 + chữ 16 + hành động chạm được. Kiểu `qr`: nền `--color-qr-tint`, chữ/viền `--color-qr`. Kiểu `danger`: nền `--color-danger-tint`, chữ/viền `--color-danger`. Có thể chứa hàng chip cuộn ngang. Không tự biến mất. |
 | `Chip` + `ChipRow` | Chip cao 48, bo pill, icon 20 tuỳ chọn, chữ 16/600, nowrap; có số đếm bằng `CountBadge`. Chưa chọn: `--bg-surface` + viền `--border`; chọn: nền primary + chữ on-primary + `aria-pressed="true"`. `ChipRow`: cuộn ngang cố ý (`data-scroller`), `scroll-snap`, không thanh cuộn thô, chip cắt ngang mép để gợi cuộn. |
@@ -126,7 +127,7 @@ Quy ước chung: mọi phần tử bấm cao ≥ 48px; focus thấy rõ (`--foc
 | `Dialog` / `Sheet` (hợp nhất, `Sheet` là alias — RESEARCH Open Q1) | < 640: bảng trượt từ đáy, bo trên `--r-lg`, tay nắm 4×40, `max-height: 90dvh`, nội dung cuộn, `footer` dính đáy; ≥ 640: hộp giữa rộng tối đa 560, `--shadow-lg`. Nền mờ `--bg-overlay`. **Một lối thoát** (✕ 48×48 ở góc, KHÔNG thêm "Quay lại"). Esc đóng; khoá cuộn nền (ref-count, `data-ui-scroll-lock` — không `style.overflow`); trả focus về nút đã mở; focus bẫy trong hộp. Tối đa 2 tầng chồng. `--z-dialog`. Nút xác nhận chính cao 64 khi là hành động chốt. |
 | `Menu` (⋯ popover) | Nút mở = `IconButton` (⋯). Panel neo vào nút, bo `--r-md`, `--shadow-md`, mỗi mục cao 48 (icon 24 + chữ 18), rộng tối thiểu 220. Mục nguy hiểm: chữ + icon `--color-danger`, ngăn cách bằng đường kẻ, đặt CUỐI. Mở bằng chạm (không hover). Đóng khi bấm ngoài / Esc / chọn mục; trả focus. Điều hướng bàn phím mũi tên. Trên < 640 có thể hiện dạng Sheet (planner chọn) nhưng cùng API. |
 | `Toast` | Nổi đáy giữa, trên `BottomBar`/`NavBar` (+ safe-area), `--bg-inverse`, chữ 18 `--text-inverse`, icon trạng thái 24 + chữ, bo `--r-md`, `--z-toast`, rộng tối đa 480 và `calc(100% - 32px)` ở điện thoại. Tự ẩn sau 4s (lỗi 8s, có nút ✕ 48); `role="status"` (lỗi: `role="alert"`); tối đa 3 xếp chồng. Xếp theo thứ tự, không che nút hành động chính. |
-| `EmptyState` | Căn giữa: icon 48 (`--text-muted`) + tiêu đề 24/600 + mô tả 18 `--text-muted` + (tuỳ chọn) 1 nút. |
+| `EmptyState` | Căn giữa: icon 48 (`--text-muted`) + tiêu đề 24/600 + mô tả 18 `--text-muted` + (tuỳ chọn) 1 nút. Props bắt buộc: `object` (tên đối tượng, vd "món") để dựng tiêu đề/mô tả; `action` tuỳ chọn. Mô tả đổi theo có/không nút (xem Copywriting) — không bao giờ để chỗ trống `{...}` hay nhắc "bấm nút" khi không có nút. |
 | `Spinner` / `Skeleton` | Spinner vòng quay icon 24, kèm chữ "Đang tải…" (`role="status"`); Skeleton khối `--bg-muted`, bo `--r-md`, nhấp nhô nhẹ (tắt khi reduced-motion), giữ đúng chiều cao nội dung để không nhảy bố cục. |
 | `ErrorState` | Như EmptyState nhưng icon + tiêu đề `--color-danger`; luôn có nút "Thử lại" (secondary, cao 52). Mô tả nêu vấn đề + việc cần làm. |
 | `IconButton` | 48×48 (tối thiểu), bo `--r-md`, icon 24; `aria-label` BẮT BUỘC (kiểu TypeScript `string`, không optional); biến thể ghost / filled / danger. Không dựa tooltip. |
@@ -136,6 +137,7 @@ Quy ước chung: mọi phần tử bấm cao ≥ 48px; focus thấy rõ (`--foc
 | `Icon` (wrapper lucide) | `size="md|sm|xs"` ↔ 24 / 20 / 16 qua class `.ui-icon--*`; `aria-hidden="true"`; KHÔNG truyền số `size={…}`. |
 
 **SỬA so với code hiện tại:** `--icon-sm` từ 18px → **20px** (6 chỗ trong `components.css`).
+**THÊM token:** `--sp-12: 48px` vào `packages/ui/src/tokens/primitives.css` (hiện mới đến `--sp-10`); `--sp-10` giữ lại cho nội bộ component.
 
 Thẻ nghiệp vụ (thẻ bàn, dòng món, thẻ món bếp…) KHÔNG nằm trong phase này (D-02).
 
@@ -145,6 +147,7 @@ Thẻ nghiệp vụ (thẻ bàn, dòng món, thẻ món bếp…) KHÔNG nằm t
 
 - Chỉ DEV (`import.meta.env.DEV`); không có trong bản build (D-04).
 - Bố cục: thanh thử màu thương hiệu dính trên cùng (ô nhập mã + 10 màu + thông báo tương phản), dưới là từng nhóm component, mỗi nhóm: tiêu đề 24/600 + mọi biến thể (mặc định, chọn, focus, bị chặn, lỗi, rỗng, dài-nhất).
+- Điểm nhấn thị giác (focal point): thanh thử màu thương hiệu dính trên cùng là điểm nhìn đầu tiên (nền `--bg-surface`, viền dưới `--border`, nút "Áp dụng màu" là nút primary duy nhất nổi trên trang); trong mỗi nhóm, tiêu đề nhóm 24/600 là neo, biến thể "mặc định" đứng đầu và lớn nhất. Bố cục ghép (header + nav + nội dung + BottomBar): mỗi màn chỉ MỘT nút primary (64) ở `BottomBar` hoặc `Dialog` footer làm tiêu điểm; số tiền Display 32 là chữ lớn nhất. Khoảng cách giữa nhóm trên `/__ui`: 48.
 - Mỗi biến thể cần có nhãn chữ nói tên biến thể; không chỉ dựa màu.
 - Route con DEV `/__ui/overflow`: mọi component với chuỗi "xấu nhất" (D-13) cho Playwright đo tràn ở 360 / 390 / 1180 / 1440 (D-12, D-14). Phần tử cấm xuống dòng gắn `data-nowrap`; hàng cuộn ngang cố ý gắn `data-scroller`.
 
@@ -159,8 +162,9 @@ Tiếng Việt, câu ngắn, xưng thẳng việc cần làm, không từ kỹ t
 | CTA chính (mẫu trên `/__ui`) | "Lưu thay đổi" (Button primary mặc định); các nút nghiệp vụ như "Gửi bếp", "Thanh toán" do phase 4–6 định nghĩa |
 | Nút thử lại | "Thử lại" |
 | Nút đóng hộp thoại | chỉ biểu tượng ✕ với `aria-label="Đóng"` (một lối thoát) |
-| Empty state — tiêu đề | "Chưa có gì ở đây" |
-| Empty state — nội dung | "Khi có dữ liệu, nó sẽ hiện ở đây. Bấm {tên nút chính} để thêm mới." |
+| Empty state — tiêu đề | "Chưa có {đối tượng}" (mẫu; `/__ui`: "Chưa có món nào") |
+| Empty state — nội dung, CÓ nút | "Bấm {Tên nút} để thêm {đối tượng} đầu tiên." (`/__ui`: "Bấm Thêm món để tạo món đầu tiên.") |
+| Empty state — nội dung, KHÔNG nút | "{Đối tượng} sẽ hiện ở đây khi có." (`/__ui`: "Món sẽ hiện ở đây khi có.") — không nhắc nút |
 | Loading | "Đang tải…" |
 | Error state — tiêu đề | "Không tải được dữ liệu" |
 | Error state — nội dung | "Có thể do mạng yếu. Kiểm tra mạng rồi bấm Thử lại." |
@@ -169,7 +173,7 @@ Tiếng Việt, câu ngắn, xưng thẳng việc cần làm, không từ kỹ t
 | Nút bị chặn | "⚠ {lý do ngắn}" ngay trên nút, vd "⚠ Chọn bàn trước" (lý do luôn nêu việc cần làm) |
 | Lỗi ô nhập | "{Tên ô} chưa đúng: {cách sửa}", vd "Số tiền chưa đúng: nhập số, không nhập chữ" |
 | Màu thương hiệu bị chặn | "Màu này chữ trắng khó đọc (tương phản {x}:1, cần ít nhất 4.5:1). Chọn màu đậm hơn." |
-| Xác nhận hành động nguy hiểm (mẫu) | "Xoá {đối tượng}?" / "{Đối tượng} sẽ mất và không khôi phục được." / nút "Xoá" (danger) + lối thoát ✕ |
+| Xác nhận hành động nguy hiểm (mẫu) | "Xoá {đối tượng}?" / "{Đối tượng} sẽ mất và không khôi phục được." / nút "Xoá {đối tượng}" (danger; `/__ui`: "Xoá món") + lối thoát ✕ |
 
 Hành động phá huỷ trong phase 1: không có hành động thật (không đổi nghiệp vụ). Component nguy hiểm duy nhất: mục nguy hiểm trong `Menu` và nút `danger` — luôn đi cùng hộp xác nhận (do màn dựng bằng `Dialog`, Enter = xác nhận, Esc = thoát; hộp xác nhận 5 kiểu là việc Phase 2).
 
