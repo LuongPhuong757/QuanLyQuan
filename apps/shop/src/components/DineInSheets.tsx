@@ -913,7 +913,7 @@ export const DINEIN_CSS = `
    40px: dưới 40px là ngưỡng bấm trượt trên điện thoại, mà người dùng thật phần lớn lớn tuổi. */
 .dinein-again{
   flex:none; margin:0 10px; width:40px; height:40px; padding:0;
-  border:1.5px solid #f4b4a4; border-radius:999px; background:#fff; color:#b82a1e;
+  border:1.5px solid #f4b4a4; border-radius:999px; background:#fff; color:var(--brand-600);
   font-size:24px; line-height:1; font-weight:700; cursor:pointer;
   display:grid; place-items:center;
 }
@@ -930,7 +930,7 @@ export const DINEIN_CSS = `
 .dinein-cartbar{
   width:100%; margin:0 0 10px; padding:10px 14px; min-height:52px;
   display:flex; align-items:center; justify-content:space-between; gap:10px;
-  border:none; border-radius:12px; background:#b82a1e; color:#fff; cursor:pointer;
+  border:none; border-radius:12px; background:var(--brand-600); color:#fff; cursor:pointer;
   font-family:inherit; text-align:left;
 }
 .dinein-cartbar:active{ transform:scale(.99); }
@@ -947,7 +947,7 @@ export const DINEIN_CSS = `
   background:#fff; cursor:pointer; display:flex; flex-direction:column; gap:2px; align-items:flex-start;
 }
 .dinein-drink-name{ font-size:13.5px; font-weight:600; color:#5a3a2a; white-space:nowrap; }
-.dinein-drink-price{ font-size:13px; font-weight:800; color:#b82a1e; }
+.dinein-drink-price{ font-size:13px; font-weight:800; color:var(--brand-600); }
 .dinein-drink:active{ transform:scale(.97); }
 
 .dinein-scrim{
@@ -995,11 +995,11 @@ export const DINEIN_CSS = `
    "Đúng rồi" ở tấm xác nhận bàn lâu nay vẫn trắng chứ không đỏ. Cùng cái bẫy đã ghi trong
    CLAUDE.md về nút secondary. */
 .dinein-foot--row button.dinein-primary{
-  border:none; background:#b82a1e; color:#fff; font-size:18px; font-weight:700;
+  border:none; background:var(--brand-600); color:#fff; font-size:18px; font-weight:700;
 }
 .dinein-primary{
   width:100%; min-height:52px; border:none; border-radius:8px;
-  background:#b82a1e; color:#fff; font-size:18px; font-weight:700; cursor:pointer;
+  background:var(--brand-600); color:#fff; font-size:18px; font-weight:700; cursor:pointer;
 }
 .dinein-primary:disabled{ opacity:.5; cursor:default; }
 /* Vuốt hết nội dung trong tấm thì DỪNG, không đẩy tiếp sang thực đơn phía sau. Đây là lớp
@@ -1016,7 +1016,7 @@ export const DINEIN_CSS = `
 .dinein-link{
   display:block; width:100%; min-height:44px; margin-top:12px; padding:0;
   border:none; background:none; cursor:pointer;
-  font-size:15px; color:#b82a1e; text-align:left; text-decoration:underline;
+  font-size:15px; color:var(--brand-600); text-align:left; text-decoration:underline;
 }
 .dinein-hint{ margin:10px 0 0; font-size:15px; color:#6e5c4c; }
 .dinein-hint--sm{ font-size:13px; margin:6px 0 10px; }
@@ -1026,11 +1026,11 @@ export const DINEIN_CSS = `
 .dinein-err{ margin:10px 0 0; font-size:15px; color:#b82a1e; }
 .dinein-ok{ margin:10px 0 0; font-size:15px; color:#3a6320; }
 .dinein-confirm{ text-align:center; }
-.dinein-confirm strong{ display:block; font-size:30px; color:#8f1d14; margin:6px 0; }
+.dinein-confirm strong{ display:block; font-size:30px; color:var(--brand-700); margin:6px 0; }
 .dinein-line{ padding:12px 0; border-bottom:1px solid #efe6d8; }
 .dinein-line-top{ display:flex; gap:12px; justify-content:space-between; align-items:baseline; padding:6px 0; }
 .dinein-line-name{ flex:1; min-width:0; font-size:17px; color:#2a1d14; }
-.dinein-line-price{ flex:none; font-size:17px; font-weight:700; color:#cf3323; white-space:nowrap;
+.dinein-line-price{ flex:none; font-size:17px; font-weight:700; color:var(--brand-500); white-space:nowrap;
   font-variant-numeric:tabular-nums; }
 .dinein-line-ctl{ display:flex; align-items:center; gap:8px; margin-top:8px; }
 /* Nút xoá món: 40px vuông, cạnh giá tiền — đủ to cho ngón cái, nhạt màu để không lấn át giá. */
@@ -1042,19 +1042,19 @@ button.dinein-line-del{
    bấm nhầm là mất cả giỏ. Bấm xong còn phải xác nhận lần nữa. */
 button.dinein-clear{
   display:block; margin:14px auto 4px; min-height:44px; padding:0 16px;
-  border:1px solid #ecd9d4; border-radius:8px; background:#fff7f5; color:#b82a1e;
+  border:1px solid #ecd9d4; border-radius:8px; background:#fff7f5; color:var(--brand-600);
   font-size:16px; cursor:pointer;
 }
 .dinein-clear-ask{
   display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:14px 0 4px;
   padding:10px 12px; border-radius:10px; background:#fff1ee; border:1px solid #f3c7bd;
 }
-.dinein-clear-ask span{ flex:1 1 100%; font-size:16px; font-weight:700; color:#8f1d14; }
+.dinein-clear-ask span{ flex:1 1 100%; font-size:16px; font-weight:700; color:var(--brand-700); }
 .dinein-clear-ask button{
   flex:1; min-height:44px; border-radius:8px; font-size:16px; cursor:pointer;
   border:1px solid #ddd0bd; background:#fffdfa; color:#2a1d14;
 }
-.dinein-clear-ask button.dinein-clear-yes{ border-color:#b82a1e; background:#b82a1e; color:#fff; font-weight:700; }
+.dinein-clear-ask button.dinein-clear-yes{ border-color:var(--brand-600); background:var(--brand-600); color:#fff; font-weight:700; }
 .dinein-line-ctl button{
   flex:none; min-width:44px; min-height:44px; border:1px solid #ddd0bd; border-radius:8px;
   background:#fffdfa; font-size:20px; color:#2a1d14; cursor:pointer;
@@ -1066,7 +1066,7 @@ button.dinein-clear{
   font-size:16px; color:#2a1d14; /* 16px: dưới mức này iOS tự phóng to trang */
 }
 .dinein-total{ display:flex; justify-content:space-between; align-items:baseline; font-size:17px; }
-.dinein-total b{ font-size:22px; color:#cf3323; font-variant-numeric:tabular-nums; }
+.dinein-total b{ font-size:22px; color:var(--brand-500); font-variant-numeric:tabular-nums; }
 /* Bước hỏi lý do gọi. Chip to, xuống dòng thoải mái — người lớn tuổi bấm bằng cả ngón cái. */
 .dinein-ask > b{ display:block; margin-bottom:8px; font-size:16px; color:#2a1d14; }
 .dinein-chips{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
@@ -1079,7 +1079,7 @@ button.dinein-clear{
    .dinein-chips button (một class + một thẻ) nên mạnh hơn một class trần và sẽ đè mất màu —
    đúng cái bẫy đã ghi trong CLAUDE.md và vừa dẫm phải ở .dinein-foot--row button. */
 .dinein-chips button.is-on{
-  border-color:#b82a1e; background:#b82a1e; color:#fff; font-weight:700;
+  border-color:var(--brand-600); background:var(--brand-600); color:#fff; font-weight:700;
 }
 .dinein-ask input{
   width:100%; min-height:48px; margin-bottom:10px; padding:0 12px;
@@ -1105,7 +1105,7 @@ button.dinein-clear{
 .dinein-wline i{ color:#6e5c4c; }
 .dinein-add{
   display:block; width:100%; min-height:52px; margin-top:14px;
-  border:none; border-radius:10px; background:#b82a1e; color:#fff;
+  border:none; border-radius:10px; background:var(--brand-600); color:#fff;
   font-size:18px; font-weight:700; cursor:pointer;
 }
 .dinein-fab{
@@ -1121,5 +1121,5 @@ button.dinein-clear{
   box-shadow:0 4px 16px rgb(42 29 20 / 14%);
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
-.dinein-fab-btn--primary{ background:#b82a1e; color:#fff; border-color:#b82a1e; }
+.dinein-fab-btn--primary{ background:var(--brand-600); color:#fff; border-color:var(--brand-600); }
 `;

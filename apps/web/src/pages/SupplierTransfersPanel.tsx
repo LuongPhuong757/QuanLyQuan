@@ -369,7 +369,7 @@ export function SupplierTransfersPanel({
                   <span className="tk-rk__n">{n.ten}</span>
                   <span className="tk-rk__v">{vnd(n.tien)}<small>{n.lan} lần</small></span>
                   <span className="tk-rk__b" aria-hidden="true">
-                    <i style={{ width: `${(n.tien / xepNcc[0].tien) * 100}%`, background: '#0d9488' }} />
+                    <i style={{ width: `${(n.tien / xepNcc[0].tien) * 100}%`, background: 'var(--brand-600)' }} />
                   </span>
                 </div>
               ))}

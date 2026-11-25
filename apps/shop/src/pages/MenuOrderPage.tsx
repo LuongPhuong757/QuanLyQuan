@@ -2,7 +2,8 @@ import { Suspense, lazy, memo, useCallback, useEffect, useMemo, useRef, useState
 import { z } from 'zod';
 import { PublicMenuGroup, type PublicMenuItem } from '@order/schemas';
 import { useApi } from '../lib/use-api.ts';
-import { MENU_BOOK_TITLE } from '../lib/page-title.ts';
+import { menuBookTitle } from '../lib/page-title.ts';
+import { logoNho, tenDayDu, useThuongHieu } from '../lib/thuong-hieu.ts';
 import {
   DINEIN_CSS,
   TableCartSheet,
@@ -133,6 +134,10 @@ export function MenuOrderPage(): JSX.Element {
   // Món tạm hết ẨN HẲN (chủ quán 2026-10-19), nhóm hết sạch thì mất luôn chip nhóm — xem
   // `lib/in-stock.ts`. Giỏ gọi tại bàn giữ dòng riêng của nó, không đọc lại từ đây.
   const groups = useMemo(() => inStockGroups(menu.data?.groups ?? []), [menu.data]);
+  const th = useThuongHieu();
+  // Quán tắt linh vật (Thiết lập quán) → không bé hamster, không chấm 🐾 gọi lại, không tải combo
+  // (combo chỉ để linh vật mời món). Bật thì y hệt trước.
+  const coLinhVat = th.linh_vat;
   const [mascotHidden, setMascotHidden] = useState(readMascotHidden);
   const toggleMascot = (hidden: boolean) => {
     setMascotHidden(hidden);
@@ -144,13 +149,13 @@ export function MenuOrderPage(): JSX.Element {
   };
   // Nhân vật ẩn thì không có ai mời món → khỏi tải combo. Lỗi mạng → không combo, lời mời rơi về
   // bảng quy tắc trong code.
-  const comboRes = useApi('/api/public/menu-combos', ComboResponse, { skip: mascotHidden });
+  const comboRes = useApi('/api/public/menu-combos', ComboResponse, { skip: mascotHidden || !coLinhVat });
   /* Lấy lại combo khi khách quay lại tab và mỗi 2 phút: trang mở suốt bữa, chủ quán sửa combo giữa
    * chừng thì khách vẫn mời theo combo đã xoá (chủ quán gặp 2026-10-03: thêm Bia Hơi Ca không ra lời
    * mời vì trang còn giữ combo cũ). 2 phút × ~20 máy chung một IP vẫn xa trần 600 lượt/phút. */
   const reloadCombos = comboRes.reload;
   useEffect(() => {
-    if (mascotHidden) return;
+    if (mascotHidden || !coLinhVat) return;
     const onVisible = () => {
       if (document.visibilityState === 'visible') reloadCombos();
     };
@@ -160,7 +165,7 @@ export function MenuOrderPage(): JSX.Element {
       document.removeEventListener('visibilitychange', onVisible);
       window.clearInterval(t);
     };
-  }, [mascotHidden, reloadCombos]);
+  }, [mascotHidden, coLinhVat, reloadCombos]);
   const combos = comboRes.data?.combos ?? NO_COMBOS;
   const featured = comboRes.data?.featured ?? NO_COMBOS;
 
@@ -193,8 +198,8 @@ export function MenuOrderPage(): JSX.Element {
   const qtyById = useMemo(() => new Map(cart.map((l) => [l.menu_item_id, l.qty])), [cart]);
 
   useEffect(() => {
-    document.title = MENU_BOOK_TITLE;
-  }, []);
+    document.title = menuBookTitle();
+  }, [th]);
 
   /* Có BẤT KỲ lớp phủ nào mở thì khoá cuộn trang nền. Gom về MỘT chỗ ở đây thay vì để từng
    * tấm tự khoá: hai tấm chồng nhau (xác nhận bàn mở đè lên tấm nhập số bàn) sẽ thành hai lần
@@ -481,7 +486,7 @@ export function MenuOrderPage(): JSX.Element {
         {/* Logo THẬT của quán — cùng file `/logo.jpg` mà web đặt hàng đang dùng
             (`Wordmark.tsx`, chủ quán xác nhận 2026-07-30). Bỏ chữ "Quán Bà Lũn" theo yêu cầu:
             một hàng header chỉ còn logo + ô tìm + chip bàn. */}
-        <img className="mo-logo" src="/logo-144.webp" alt="Quán Bà Lùn" width={36} height={36} />
+        <img className="mo-logo" src={logoNho(th)} alt={tenDayDu(th)} width={36} height={36} />
 
         <label className="mo-search">
           <span aria-hidden>🔍</span>
@@ -593,7 +598,7 @@ export function MenuOrderPage(): JSX.Element {
 
       {/* Bé hamster góc dưới phải. Chỉ dựng sau khi thực đơn về: hai tấm sprite (~110KB) không
           được giành băng thông 3G với dữ liệu món lúc mở trang. */}
-      {menu.data && !mascotHidden ? <Suspense fallback={null}><MenuMascot
+      {menu.data && coLinhVat && !mascotHidden ? <Suspense fallback={null}><MenuMascot
           cartCount={cartCount}
           sentKey={sentKey}
           raised={cartCount > 0}
@@ -621,7 +626,7 @@ export function MenuOrderPage(): JSX.Element {
         /></Suspense> : null}
       {/* Nhân vật đã ẩn: chỉ còn chấm tròn nhỏ ở góc để gọi lại — đủ nhỏ để người đã thấy phiền
           không bị làm phiền thêm. Có giỏ thì đứng trên nút giỏ. */}
-      {menu.data && mascotHidden ? (
+      {menu.data && coLinhVat && mascotHidden ? (
         <button
           type="button"
           className={`mo-mascot-restore${cartCount > 0 ? ' is-raised' : ''}`}
@@ -958,7 +963,8 @@ const MENU_ORDER_CSS = `
 html,body{ margin:0; max-width:100%; overflow-x:clip; }
 *,*::before,*::after{ box-sizing:border-box; }
 :root{
-  --brand-500:#cf3323; --brand-600:#b82a1e; --brand-050:#fef6f3;
+  /* --brand-* KHÔNG khai lại ở đây (2026-11-19): lấy từ tokens.css + màu quán chọn (lib/thuong-hieu.ts) —
+     khai lại là đè mất màu của quán khác Bà Lùn. */
   --wood-400:#e8a33d; --wood-700:#8c5610; --wood-100:#f6ecd9;
   --bg-page:#fdf7ee; --bg-surface:#fffdfa; --bg-sunken:#f7efe2; --bg-wood:#6b4423;
   --text-strong:#2a1d14; --text-body:#3a2b1f; --text-muted:#6e5c4c;
@@ -1078,13 +1084,13 @@ html,body{ margin:0; max-width:100%; overflow-x:clip; }
 .mo-pairs-title{ margin:0 0 8px; font-size:14px; font-weight:700; color:var(--wood-700,#8c5610); }
 .mo-pairs-row{ display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; -webkit-overflow-scrolling:touch; }
 .mo-pair{
-  flex:0 0 auto; width:104px; padding:8px; border:1.5px solid var(--brand-050,#fef6f3);
+  flex:0 0 auto; width:104px; padding:8px; border:1.5px solid var(--brand-050);
   border-radius:12px; background:#fff; cursor:pointer; text-align:left;
   display:flex; flex-direction:column; gap:4px;
 }
 .mo-pair-thumb{
   display:block; width:100%; aspect-ratio:1; border-radius:8px; overflow:hidden;
-  background:var(--brand-050,#fef6f3); display:grid; place-items:center; font-size:26px;
+  background:var(--brand-050); display:grid; place-items:center; font-size:26px;
 }
 .mo-pair-thumb img{ width:100%; height:100%; object-fit:cover; display:block; }
 /* Tên món HAI dòng rồi cắt: một dòng thì "Chân Gà Chiên Giòn Rút Xương" chỉ còn "Chân Gà…",
@@ -1093,15 +1099,15 @@ html,body{ margin:0; max-width:100%; overflow-x:clip; }
   font-size:13px; font-weight:600; line-height:1.3; height:2.6em; overflow:hidden;
   display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
 }
-.mo-pair-price{ font-size:13px; font-weight:800; color:var(--brand-600,#b82a1e); }
-.mo-pair.is-added{ border-color:var(--brand-500,#cf3323); background:var(--brand-050,#fef6f3); opacity:.85; }
+.mo-pair-price{ font-size:13px; font-weight:800; color:var(--brand-600); }
+.mo-pair.is-added{ border-color:var(--brand-500); background:var(--brand-050); opacity:.85; }
 .mo-pair:disabled{ cursor:default; }
 
 .mo-add{
   flex:none; width:44px; height:44px; border-radius:10px; border:none; cursor:pointer;
   background:var(--brand-600); color:#fff; font-size:26px; line-height:1;
 }
-.mo-out{ flex:none; width:64px; text-align:center; font-size:12px; color:var(--brand-700,#8f1d14); }
+.mo-out{ flex:none; width:64px; text-align:center; font-size:12px; color:var(--brand-700); }
 
 /* Món đã chọn: viền + nền nhạt màu thương hiệu. Liếc cả màn là biết ngay đã gọi những gì,
    không phải đọc từng con số. */

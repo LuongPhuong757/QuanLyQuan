@@ -1,6 +1,7 @@
 import type { CSSProperties, JSX } from 'react';
 import { PublicStoreStatus } from '@order/schemas';
 import { Wordmark } from './Wordmark.tsx';
+import { tenDayDu, useThuongHieu } from '../lib/thuong-hieu.ts';
 import { useApi } from '../lib/use-api.ts';
 import { mapsHref, mergeShopContact, telHref, zaloHref } from '../lib/shop-contact.ts';
 
@@ -28,6 +29,7 @@ import { mapsHref, mergeShopContact, telHref, zaloHref } from '../lib/shop-conta
  */
 export function Footer(): JSX.Element {
   const store = useApi('/api/public/store', PublicStoreStatus);
+  const th = useThuongHieu();
   const c = mergeShopContact(store.data);
   const zalo = zaloHref(c);
   const maps = mapsHref(c);
@@ -103,7 +105,7 @@ export function Footer(): JSX.Element {
         )}
       </div>
 
-      <p style={legal}>© Quán Bà Lùn</p>
+      <p style={legal}>© {tenDayDu(th)}</p>
     </footer>
   );
 }

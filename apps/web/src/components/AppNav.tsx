@@ -15,6 +15,7 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Icon, type IconName } from './ui/Icon.tsx';
 import { Sheet } from './ui/Sheet.tsx';
 import { initialOf } from '../lib/initials.ts';
+import { layThuongHieu, logoVuong, tenNgan, useThuongHieu } from '../lib/thuong-hieu.ts';
 
 export type NavRole = 'admin' | 'order' | 'kitchen' | 'report';
 
@@ -53,6 +54,8 @@ const ITEMS = {
   // Cài đặt (2026-11-11): màn riêng, chỉ admin. Mục CUỐI ở cả sidebar lẫn tấm "Thêm" — sửa vài lần
   // một tháng, không được chen lên trước những màn dùng trong ca.
   settings: { to: '/settings', label: 'Cài đặt', short: 'Cài đặt', icon: 'cai-dat' },
+  // Thiết lập quán (2026-11-18): dùng lúc giao quán mới, gần như không đụng trong ca → sau Cài đặt.
+  thietLap: { to: '/thiet-lap', label: 'Thiết lập quán', short: 'Thiết lập', icon: 'quan-tri' },
 } satisfies Record<string, NavItem>;
 
 /** `main` = các ô trên menu dưới (≤ 4 nếu có `more`); `more` = trong tấm "Thêm"; `sidebar` = đủ
@@ -64,10 +67,11 @@ const NAV: Record<NavRole, { main: NavItem[]; more: NavItem[]; sidebar: NavItem[
     main: [ITEMS.orders, ITEMS.kitchen, ITEMS.online, ITEMS.history],
     more: [
       ITEMS.reports, ITEMS.receipt, ITEMS.menu, ITEMS.tables, ITEMS.suppliers, ITEMS.users, ITEMS.settings,
+      ITEMS.thietLap,
     ],
     sidebar: [
       ITEMS.orders, ITEMS.kitchen, ITEMS.receipt, ITEMS.online, ITEMS.history,
-      ITEMS.menu, ITEMS.tables, ITEMS.suppliers, ITEMS.users, ITEMS.reports, ITEMS.settings,
+      ITEMS.menu, ITEMS.tables, ITEMS.suppliers, ITEMS.users, ITEMS.reports, ITEMS.settings, ITEMS.thietLap,
     ],
   },
   order: {
@@ -106,10 +110,12 @@ const TITLES: Record<string, string> = {
   '/account': 'Tài khoản',
   '/mau-giao-dien': 'Mẫu giao diện',
   '/settings': 'Cài đặt',
+  '/thiet-lap': 'Thiết lập quán',
 };
 
 export function pageTitle(pathname: string): string {
-  return TITLES[pathname] ?? 'Quán Bà Lùn';
+  // Hàm thuần nên đọc bản thương hiệu HIỆN TẠI (không hook); header gọi lại mỗi lần vẽ là đủ.
+  return TITLES[pathname] ?? tenNgan(layThuongHieu());
 }
 
 /** Màn gốc = một ô trên menu dưới của vai này → header hiện avatar; còn lại là màn con → ←. */
@@ -206,6 +212,7 @@ const SB_KEY = 'an-sidebar-thu-v2';
 /** Sidebar trái, chỉ ≥ 1024px. Trạng thái thu gọn nhớ theo MÁY (localStorage) — người dùng máy
  *  tính quầy chọn một lần. Bề rộng đẩy nội dung qua biến `--sb-w` (class trên <html>). */
 export function Sidebar({ role, badges }: { role: NavRole; badges: NavBadges }) {
+  const th = useThuongHieu();
   const [thu, setThu] = useState<boolean>(() => {
     try {
       return localStorage.getItem(SB_KEY) === '1';
@@ -228,8 +235,8 @@ export function Sidebar({ role, badges }: { role: NavRole; badges: NavBadges }) 
   return (
     <aside className="an-sidebar" aria-label="Điều hướng chính">
       <div className="an-sidebar__brand">
-        <img src="/favicon.svg" width={32} height={32} alt="" />
-        <span className="an-sidebar__name">Quán Bà Lùn</span>
+        <img src={logoVuong(th)} width={32} height={32} alt="" />
+        <span className="an-sidebar__name">{tenNgan(th)}</span>
       </div>
       <nav className="an-sidebar__list">
         {NAV[role].sidebar.map((it) => (

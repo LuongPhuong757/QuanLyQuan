@@ -6,6 +6,7 @@
 // chấm dứt.
 import { downloadCsv } from './csv.ts';
 import { upperUnit } from './text-case.ts';
+import { layThuongHieu, tenDayDu } from './thuong-hieu.ts';
 
 /** Một mặt hàng như API `GET /suppliers/:id/invoice-template` trả về. */
 export type TemplateItem = {
@@ -18,7 +19,11 @@ export type TemplateItem = {
   is_new: boolean;
 };
 
-export const SHOP_NAME = 'Quán Bà Lùn';
+/** Tên quán in đầu phiếu. Là HÀM chứ không phải hằng: tên theo thương hiệu của từng quán, đọc lúc
+ * dựng phiếu để bản tải từ API (về sau lúc mở trang) cũng ăn — hằng thì chốt cứng giá trị lúc nạp module. */
+export function shopName(): string {
+  return tenDayDu(layThuongHieu());
+}
 /** Chủ quán chốt 10 dòng (2026-10-13). */
 export const BLANK_ROWS = 10;
 export const HEADER = ['STT', 'Tên hàng', 'ĐVT', 'Số lượng', 'Đơn giá', 'Thành tiền'] as const;
@@ -45,7 +50,7 @@ export function templateFilename(supplierName: string, ext: 'xlsx' | 'csv'): str
 
 export function downloadTemplateCsv(supplierName: string, items: readonly TemplateItem[]): void {
   downloadCsv(templateFilename(supplierName, 'csv'), [
-    [`${SHOP_NAME} — HOÁ ĐƠN GIAO HÀNG`],
+    [`${shopName()} — HOÁ ĐƠN GIAO HÀNG`],
     [`Nhà cung cấp: ${supplierName}`],
     ['Ngày: ____/____/________'],
     [],
@@ -102,7 +107,7 @@ export async function downloadTemplateXlsx(
     c.font = { ...font, size, bold };
     ws.getRow(r).height = size + 12;
   };
-  title(1, `${SHOP_NAME.toLocaleUpperCase('vi')} — HOÁ ĐƠN GIAO HÀNG`, 16, true);
+  title(1, `${shopName().toLocaleUpperCase('vi')} — HOÁ ĐƠN GIAO HÀNG`, 16, true);
   ws.getCell(1, 1).alignment = { horizontal: 'center' };
   title(2, `Nhà cung cấp: ${supplierName}`, 14, true);
   title(3, 'Ngày: ____/____/________', 13, false);

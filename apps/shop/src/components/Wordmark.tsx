@@ -1,7 +1,9 @@
 import { useState, type CSSProperties, type JSX } from 'react';
+import type { ThuongHieuCongKhai } from '@order/schemas';
+import { logoNho, tenDayDu, tenNgan, useThuongHieu } from '../lib/thuong-hieu.ts';
 
 /**
- * Logo quán Bà Lùn: ảnh logo + wordmark chữ nằm cạnh nhau.
+ * Logo quán: ảnh logo + wordmark chữ nằm cạnh nhau (tên + logo theo thương hiệu của quán, 2026-11-19).
  *
  * Ảnh lấy từ `apps/shop/public/logo.jpg` — chủ quán xác nhận đây là logo shop
  * (chốt 2026-07-30), cùng file với `apps/web/public/logo.jpg` bên trang admin.
@@ -21,12 +23,27 @@ import { useState, type CSSProperties, type JSX } from 'react';
  * bo tròn ấm hơn, không cần sửa file này.
  */
 
-/** Đổi tên/đuôi file ở đây nếu thay logo bằng .png/.svg. */
-// Bản thu nhỏ 144px webp (~6KB) của `logo.jpg` (1633×1920, 85KB). Logo chỉ hiện ~40px, ×3 màn
-// sắc nét = 120px là đủ — tải ảnh gốc là 85KB cho một chấm tròn, nặng hơn 4 ảnh món cộng lại
-// (đo 2026-10-30). `logo.jpg` vẫn giữ: favicon.svg và ảnh chia sẻ sinh ra từ nó.
-// Đổi logo thì sinh lại: sharp logo.jpg → resize width 144 → webp q82.
-const LOGO_SRC = '/logo-144.webp';
+// Ảnh logo: `logoNho(th)` — quán chưa tải logo thì là `/logo-144.webp` đóng sẵn, bản thu nhỏ 144px
+// webp (~6KB) của `logo.jpg` (1633×1920, 85KB). Logo chỉ hiện ~40px, ×3 màn sắc nét = 120px là đủ —
+// tải ảnh gốc là 85KB cho một chấm tròn, nặng hơn 4 ảnh món cộng lại (đo 2026-10-30).
+
+/** Tên ngắn dài hơn mức này thì cho xuống dòng + thu chữ, kẻo đẩy tràn hàng nút ở header 360px. */
+const TEN_DAI = 12;
+
+/**
+ * Tách tên thành dòng nhỏ phía trên ("QUÁN") + dòng lớn ("Bà Lùn"), giữ đúng dáng biển phấn cũ.
+ *  - Tên ngắn tự bắt đầu bằng "Quán …" → dòng nhỏ "Quán", dòng lớn phần còn lại.
+ *  - Tên ngắn là đuôi của tên đầy đủ ("Quán Bà Lùn" / "Bà Lùn") → dòng nhỏ là phần đầu ("Quán").
+ *  - Còn lại → không có dòng nhỏ: đặt chữ "Quán" lên một "Nhà hàng X" là sai tên người ta.
+ */
+function tachTen(th: ThuongHieuCongKhai): { tren: string; duoi: string } {
+  const ngan = tenNgan(th);
+  const m = /^quán\s+(.+)$/iu.exec(ngan);
+  if (m) return { tren: 'Quán', duoi: m[1] };
+  const day = tenDayDu(th);
+  if (day !== ngan && day.endsWith(` ${ngan}`)) return { tren: day.slice(0, -ngan.length).trim(), duoi: ngan };
+  return { tren: '', duoi: ngan };
+}
 
 type Props = {
   /** `plaque` = biển gỗ đậm (dùng ở header). `bare` = chữ trần trên nền sáng. */
@@ -46,17 +63,20 @@ export function Wordmark({
   // `logoBroken` chỉ bật khi trình duyệt thực sự tải ảnh thất bại (404 vì chủ
   // quán chưa đặt file, hoặc file hỏng) — không đoán trước bằng cách nào khác.
   const [logoBroken, setLogoBroken] = useState(false);
+  const th = useThuongHieu();
+  const { tren, duoi } = tachTen(th);
+  const dai = duoi.length > TEN_DAI;
 
   return (
-    <span style={variant === 'plaque' ? plaque : bare} role="img" aria-label="Quán Bà Lùn">
+    <span style={variant === 'plaque' ? plaque : bare} role="img" aria-label={tenDayDu(th)}>
       {withLogo &&
         (logoBroken ? (
           <span aria-hidden="true" style={monogram}>
-            BL
+            {chuCaiDau(duoi)}
           </span>
         ) : (
           <img
-            src={LOGO_SRC}
+            src={logoNho(th)}
             alt=""
             aria-hidden="true"
             width={40}
@@ -68,21 +88,34 @@ export function Wordmark({
         ))}
 
       <span style={textStack}>
-        <span style={{ ...kicker, color: onDark ? 'var(--wood-400)' : 'var(--wood-700)' }}>
-          Quán
-        </span>
+        {tren && (
+          <span style={{ ...kicker, color: onDark ? 'var(--wood-400)' : 'var(--wood-700)' }}>
+            {tren}
+          </span>
+        )}
         <span
           style={{
             ...name,
-            fontSize: size,
+            ...(dai ? nameDai : null),
+            fontSize: dai ? `calc(${size} * 0.8)` : size,
             color: onDark ? 'var(--text-on-wood)' : 'var(--brand-600)',
           }}
         >
-          Bà Lùn
+          {duoi}
         </span>
       </span>
     </span>
   );
+}
+
+/** Monogram khi ảnh logo lỗi: chữ cái đầu của 2 từ đầu ("Bà Lùn" → "BL"). */
+function chuCaiDau(ten: string): string {
+  return ten
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]?.toLocaleUpperCase('vi') ?? '')
+    .join('');
 }
 
 const base: CSSProperties = {
@@ -107,6 +140,8 @@ const bare: CSSProperties = base;
 
 const textStack: CSSProperties = {
   display: 'inline-flex',
+  // Cho cột chữ co lại được trong hàng flex của header — không thì tên dài đội cả hàng ra ngoài.
+  minWidth: 0,
   flexDirection: 'column',
   alignItems: 'flex-start',
   justifyContent: 'center',
@@ -156,4 +191,15 @@ const name: CSSProperties = {
   fontWeight: 'var(--fw-heavy)' as unknown as number,
   letterSpacing: 'var(--ls-tight)',
   whiteSpace: 'nowrap',
+};
+
+/** Tên dài: được xuống dòng (tối đa 2 dòng), cắt "…" nếu vẫn quá — bố cục header không vỡ. */
+const nameDai: CSSProperties = {
+  whiteSpace: 'normal',
+  overflowWrap: 'anywhere',
+  lineHeight: 1.15,
+  display: '-webkit-box',
+  WebkitLineClamp: 2,
+  WebkitBoxOrient: 'vertical',
+  overflow: 'hidden',
 };

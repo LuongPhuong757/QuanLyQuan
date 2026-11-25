@@ -12,6 +12,8 @@ import { CustomReceipt } from '../custom-receipts/entities/custom-receipt.entity
 import { toReceiptInput, type CustomReceiptData } from '../custom-receipts/custom-receipt-model.js';
 import { buildDeliverySlip, buildReceipt, buildTamTinh, buildTestPage } from './receipt-model.js';
 import { monoToPng, renderReceipt } from './receipt-render.js';
+// Logo đen trắng của quán ở đầu hoá đơn (2026-11-19, màn Thiết lập → Thương hiệu).
+import { docLogoHoaDon } from '../thiet-lap/logo.js';
 import { buildJob, dotsForPaperWidth } from './escpos.js';
 
 /** Số lần thử trước khi bỏ cuộc. 3 là đủ để vượt qua một lần rớt Wi-Fi; nhiều hơn thì một máy
@@ -196,6 +198,7 @@ export class PrintingService {
       buildReceipt(toReceiptInput(receipt, store, { reprint: false, nowMs: Date.now() })),
       dotsForPaperWidth(cfg.printer_paper_width_mm),
       cfg.printer_darkness,
+      await docLogoHoaDon(cfg.brand_logo_version),
     );
     return monoToPng(rendered);
   }
@@ -318,6 +321,7 @@ export class PrintingService {
         buildTestPage(store, Date.now(), cfg.printer_paper_width_mm, dots),
         dots,
         cfg.printer_darkness,
+        await docLogoHoaDon(cfg.brand_logo_version),
       );
       return buildJob(rendered.mono, rendered.width, rendered.height, {
         autoCut: cfg.printer_auto_cut,
@@ -344,6 +348,7 @@ export class PrintingService {
         ),
         dots,
         cfg.printer_darkness,
+        await docLogoHoaDon(cfg.brand_logo_version),
       );
       return buildJob(rendered.mono, rendered.width, rendered.height, {
         autoCut: cfg.printer_auto_cut,
@@ -367,7 +372,7 @@ export class PrintingService {
       reprint: job.reason === 'REPRINT',
       nowMs: Date.now(),
     });
-    const rendered = await renderReceipt(lines, dots, cfg.printer_darkness);
+    const rendered = await renderReceipt(lines, dots, cfg.printer_darkness, await docLogoHoaDon(cfg.brand_logo_version));
     return buildJob(rendered.mono, rendered.width, rendered.height, {
       autoCut: cfg.printer_auto_cut,
       heat: cfg.printer_heat as 0 | 1 | 2,

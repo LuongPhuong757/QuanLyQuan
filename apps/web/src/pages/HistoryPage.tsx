@@ -1253,9 +1253,9 @@ export function HistoryPage() {
             <StatTile
               label={tabView.money}
               value={statsLoading ? '…' : stats ? fmt(stats.paid_revenue) : '—'}
-              color="#0f766e"
-              bg="#f0fdfa"
-              border="#ccfbf1"
+              color="var(--brand)"
+              bg="var(--brand-50)"
+              border="var(--brand-100)"
             />
             <StatTile
               label={tabView.count}
@@ -1415,7 +1415,7 @@ export function HistoryPage() {
                         {c.ingredient_name}
                         <span style={{ color: '#9ca3af' }}> · {c.portions} phần</span>
                       </span>
-                      <strong style={{ whiteSpace: 'nowrap', color: '#0f766e' }}>
+                      <strong style={{ whiteSpace: 'nowrap', color: 'var(--brand)' }}>
                         {fmtIngredientQty(c.qty_total, c.unit)}
                       </strong>
                     </div>
@@ -1504,7 +1504,7 @@ export function HistoryPage() {
                 <th
                   onClick={() => changeSort('opened')}
                   title="Sắp xếp theo giờ vào ăn, mới nhất trước"
-                  style={{ cursor: 'pointer', color: sortBy === 'opened' ? '#0f766e' : undefined }}
+                  style={{ cursor: 'pointer', color: sortBy === 'opened' ? 'var(--brand)' : undefined }}
                 >
                   Giờ vào{sortBy === 'opened' && ' ↓'}
                 </th>
@@ -1513,7 +1513,7 @@ export function HistoryPage() {
                 <th
                   onClick={() => changeSort('paid')}
                   title="Sắp xếp theo giờ thanh toán, mới nhất trước — đơn chưa thanh toán xuống cuối"
-                  style={{ cursor: 'pointer', color: sortBy === 'paid' ? '#0f766e' : undefined }}
+                  style={{ cursor: 'pointer', color: sortBy === 'paid' ? 'var(--brand)' : undefined }}
                 >
                   Giờ TT{sortBy === 'paid' && ' ↓'}
                 </th>
@@ -1586,7 +1586,7 @@ export function HistoryPage() {
                                 style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
                                 title={o.customer_name ? `${o.table_name} · ${o.customer_name}` : o.table_code}
                               >
-                                <strong style={{ color: '#0f766e' }}>{o.table_name}</strong>
+                                <strong style={{ color: 'var(--brand)' }}>{o.table_name}</strong>
                                 {o.customer_name && <span style={{ color: '#6b7280' }}> · <Icon name="giao-hang" size={14} style={{ verticalAlign: '-2px' }} /> {o.customer_name}</span>}
                               </div>
                             </td>
@@ -1614,7 +1614,7 @@ export function HistoryPage() {
                             </td>
                             <td data-label="Tổng" style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                               {showMoney && (
-                                <strong style={{ color: isPaid ? '#0f766e' : isCancelled ? '#dc2626' : '#b45309' }}>
+                                <strong style={{ color: isPaid ? 'var(--brand)' : isCancelled ? '#dc2626' : '#b45309' }}>
                                   {fmt(total)}
                                 </strong>
                               )}
@@ -1743,7 +1743,7 @@ export function HistoryPage() {
                                   />
                                 )}
                                 {isPaid && o.einvoice_status === 'PENDING' && (
-                                  <span style={{ fontSize: 11, fontWeight: 700, color: '#0f766e' }}>
+                                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--brand)' }}>
                                     <Icon name="hoa-don" size={14} style={{ verticalAlign: '-2px', marginRight: 4 }} />Đang phát hành…
                                   </span>
                                 )}
@@ -1799,7 +1799,7 @@ export function HistoryPage() {
                                 <span
                                   aria-hidden
                                   title="Xem chi tiết"
-                                  style={{ color: isOpen ? '#0f766e' : '#9ca3af', width: 16, display: 'inline-flex', justifyContent: 'center' }}
+                                  style={{ color: isOpen ? 'var(--brand)' : '#9ca3af', width: 16, display: 'inline-flex', justifyContent: 'center' }}
                                 >
                                   <Icon name="mui-ten-phai" size={16} />
                                 </span>
@@ -2275,7 +2275,7 @@ function HistoryOrderDetail({ order, showMoney }: { order: HistoryOrder; showMon
       {/* Thu bằng chuyển khoản (2026-09-14) — nội dung CK hiện NGUYÊN VĂN vì đó chính là chuỗi
           phải dò trong sao kê ngân hàng. */}
       {order.transfer_amount > 0 && (
-        <div style={{ marginBottom: 12, padding: 10, background: '#f0fdfa', border: '1px solid #ccfbf1', borderRadius: 8, fontSize: 15 }}>
+        <div style={{ marginBottom: 12, padding: 10, background: 'var(--brand-50)', border: '1px solid var(--brand-100)', borderRadius: 8, fontSize: 15 }}>
           <strong><Icon name="chuyen-khoan" size={16} style={{ verticalAlign: '-3px', marginRight: 6 }} />Chuyển khoản{showMoney && ` ${order.transfer_amount.toLocaleString('vi-VN')}đ`}</strong>
           {order.payment_qr_label && <span> → {order.payment_qr_label}</span>}
           {order.transfer_note && (
@@ -2310,7 +2310,7 @@ function HistoryOrderDetail({ order, showMoney }: { order: HistoryOrder; showMon
           style={{
             marginBottom: 12,
             padding: 10,
-            background: order.debt_paid_at != null ? '#f0fdfa' : '#ffedd5',
+            background: order.debt_paid_at != null ? 'var(--brand-50)' : '#ffedd5',
             borderRadius: 8,
             fontSize: 13,
           }}
@@ -2318,7 +2318,7 @@ function HistoryOrderDetail({ order, showMoney }: { order: HistoryOrder; showMon
           <strong><Icon name="ghi-no" size={16} style={{ verticalAlign: '-3px', marginRight: 6 }} />Ghi nợ{order.debt_note ? `: ${order.debt_note}` : ''}</strong>
           <span style={{ color: '#6b7280' }}> · từ {fmtDate(order.debt_at)}</span>
           {order.debt_paid_at != null ? (
-            <div style={{ marginTop: 2, color: '#0f766e' }}>
+            <div style={{ marginTop: 2, color: 'var(--brand)' }}>
               <Icon name="xong" size={16} style={{ verticalAlign: '-3px', marginRight: 6 }} />
               Đã thu nợ {fmtDate(order.debt_paid_at)}
               {order.debt_paid_by_full_name && <> · {order.debt_paid_by_full_name}</>}
@@ -2331,9 +2331,9 @@ function HistoryOrderDetail({ order, showMoney }: { order: HistoryOrder; showMon
 
       {/* Customer info (delivery) */}
       {order.customer_name && (
-        <div style={{ marginBottom: 12, padding: 10, background: '#f0fdfa', border: '1px solid #ccfbf1', borderRadius: 8, fontSize: 15 }}>
+        <div style={{ marginBottom: 12, padding: 10, background: 'var(--brand-50)', border: '1px solid var(--brand-100)', borderRadius: 8, fontSize: 15 }}>
           <strong><Icon name="giao-hang" size={16} style={{ verticalAlign: '-3px', marginRight: 6 }} />{order.customer_name}</strong>
-          {order.customer_phone && <> · <a href={`tel:${order.customer_phone}`} style={{ color: '#0f766e' }}>{order.customer_phone}</a></>}
+          {order.customer_phone && <> · <a href={`tel:${order.customer_phone}`} style={{ color: 'var(--brand)' }}>{order.customer_phone}</a></>}
           {order.customer_address && <div style={{ color: '#374151', marginTop: 2 }}><Icon name="vi-tri" size={14} style={{ verticalAlign: '-2px', marginRight: 4 }} />{order.customer_address}</div>}
         </div>
       )}
@@ -2350,7 +2350,7 @@ function HistoryOrderDetail({ order, showMoney }: { order: HistoryOrder; showMon
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div><strong>{g.count}×</strong> {g.rep.menu_item_name} <span style={{ fontSize: 11, color: '#9ca3af' }}>({stateLabel(g.rep.state)})</span></div>
                 {g.rep.created_by_full_name && (
-                  <div style={{ fontSize: 11, color: '#0f766e' }}><Icon name="tai-khoan" size={12} style={{ verticalAlign: '-2px', marginRight: 3 }} />NV: {g.rep.created_by_full_name}</div>
+                  <div style={{ fontSize: 11, color: 'var(--brand)' }}><Icon name="tai-khoan" size={12} style={{ verticalAlign: '-2px', marginRight: 3 }} />NV: {g.rep.created_by_full_name}</div>
                 )}
                 {g.rep.note && <div style={{ fontSize: 11, color: '#6b7280', fontStyle: 'italic' }}><Icon name="ghi-chu" size={12} style={{ verticalAlign: '-2px', marginRight: 3 }} />{g.rep.note}</div>}
               </div>
@@ -2372,7 +2372,7 @@ function HistoryOrderDetail({ order, showMoney }: { order: HistoryOrder; showMon
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div><strong>{g.count}×</strong> {g.rep.menu_item_name}</div>
                 {g.rep.created_by_full_name && (
-                  <div style={{ fontSize: 11, color: '#0f766e' }}><Icon name="tai-khoan" size={12} style={{ verticalAlign: '-2px', marginRight: 3 }} />NV gọi: {g.rep.created_by_full_name}</div>
+                  <div style={{ fontSize: 11, color: 'var(--brand)' }}><Icon name="tai-khoan" size={12} style={{ verticalAlign: '-2px', marginRight: 3 }} />NV gọi: {g.rep.created_by_full_name}</div>
                 )}
                 {g.rep.served_by_full_name && (
                   <div style={{ fontSize: 11, color: '#059669' }}><Icon name="xong" size={12} style={{ verticalAlign: '-2px', marginRight: 3 }} />Người giao: {g.rep.served_by_full_name}</div>
@@ -2431,7 +2431,7 @@ function HistoryOrderDetail({ order, showMoney }: { order: HistoryOrder; showMon
                 <div style={{ flex: 1, minWidth: 0 }}>
                   {/* Câu nhật ký do BE viết sẵn, câu thanh toán có tiền nằm giữa — che đi. */}
                   <span>{showMoney ? a.message : anTien(a.message)}</span>
-                  {a.actor_name && <span style={{ color: '#0f766e' }}> · <Icon name="tai-khoan" size={12} style={{ verticalAlign: '-2px', marginRight: 3 }} />{a.actor_name}</span>}
+                  {a.actor_name && <span style={{ color: 'var(--brand)' }}> · <Icon name="tai-khoan" size={12} style={{ verticalAlign: '-2px', marginRight: 3 }} />{a.actor_name}</span>}
                 </div>
                 <span style={{ fontSize: 11, color: '#9ca3af', flexShrink: 0, whiteSpace: 'nowrap' }}>
                   {fmtTime(a.created_at)}

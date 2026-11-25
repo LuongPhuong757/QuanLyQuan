@@ -138,7 +138,7 @@ export function EInvoiceResult({ orderId, tableName, onClose }: { orderId: strin
         ? { bg: '#fef2f2', border: '#dc2626', color: '#991b1b' }
         : phase.kind === 'unknown' || phase.kind === 'checking'
           ? { bg: '#fffbeb', border: '#d97706', color: '#92400e' }
-          : { bg: '#f0fdfa', border: '#0f766e', color: '#115e59' };
+          : { bg: 'var(--brand-50)', border: 'var(--brand)', color: 'var(--brand-800)' };
 
   return (
     <div
@@ -236,7 +236,7 @@ export function EInvoiceResult({ orderId, tableName, onClose }: { orderId: strin
 
         {phase.kind === 'failed' && (
           <>
-            <button type="button" onClick={markManual} disabled={marking} style={{ ...BIG_BUTTON, background: '#0f766e', color: 'white', border: 'none' }}>
+            <button type="button" onClick={markManual} disabled={marking} style={{ ...BIG_BUTTON, background: 'var(--brand)', color: 'white', border: 'none' }}>
               {marking ? 'Đang lưu…' : <><Icon name="hoa-don" size={18} style={{ verticalAlign: '-3px', marginRight: 6 }} />Đã xuất tay (tick Misa)</>}
             </button>
             {markError && <div style={{ color: '#991b1b', fontSize: 15 }}>{markError}</div>}

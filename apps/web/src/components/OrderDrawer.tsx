@@ -876,7 +876,7 @@ export function OrderDrawer({ table, onClose, onTransferred, goiMonNgay = false 
                     onClick={() => void decideGuest(r.id, 'approve')}
                     style={{
                       flex: 1, minHeight: 44, border: 'none', borderRadius: 8,
-                      background: '#0f766e', color: '#fff', fontSize: 16, fontWeight: 800,
+                      background: 'var(--brand)', color: '#fff', fontSize: 16, fontWeight: 800,
                       cursor: 'pointer',
                     }}
                   >
@@ -1033,7 +1033,7 @@ export function OrderDrawer({ table, onClose, onTransferred, goiMonNgay = false 
                     </div>
                     {order.customer_name ? (
                       <div style={{ fontSize: 14, lineHeight: 1.5 }}>
-                        <div><strong>{order.customer_name}</strong> · <a href={`tel:${order.customer_phone}`} style={{ color: '#0f766e' }}>{order.customer_phone}</a></div>
+                        <div><strong>{order.customer_name}</strong> · <a href={`tel:${order.customer_phone}`} style={{ color: 'var(--brand)' }}>{order.customer_phone}</a></div>
                         {order.customer_address && (
                           <div style={{ color: '#374151', wordBreak: 'break-word' }}>
                             <Icon name="vi-tri" size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />
@@ -1067,8 +1067,8 @@ export function OrderDrawer({ table, onClose, onTransferred, goiMonNgay = false 
                                 display: 'inline-block',
                                 padding: '4px 10px',
                                 borderRadius: 8,
-                                border: '1px solid #0f766e',
-                                color: '#0f766e',
+                                border: '1px solid var(--brand)',
+                                color: 'var(--brand)',
                                 fontWeight: 600,
                                 fontSize: 13,
                                 textDecoration: 'none',
@@ -1712,8 +1712,8 @@ function EditQtyModal({
 
         <div
           style={{
-            background: '#f0fdfa',
-            border: '1px solid #ccfbf1',
+            background: 'var(--brand-50)',
+            border: '1px solid var(--brand-100)',
             borderRadius: 8,
             padding: 12,
             marginBottom: 14,
@@ -2097,7 +2097,7 @@ function ItemRow({
                   </span>
                 )}
                 {item.created_by_full_name && (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 12, color: '#0f766e' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 12, color: 'var(--brand)' }}>
                     <Icon name="tai-khoan" size={12} label="Nhân viên gọi" />{item.created_by_full_name}
                   </span>
                 )}

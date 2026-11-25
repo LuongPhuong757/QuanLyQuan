@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { applyPageTitle, MENU_BOOK_TITLE, titleForPath } from './page-title.ts';
+import { applyPageTitle, menuBookTitle, titleForPath } from './page-title.ts';
 
 /**
  * Bug này sinh ra từ việc KHÔNG ai để ý tiêu đề — nên thứ đáng test nhất không phải "trả đúng
@@ -39,8 +39,8 @@ describe('titleForPath — mỗi màn một tiêu đề', () => {
     expect(titleForPath('/khong-co-that')).toBe(titleForPath('/'));
   });
 
-  it('/thuc-don dùng chung hằng số với MenuBookPage', () => {
-    expect(titleForPath('/thuc-don')).toBe(MENU_BOOK_TITLE);
+  it('/thuc-don dùng chung hàm tiêu đề với MenuBookPage', () => {
+    expect(titleForPath('/thuc-don')).toBe(menuBookTitle());
   });
 });
 

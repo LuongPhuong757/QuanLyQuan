@@ -2,6 +2,7 @@ import { useMemo, useRef, useState, type ChangeEvent, type CSSProperties, type J
 import { useParams } from 'react-router-dom';
 import { z } from 'zod';
 import { useApi } from '../lib/use-api.ts';
+import { tenDayDu, useThuongHieu } from '../lib/thuong-hieu.ts';
 
 /**
  * Trang cập nhật ảnh món qua LINK BÍ MẬT — `/anh-mon/:token` (2026-08-16).
@@ -52,6 +53,7 @@ type PhotoFilter = 'all' | 'missing' | 'having';
 
 export function PhotoUploadPage(): JSX.Element {
   const { token = '' } = useParams();
+  const th = useThuongHieu();
   const list = useApi(`/api/public/menu-photos/${token}`, PhotoList);
 
   const [search, setSearch] = useState('');
@@ -144,7 +146,7 @@ export function PhotoUploadPage(): JSX.Element {
   return (
     <div style={page}>
       <header style={head}>
-        <h1 style={{ margin: 0, fontSize: 20 }}>📷 Ảnh món ăn — Quán Bà Lùn</h1>
+        <h1 style={{ margin: 0, fontSize: 20 }}>📷 Ảnh món ăn — {tenDayDu(th)}</h1>
         <p style={{ margin: '6px 0 0', fontSize: 15, color: 'var(--text-muted)', lineHeight: 1.5 }}>
           Bấm vào món bất kỳ rồi <strong>chụp ảnh</strong> hoặc <strong>chọn ảnh có sẵn</strong> trong máy.
           Ảnh sẽ hiện trên web của quán ngay.

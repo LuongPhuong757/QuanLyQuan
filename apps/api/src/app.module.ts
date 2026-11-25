@@ -11,6 +11,7 @@ import { ReadOnlyExemptThrottlerGuard } from './common/guards/read-only-throttle
 import { AuditModule } from './modules/audit/audit.module.js';
 import { AdminModule } from './modules/admin/admin.module.js';
 import { SetupModule } from './modules/setup/setup.module.js';
+import { ThietLapModule } from './modules/thiet-lap/thiet-lap.module.js';
 import { MenuModule } from './modules/menu/menu.module.js';
 import { IngredientsModule } from './modules/ingredients/ingredients.module.js';
 import { SuppliersModule } from './modules/suppliers/suppliers.module.js';
@@ -49,6 +50,8 @@ import { AuditInterceptor } from './modules/audit/audit.interceptor.js';
     AuditModule,
     AdminModule,
     SetupModule,
+    // Màn "Thiết lập quán" (2026-11-18, docs/THIET-LAP-QUAN-SPEC.md) — dựng quán mới một chỗ.
+    ThietLapModule,
     MenuModule,
     // Định lượng nguyên liệu (2026-09-05) — danh mục nguyên liệu dùng chung + công thức món,
     // nền cho báo cáo tiêu hao theo tháng/bàn.

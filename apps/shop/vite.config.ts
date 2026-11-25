@@ -4,7 +4,12 @@ import react from '@vitejs/plugin-react';
 // Cùng lý do như apps/web/vite.config.ts: proxy phải bypass khi browser request HTML.
 // Khách reload /cart hoặc /o/<token> → Accept: text/html → trả index.html (SPA fallback)
 // thay vì proxy sang BE. Còn fetch() mặc định gửi Accept: application/json → proxy bình thường.
-const apiProxy = (target = 'http://localhost:3001'): ProxyOptions => ({
+// `API_PROXY_TARGET` (chỉ máy dev, giống apps/web): nhiều worktree chạy song song thì cổng 3001
+// thường là API của nhánh KHÁC — trang khách gọi nhầm sang đó là thấy dữ liệu/tính năng cũ mà
+// không có lỗi nào (gặp 2026-11-19: thương hiệu quán không đổi vì 3001 là nhánh chưa có API mới).
+const API_TARGET = process.env.API_PROXY_TARGET || 'http://localhost:3001';
+
+const apiProxy = (target = API_TARGET): ProxyOptions => ({
   target,
   changeOrigin: true,
   bypass(req) {
@@ -32,7 +37,7 @@ export default defineConfig({
          hiện bình thường trong thẻ <img> (Accept: image/*) nhưng bấm vào để phóng to thì ra màn
          "không tìm thấy trang". Chỉ xảy ra trên máy dev; production đi qua Caddy nên không thấy.
          `/uploads` không trùng tên với route React nào, nên nó KHÔNG cần luật bypass đó. */
-      '/uploads': { target: 'http://localhost:3001', changeOrigin: true },
+      '/uploads': { target: API_TARGET, changeOrigin: true },
     },
   },
   build: {

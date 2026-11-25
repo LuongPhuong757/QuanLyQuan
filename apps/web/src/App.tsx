@@ -16,6 +16,7 @@ import { useGuestPending } from './lib/guest-pending.ts';
 import { GuestQrBanner } from './components/GuestQrBanner.tsx';
 import { PhoneAlertBar } from './components/PhoneAlertBar.tsx';
 import { useIsPhone } from './components/ui/use-is-phone.ts';
+import { tenNgan, useThuongHieu } from './lib/thuong-hieu.ts';
 import { AppHeader, AvatarMenu, BottomNav, Sidebar } from './components/AppNav.tsx';
 import { Icon, type IconName } from './components/ui/Icon.tsx';
 
@@ -86,6 +87,9 @@ const SuppliersPage = lazy(() =>
 );
 const SettingsPage = lazy(() =>
   import('./pages/SettingsPage.tsx').then((m) => ({ default: m.SettingsPage })),
+);
+const ThietLapPage = lazy(() =>
+  import('./pages/ThietLapPage.tsx').then((m) => ({ default: m.ThietLapPage })),
 );
 const NccPortalPage = lazy(() =>
   import('./pages/NccPortalPage.tsx').then((m) => ({ default: m.NccPortalPage })),
@@ -252,6 +256,9 @@ export function App() {
               {/* Màn Cài đặt riêng (2026-11-11) — tách khỏi tab Cài đặt của Đơn online, chia 5
                   nhóm qua `?g=`. Bookmark `?tab=<tab cũ>` do chính SettingsPage chuyển về nhóm. */}
               <Route path="/settings" element={<SettingsPage />} />
+              {/* Thiết lập quán (2026-11-18, docs/THIET-LAP-QUAN-SPEC.md) — dựng quán mới một chỗ,
+                  vào phải gõ lại mật khẩu admin. */}
+              <Route path="/thiet-lap" element={<ThietLapPage />} />
               {/* `/admin/settings` cũ: giữ redirect vì bookmark và ảnh chụp màn hình trong
                   `08-UAT.md`/`09-UAT.md` đều đang trỏ vào URL này. Đi thẳng `/settings`, không qua
                   `/admin/online-orders?view=settings` nữa. */}
@@ -280,6 +287,8 @@ const ROLE_STYLE: Record<Role, { label: string; bg: string; border: string; text
 function ProtectedShell() {
   const { user, loading, logout } = useAuth();
   const loc = useLocation();
+  // Thương hiệu theo quán — tiêu đề tab đổi theo khi bản từ API về (hoặc chủ quán vừa đổi tên).
+  const th = useThuongHieu();
   // Role tính TRƯỚC các early-return vì hook đếm đơn chờ phải chạy ở mọi lần render.
   const role = (user?.role ?? (user?.is_owner ? 'admin' : null)) as Role | null;
   // Badge số đơn online đang chờ trên nút "Online" — cả 3 role đều duyệt được (D-02) nên có
@@ -318,16 +327,17 @@ function ProtectedShell() {
    * cũng phải thấy, kể cả khi nhân viên đang ở màn Bếp.
    */
   useEffect(() => {
-    // Giữ ĐÚNG chuỗi trong `apps/web/index.html` — hai chỗ lệch nhau thì tiêu đề tab đổi một cái
-    // khi app mount xong, và người dùng thấy tab "nhảy chữ" mà không hiểu vì sao.
-    const base = 'Admin · Quán Bà Lùn';
+    // Giữ ĐÚNG khuôn chuỗi trong `apps/web/index.html` ("Admin · <tên ngắn>", server chèn tên quán)
+    // — hai chỗ lệch nhau thì tiêu đề tab đổi một cái khi app mount xong, và người dùng thấy tab
+    // "nhảy chữ" mà không hiểu vì sao.
+    const base = `Admin · ${tenNgan(th)}`;
     document.title = waitingCount && waitingCount > 0 ? `(${waitingCount}) Đơn mới · ${base}` : base;
     // Trả tiêu đề về nguyên trạng khi rời khu vực đã đăng nhập (đăng xuất) — để lại "(3) Đơn mới"
     // trên màn hình đăng nhập là nói về dữ liệu người vừa đăng xuất không còn quyền xem.
     return () => {
       document.title = base;
     };
-  }, [waitingCount]);
+  }, [waitingCount, th]);
 
   /**
    * Nạp trước chunk của những màn role này dùng nhiều nhất (xem `PREFETCH_BY_ROLE`).

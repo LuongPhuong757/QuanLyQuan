@@ -7,7 +7,7 @@
 // ô vuông — một lỗi chỉ lộ ra sau khi deploy. Nhúng font vào repo thì dev và production dựng
 // ra đúng từng chấm ảnh giống nhau.
 
-import { createCanvas, GlobalFonts, type SKRSContext2D } from '@napi-rs/canvas';
+import { createCanvas, GlobalFonts, loadImage, type SKRSContext2D } from '@napi-rs/canvas';
 import sharp from 'sharp';
 import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -251,10 +251,19 @@ const DARKNESS_LEVELS: Record<number, { threshold: number; bold: boolean; dilate
  * Cái giá là một vòng nén/giải nén PNG cho mỗi tờ. Đáng, đổi lấy việc không phải khởi động lại
  * API mỗi ngày.
  */
+/** Logo đầu hoá đơn chiếm ~30% bề ngang giấy, tối đa 160 chấm (~2cm trên giấy 80mm): đủ nhận ra
+ *  quán mà không đẩy tờ giấy dài thêm đáng kể. */
+const LOGO_MAX_DOTS = 160;
+const LOGO_GAP = 10;
+
 export async function renderReceipt(
   lines: ReceiptLine[],
   widthDots: number = DOTS_80MM,
   darkness = 2,
+  /** PNG đen trắng của logo quán (`uploads/thuong-hieu/den-trang.png`, 2026-11-19). Không có →
+   *  tờ giấy y hệt trước đây. Vẽ TRƯỚC mọi dòng chữ rồi đẩy cả khối chữ xuống — không đụng tới
+   *  4 hàm dựng hoá đơn trong receipt-model. */
+  logo?: Buffer | null,
 ): Promise<RenderedReceipt> {
   ensureFontsLoaded();
   const level = DARKNESS_LEVELS[darkness] ?? DARKNESS_LEVELS[2];
@@ -262,12 +271,20 @@ export async function renderReceipt(
   const W = widthDots;
   // Canvas 1 chấm chỉ để đo chữ — `measureText` cần một context, nhưng chưa biết chiều cao.
   const probe = createCanvas(W, 1).getContext('2d');
-  const { ops, height } = planOps(probe, lines, W);
+  const planned = planOps(probe, lines, W);
+  const ops = planned.ops;
+
+  // Ảnh logo hỏng không được làm hỏng tờ hoá đơn: bỏ logo, in chữ như thường.
+  const logoImg = logo ? await loadImage(logo).catch(() => null) : null;
+  const logoSize = logoImg ? Math.min(LOGO_MAX_DOTS, Math.round(W * 0.3)) : 0;
+  const offset = logoImg ? PAD + logoSize + LOGO_GAP : 0;
+  const height = planned.height + offset;
 
   const canvas = createCanvas(W, height);
   const ctx = canvas.getContext('2d');
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, W, height);
+  if (logoImg) ctx.drawImage(logoImg, Math.round((W - logoSize) / 2), PAD, logoSize, logoSize);
   ctx.fillStyle = '#000000';
   ctx.textBaseline = 'alphabetic';
 
@@ -275,12 +292,12 @@ export async function renderReceipt(
     if (op.t === 'rule') {
       // Kẻ nét đứt thay vì nét liền: trên giấy nhiệt một đường đen dài tốn nhiệt, in chậm hơn
       // và làm đầu in nóng lên không cần thiết.
-      for (let x = PAD; x < W - PAD; x += 6) ctx.fillRect(x, op.y, 3, 2);
+      for (let x = PAD; x < W - PAD; x += 6) ctx.fillRect(x, op.y + offset, 3, 2);
       continue;
     }
     setFont(ctx, op.style);
     ctx.textAlign = op.align;
-    ctx.fillText(op.text, op.x, op.y);
+    ctx.fillText(op.text, op.x, op.y + offset);
   }
 
   // `greyscale()` cho ra ĐÚNG 1 byte mỗi điểm ảnh, nên vòng lặp bên dưới không phải nhảy 4 byte

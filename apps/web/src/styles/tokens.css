@@ -100,9 +100,22 @@
   --cyan-900: #164e63;
 
   /* ── Vai trò ── xanh ngọc là màu chính trang quản lý (chủ quán chốt; trang khách là đỏ ớt). */
+  /* Thang màu thương hiệu (2026-11-19, màn Thiết lập → Thương hiệu). Mặc định = xanh ngọc nên
+     Bà Lùn nhìn không đổi; quán chọn màu khác thì `ap-thuong-hieu.ts` ghi đè CÁC BIẾN NÀY trên
+     :root lúc tải trang. Màu thương hiệu (nút chính, tab đang chọn, link, viền focus…) PHẢI dùng
+     `--brand*`, KHÔNG dùng `--teal-*` hay mã hex — dùng thẳng teal là màu đó không đổi theo quán.
+     `--teal-*` chỉ còn cho chỗ cố ý luôn là xanh ngọc. */
+  --brand-50: var(--teal-50);
+  --brand-100: var(--teal-100);
+  --brand-200: var(--teal-200);
+  --brand-600: var(--teal-600);
   --brand: var(--teal-700);
-  --brand-strong: var(--teal-800);
-  --brand-soft: var(--teal-50);
+  --brand-800: var(--teal-800);
+  --brand-900: var(--teal-900);
+  /* Kênh RGB của --brand cho màu có độ trong: `rgb(var(--brand-rgb) / 0.2)`. */
+  --brand-rgb: 15 118 110;
+  --brand-strong: var(--brand-800);
+  --brand-soft: var(--brand-50);
 
   /* ══ BỘ QUY TẮC CHUNG `--ds-*` (chủ quán chốt 2026-11-11) ══════════════════════════════
    * Gốc rễ: mỗi màn tự chọn cỡ chữ/màu/bo góc (đo được 7–10 cỡ chữ một màn, có chữ 9–10px, đỏ
@@ -129,10 +142,11 @@
   --ds-ink-2: #6b7280; /* chữ phụ */
   --ds-ink-3: #9ca3af; /* chữ mờ, món ẩn */
 
-  /* Màu chính — chỉ xanh ngọc. */
-  --ds-accent: #0f766e;
-  --ds-accent-tint: #ccfbf1; /* nền chip đang chọn, thẻ nhấn */
-  --ds-accent-soft: #f0fdfa;
+  /* Màu chính — màu thương hiệu của quán (mặc định xanh ngọc). Trỏ về `--brand*` để đổi theo màn
+     Thiết lập → Thương hiệu (2026-11-19); trước đó viết cứng #0f766e nên công tắc/chip không đổi. */
+  --ds-accent: var(--brand);
+  --ds-accent-tint: var(--brand-100); /* nền chip đang chọn, thẻ nhấn */
+  --ds-accent-soft: var(--brand-50);
 
   /* Màu trạng thái — mỗi màu MỘT nghĩa. Đỏ = lỗi/nguy hiểm (ảnh lỗi, xoá, hết hàng). Cam = cần
    * chú ý (đơn chờ, quá hạn). Xám = tắt/ẩn (món ẩn online KHÔNG còn đỏ). */

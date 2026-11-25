@@ -676,7 +676,7 @@ button.td-bulk__het { color: var(--ds-danger); }
   color: #fff;
   font-size: 28px;
   line-height: 1;
-  box-shadow: 0 6px 16px rgba(15, 118, 110, 0.35);
+  box-shadow: 0 6px 16px rgb(var(--brand-rgb) / 0.35);
 }
 
 /* Menu ⋯: mục đầu "Báo hết / Còn hàng lại" — việc làm nhiều nhất trong ca, chữ cam. */

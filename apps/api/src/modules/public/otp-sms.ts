@@ -9,11 +9,18 @@
 // Mẫu mặc định viết KHÔNG DẤU có chủ đích: tin không dấu được 160 ký tự/segment, có dấu chỉ
 // còn 70 → có dấu là tự nhân đôi tiền mỗi lần gửi mã.
 
+import { boDau } from '@order/schemas';
+
 /** Chỗ thay mã trong mẫu. Mẫu thiếu placeholder này = tin gửi đi không có mã → coi như mẫu hỏng. */
 export const OTP_CODE_PLACEHOLDER = '{code}';
 
 export const DEFAULT_OTP_SMS_TEMPLATE =
-  'Ma xac minh cua ban la {code}, het han sau 5 phut. Quan Ba Lun khong bao gio hoi ma nay.';
+  'Ma xac minh cua ban la {code}, het han sau 5 phut. {quan} khong bao gio hoi ma nay.';
+
+/** Chỗ thay TÊN QUÁN (2026-11-19, bán cho nhiều quán). Tên tự bỏ dấu — tin có dấu tốn gấp đôi. Mẫu
+ *  đã đăng ký eSMS (env OTP_SMS_TEMPLATE) không có chỗ này thì gửi y nguyên như mẫu, đúng luật
+ *  "nội dung phải khớp mẫu đã duyệt" ở trên. */
+export const OTP_SHOP_PLACEHOLDER = '{quan}';
 
 /**
  * Ghép nội dung tin OTP từ mẫu.
@@ -22,9 +29,10 @@ export const DEFAULT_OTP_SMS_TEMPLATE =
  * không có mã vừa tốn tiền vừa làm khách bấm gửi lại vô ích. Caller (`SmsOtpSender`) chịu
  * trách nhiệm cảnh báo ra log khi rơi về mặc định.
  */
-export function buildOtpSms(code: string, rawTemplate?: string): string {
+export function buildOtpSms(code: string, rawTemplate?: string, tenQuan = 'Quan Ba Lun'): string {
   const template = isUsableTemplate(rawTemplate) ? rawTemplate : DEFAULT_OTP_SMS_TEMPLATE;
-  return template.split(OTP_CODE_PLACEHOLDER).join(code);
+  const quan = boDau(tenQuan).trim() || 'Quan';
+  return template.split(OTP_CODE_PLACEHOLDER).join(code).split(OTP_SHOP_PLACEHOLDER).join(quan);
 }
 
 /** Mẫu dùng được = có chuỗi và có chỗ thay mã. */

@@ -16,7 +16,7 @@ const KIND_ICON: Record<NotificationKind, IconName> = {
 
 const KIND_COLOR: Record<NotificationKind, string> = {
   ready: '#059669',
-  order_open: '#0f766e',
+  order_open: 'var(--brand)',
   order_cancel: '#dc2626',
   order_checkout: '#0284c7',
   info: '#6b7280',
@@ -150,7 +150,7 @@ export function NotificationBell() {
                       borderTop: '1px solid #f3f4f6',
                       display: 'flex',
                       gap: 10,
-                      background: e.read ? 'white' : '#f0fdfa',
+                      background: e.read ? 'white' : 'var(--brand-50)',
                     }}
                   >
                     <div style={{ fontSize: 20, color: KIND_COLOR[e.kind] }}>

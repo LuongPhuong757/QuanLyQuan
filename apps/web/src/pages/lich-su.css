@@ -145,7 +145,7 @@ button.ls-ds__o { border: 0; border-radius: 0; min-height: 0; height: auto; colo
   font-size: var(--ds-fs-body2); font-weight: 700; line-height: 1; white-space: nowrap;
 }
 .ls-ic.is-sq { width: 40px; padding: 0; justify-content: center; }
-.ls-ic.is-ok { color: var(--ds-accent); background: var(--ds-accent-soft); border-color: var(--teal-200); }
+.ls-ic.is-ok { color: var(--ds-accent); background: var(--ds-accent-soft); border-color: var(--brand-200); }
 .ls-ic.is-no { color: var(--orange-700); background: var(--orange-50); border-color: var(--orange-200); }
 .ls-ic.is-gr { color: #475569; background: #f1f5f9; border-color: #e2e8f0; }
 .ls-ic.is-am { color: var(--amber-800); background: var(--amber-100); border-color: var(--amber-200); }

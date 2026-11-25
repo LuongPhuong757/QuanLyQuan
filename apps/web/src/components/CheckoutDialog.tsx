@@ -571,9 +571,9 @@ export function CheckoutDialog({
               tổng tiền nay nằm ngay trên nút chính ("Thanh toán · 3.220.000đ"). Màn "trả bằng gì"
               vẫn giữ con số (lúc đọc cho khách nghe); dòng phụ chỉ còn khi có phí ship. */}
           {step === 'mode' && (
-            <div style={{ background: '#f0fdfa', borderRadius: 10, padding: 14, textAlign: 'center', border: '1px solid #ccfbf1' }}>
+            <div style={{ background: 'var(--brand-50)', borderRadius: 10, padding: 14, textAlign: 'center', border: '1px solid var(--brand-100)' }}>
               <div style={{ fontSize: 13, color: '#6b7280' }}>Tổng cần thu</div>
-              <div style={{ fontSize: 28, fontWeight: 700, color: '#0f766e', marginTop: 4 }}>{fmt(total)}</div>
+              <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--brand)', marginTop: 4 }}>{fmt(total)}</div>
               {shipFee > 0 && (
                 <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
                   {`${demMon(servedItems, servedUnits)} ${fmt(itemsTotal)} + phí ship ${fmt(shipFee)}`}
@@ -690,7 +690,7 @@ export function CheckoutDialog({
                     placeholder="0"
                     style={{ width: '100%', fontSize: 20, textAlign: 'right', minHeight: 44 }}
                   />
-                  <div style={{ fontSize: 14, marginTop: 6, color: '#0f766e', fontWeight: 600 }}>
+                  <div style={{ fontSize: 14, marginTop: 6, color: 'var(--brand)', fontWeight: 600 }}>
                     Còn lại thu tiền mặt: {fmt(cashAmount)}
                   </div>
                 </div>
@@ -712,7 +712,7 @@ export function CheckoutDialog({
             {/* Báo TRƯỚC khi bấm: thu xong hộp chưa đóng mà chuyển sang màn xuất hoá đơn — người thu
                 biết để đứng chờ vài giây, không tưởng máy treo. */}
             {isHkdPayment && hkdEinvoiceOn && (
-              <div style={{ padding: '10px 12px', border: '1px solid #0f766e', background: '#f0fdfa', borderRadius: 8, fontSize: 15 }}>
+              <div style={{ padding: '10px 12px', border: '1px solid var(--brand)', background: 'var(--brand-50)', borderRadius: 8, fontSize: 15 }}>
                 <strong><Icon name="hoa-don" size={18} style={{ verticalAlign: '-3px', marginRight: 6 }} />Thu xong máy sẽ xuất hoá đơn ngay</strong>
                 <div style={{ fontSize: 13, color: '#6b7280' }}>Kết quả hiện ngay trên màn này.</div>
               </div>
@@ -890,8 +890,8 @@ export function QrStep({
               padding: '8px 12px',
               minHeight: 44,
               borderRadius: 999,
-              border: pickedId === o.id ? '2px solid #0d9488' : '1px solid #e5e7eb',
-              background: pickedId === o.id ? '#f0fdfa' : 'white',
+              border: pickedId === o.id ? '2px solid var(--brand-600)' : '1px solid #e5e7eb',
+              background: pickedId === o.id ? 'var(--brand-50)' : 'white',
               color: '#1f2937',
               fontSize: 14,
             }}
@@ -926,7 +926,7 @@ export function QrStep({
           )}
 
           <div style={{ marginTop: 8, fontSize: 15 }}>
-            <div style={{ fontWeight: 700, fontSize: 20, color: '#0f766e' }}>{fmt(transferAmount)}</div>
+            <div style={{ fontWeight: 700, fontSize: 20, color: 'var(--brand)' }}>{fmt(transferAmount)}</div>
             {picked.kind === 'BANK' ? (
               <>
                 <div style={{ color: '#4b5563' }}>

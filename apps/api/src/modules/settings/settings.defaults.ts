@@ -182,7 +182,10 @@ export const SETTINGS_DEFAULTS: readonly SettingDefault[] = [
   { key: 'printer_auto_cut', kind: 'bool', default: true },
   // Tên quán in trên đầu hoá đơn. Trước tính năng này tên quán nằm rải rác trong code FE;
   // tờ giấy đưa cho khách thì phải sửa được mà không cần deploy.
-  { key: 'store_name', kind: 'string', default: 'Quán Bà Lún' },
+  // Mặc định RỖNG (2026-11-18, màn Thiết lập quán): quán mới mở ra mà hoá đơn đã in sẵn tên
+  // "Quán Bà Lún" là sai, và mục "Thông tin quán" phải hiện ⚠ chưa xong. Quán đang chạy đã có
+  // dòng `store_name` trong DB nên mặc định này không đụng tới họ.
+  { key: 'store_name', kind: 'string', default: '' },
   // ── Báo bàn ngồi quá lâu chưa thanh toán (2026-10-12) ──
   // Số PHÚT tính từ lúc mở bàn; quá mốc này mà đơn còn món và chưa thu tiền thì MỌI tài khoản
   // thấy dải đỏ trên đầu màn hình — xem `orders/stale-unpaid.ts`. `0` = tắt cảnh báo.
@@ -194,6 +197,21 @@ export const SETTINGS_DEFAULTS: readonly SettingDefault[] = [
   // Tắt = cửa vào bàn (`/api/public/table/open`) và gửi món (`/table/cart`) trả TABLE_ORDERING_OFF;
   // khách vẫn XEM thực đơn bình thường. Key mới chưa có row trong DB nên fallback này CÓ hiệu lực.
   { key: 'table_ordering_enabled', kind: 'bool', default: false },
+  // ── Thương hiệu theo quán (2026-11-19, màn Thiết lập → Thương hiệu, spec §8c) ──
+  // Mặc định = ĐÚNG Bà Lùn hiện tại (T-11): DB đang chạy chưa có row nào nên fallback này có hiệu
+  // lực, và quán không thấy gì đổi. Quán mới chọn lại ở màn Thiết lập.
+  // Tên ngắn: tab trình duyệt + chữ đầu trang khách. Rỗng = dùng `store_name`.
+  { key: 'store_short_name', kind: 'string', default: '' },
+  // Màu chủ đạo — CHỈ nhận mã trong BANG_MAU_ADMIN / BANG_MAU_KHACH (@order/schemas), kiểm ở
+  // thiet-lap.controller. Hai màu riêng (chủ quán chốt): quản lý và trang khách độc lập.
+  { key: 'brand_color_admin', kind: 'string', default: '#0f766e' },
+  { key: 'brand_color_shop', kind: 'string', default: '#b82a1e' },
+  // 0 = chưa tải logo → hai app dùng logo đóng sẵn trong bản build. Mỗi lần tải logo +1, cũng là
+  // `?v=` trên đường dẫn ảnh để trình duyệt bỏ bản cũ (ảnh /uploads cache lâu).
+  { key: 'brand_logo_version', kind: 'int', default: 0 },
+  // Linh vật + ảnh nền Quyển menu — nhận diện riêng của Bà Lùn. Mặc định BẬT để Bà Lùn không đổi;
+  // quán mới tắt ở màn Thiết lập (T-08; khi có lệnh `tao-quan` thì đặt sẵn false).
+  { key: 'mascots_enabled', kind: 'bool', default: true },
 ] as const;
 
 // Map key → giá trị đã parse. Dùng chung giữa SettingsService và SettingsController để
@@ -265,6 +283,11 @@ export type StoreSettingsMap = {
   stale_unpaid_alert_min: number;
   /** M7.D-15 — cho khách quét QR tự gọi món tại bàn. Mặc định TẮT. */
   table_ordering_enabled: boolean;
+  store_short_name: string;
+  brand_color_admin: string;
+  brand_color_shop: string;
+  brand_logo_version: number;
+  mascots_enabled: boolean;
 };
 
 export const SETTINGS_DEFAULTS_MAP: StoreSettingsMap = Object.fromEntries(

@@ -106,7 +106,7 @@ export class ErrorBoundary extends Component<Props, State> {
     return (
       <div className="container">
         <div className="card" style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 40, lineHeight: 1, color: stale ? '#0f766e' : '#dc2626' }}>
+          <div style={{ fontSize: 40, lineHeight: 1, color: stale ? 'var(--brand)' : '#dc2626' }}>
             <Icon name={stale ? 'lam-moi' : 'canh-bao'} size={40} />
           </div>
           <h2 style={{ marginTop: 12 }}>{stale ? 'Có bản cập nhật mới' : 'Màn hình gặp lỗi'}</h2>

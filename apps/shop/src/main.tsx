@@ -1,4 +1,4 @@
-import { StrictMode, Suspense, lazy } from 'react';
+import { StrictMode, Suspense, lazy, useEffect, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import './styles/fonts.css'; // @font-face phải khai báo TRƯỚC khi token dùng tên font
@@ -11,7 +11,8 @@ import { AppShell } from './components/AppShell.tsx';
 import { EnvBanner } from './components/EnvBanner.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 import { startGa } from './lib/gtag.ts';
-import { applyPageTitle, MENU_BOOK_TITLE } from './lib/page-title.ts';
+import { applyPageTitle, menuBookTitle } from './lib/page-title.ts';
+import { khoiDongThuongHieu, useThuongHieu } from './lib/thuong-hieu.ts';
 import { MenuPage } from './pages/MenuPage.tsx';
 // M7 (2026-10-01) — THỰC ĐƠN mới thay quyển menu lật trang 3D. Chủ quán chốt: kiểu lật trang
 // quá chật (chỉ thấy 1,5 món trên màn 844px) và cử chỉ vuốt-lật xung đột với nút thêm món.
@@ -59,6 +60,10 @@ const PhotoUploadPage = lazy(() =>
   import('./pages/PhotoUploadPage.tsx').then((m) => ({ default: m.PhotoUploadPage })),
 );
 
+// Thương hiệu theo quán (tên/logo/màu) — gọi TRƯỚC khi đặt tiêu đề và render, để biến màu và tên
+// có ngay từ lần vẽ đầu (production: API chèn sẵn `window.__THUONG_HIEU__` vào index.html).
+khoiDongThuongHieu();
+
 const root = document.getElementById('root');
 if (!root) throw new Error('#root không tồn tại trong index.html');
 
@@ -92,9 +97,29 @@ const isMenuHost = window.location.hostname.split(':')[0].toLowerCase().startsWi
 // `document.title`. Effect của `AppShell` / `MenuBookPage` chạy sau khi React vẽ xong, tức quá
 // muộn cho lượt này — không có dòng dưới thì mọi phiên đều mở đầu bằng một lượt xem gắn nhầm
 // tiêu đề trang chủ.
-if (isMenuHost) document.title = MENU_BOOK_TITLE;
+if (isMenuHost) document.title = menuBookTitle();
 else applyPageTitle(window.location.pathname);
 startGa(window.location.pathname);
+
+/**
+ * Tiêu đề tab chỉ được đặt lúc mở trang và lúc đổi route — nếu thương hiệu từ API về SAU đó (máy
+ * dev không có bản chèn sẵn, hoặc chủ quán vừa đổi tên) thì tab vẫn mang tên cũ tới lần điều hướng
+ * sau. Thành phần rỗng này đặt lại tiêu đề trang ĐANG mở mỗi khi thương hiệu đổi. Bỏ qua lần đầu:
+ * ngay trên kia đã đặt rồi, đặt lại chỉ đè mất tiêu đề riêng của trang (vd quyển menu).
+ */
+function CapNhatTieuDeTheoThuongHieu(): null {
+  const th = useThuongHieu();
+  const lanDau = useRef(true);
+  useEffect(() => {
+    if (lanDau.current) {
+      lanDau.current = false;
+      return;
+    }
+    if (isMenuHost) document.title = menuBookTitle();
+    else applyPageTitle(window.location.pathname);
+  }, [th]);
+  return null;
+}
 
 if (isMenuHost) {
   // KHÔNG bọc `AppShell` (header có giỏ, giỏ nổi, thanh đơn đang chạy) và KHÔNG cần
@@ -103,6 +128,7 @@ if (isMenuHost) {
   // đặt hàng — thứ duy nhất nó làm được là hiển thị.
   createRoot(root).render(
     <StrictMode>
+      <CapNhatTieuDeTheoThuongHieu />
       {/* Quyển menu cũng phải mang dấu: nó là màn duy nhất trên tên miền menu, không có
           header nào khác để mà nhận ra mình đang ở bản thử. NGOÀI `<ErrorBoundary>` để màn
           báo lỗi cũng còn dải đỏ — xem lý do đầy đủ ở `apps/web/src/main.tsx`. */}
@@ -117,6 +143,7 @@ if (isMenuHost) {
 } else {
   createRoot(root).render(
     <StrictMode>
+      <CapNhatTieuDeTheoThuongHieu />
       {/* NGOÀI `<BrowserRouter>` và ngoài cả `<ErrorBoundary>`: dải phải có mặt trên mọi
           route, kể cả trang cập nhật ảnh món nằm ngoài `AppShell` (không có header), và kể
           cả màn báo lỗi. */}

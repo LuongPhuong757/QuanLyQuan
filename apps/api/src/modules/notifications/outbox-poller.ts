@@ -1,7 +1,8 @@
 // Poller in-process (D-19) — quét `notification_outbox` mỗi 15s bằng `@nestjs/schedule` +
 // Nest DI, cùng khuôn mẫu `MaintenanceCronService` (plan 09-02). KHÔNG mở `DataSource` thứ
 // hai — mọi truy vấn đi qua `NotificationOutboxService` (đã dùng `@InjectDataSource()`).
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
+import { SettingsService } from '../settings/settings.service.js';
 import { Cron } from '@nestjs/schedule';
 import type { NotificationOutbox } from './entities/notification-outbox.entity.js';
 import { NotificationOutboxService } from './notification-outbox.service.js';
@@ -17,6 +18,8 @@ export class OutboxPoller {
     private readonly outbox: NotificationOutboxService,
     @Inject(SMS_CHANNEL) private readonly smsChannel: SmsChannel,
     private readonly emailChannel: ConsoleEmailChannel,
+    // Tên quán trong SMS báo đơn chờ (2026-11-19). Optional: test dựng poller không có DB.
+    @Optional() private readonly settings?: SettingsService,
   ) {}
 
   // D-19: mỗi 15s.
@@ -62,7 +65,8 @@ export class OutboxPoller {
 
       if (row.channel === 'SMS') {
         const waitingSeconds = Math.max(0, Math.round((nowMs - row.created_at) / 1000));
-        const message = buildEscalationSms({ waitingSeconds, pendingCount: pendingSmsCount });
+        const tenQuan = await this.settings?.readAll().then((s) => s.store_name).catch(() => undefined);
+        const message = buildEscalationSms({ waitingSeconds, pendingCount: pendingSmsCount, tenQuan });
         const result = await this.smsChannel.send({ to: row.recipient, message });
         if (result.ok) {
           await this.outbox.markSent(row.id, nowMs);

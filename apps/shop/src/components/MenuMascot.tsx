@@ -2195,7 +2195,7 @@ const MENU_MASCOT_CSS = `
   flex:0 0 auto; width:62px; padding:4px; border:1.5px solid transparent; border-radius:12px;
   background:transparent; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:2px;
 }
-.mo-mascot-pick-one.is-on{ border-color:#cf3323; background:#fef6f3; }
+.mo-mascot-pick-one.is-on{ border-color:var(--brand-500); background:var(--brand-050); }
 /* background-size 300% + position 50% 50% = ô "nhìn thẳng" (index 4) của lưới 3×3 — CÙNG công
    thức với cell() trong Mascot.tsx. Đổi lưới ở đó thì phải đổi cả ở đây. */
 .mo-mascot-pick-face{
@@ -2273,7 +2273,7 @@ const MENU_MASCOT_CSS = `
 /* Nút "＋ Thêm" là phần DUY NHẤT trong bong bóng nhận chạm (bong bóng vẫn pointer-events:none). */
 .mo-mascot-offer-btn{
   pointer-events:auto; margin-top:8px; min-height:40px; padding:0 14px;
-  border:1.5px solid #f4b4a4; border-radius:999px; background:#fdeae4; color:#b82a1e;
+  border:1.5px solid #f4b4a4; border-radius:999px; background:#fdeae4; color:var(--brand-600);
   font:700 14px/1 'Baloo 2','Be Vietnam Pro',sans-serif; cursor:pointer; white-space:nowrap;
   max-width:100%; overflow:hidden; text-overflow:ellipsis;
 }
@@ -2328,11 +2328,11 @@ const MENU_MASCOT_CSS = `
 .mo-mascot-spin-cur{
   display:block; width:100%; margin:2px 0; padding:4px 10px; border-radius:10px;
   background:#fdeae4; border-left:3px solid #f4b4a4; border-right:3px solid #f4b4a4;
-  font-size:17px; line-height:1.3; color:#b82a1e; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  font-size:17px; line-height:1.3; color:var(--brand-600); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   animation:mo-mascot-reel .09s ease-out;
 }
 .mo-mascot-spin.is-done{ border-color:#e8846f; }
-.mo-mascot-spin.is-done .mo-mascot-spin-cur{ background:#b82a1e; color:#fff; border-color:#b82a1e; animation:mo-mascot-win .45s cubic-bezier(.34,1.56,.64,1); }
+.mo-mascot-spin.is-done .mo-mascot-spin-cur{ background:var(--brand-600); color:#fff; border-color:var(--brand-600); animation:mo-mascot-win .45s cubic-bezier(.34,1.56,.64,1); }
 @keyframes mo-mascot-reel{ from{ transform:translateY(-60%); opacity:.3; } to{ transform:none; opacity:1; } }
 @keyframes mo-mascot-win{ 0%{ transform:scale(.8); } 60%{ transform:scale(1.12); } 100%{ transform:scale(1); } }
 @keyframes mo-mascot-pop{

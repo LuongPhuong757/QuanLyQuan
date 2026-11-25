@@ -24,7 +24,7 @@ button.ds-trigger {
   cursor: pointer; transition: border-color var(--dur-fast) var(--ease-out);
 }
 button.ds-trigger:hover { opacity: 1; border-color: var(--gray-400); }
-button.ds-trigger:focus-visible { outline: 3px solid var(--teal-100); outline-offset: 0; border-color: var(--brand); }
+button.ds-trigger:focus-visible { outline: 3px solid var(--brand-100); outline-offset: 0; border-color: var(--brand); }
 /* Đang lọc thật (khác giá trị "chưa lọc") — liếc là biết ô nào đang có tác dụng. */
 button.ds-trigger.is-active { border: 1.5px solid var(--brand); font-weight: var(--fw-semibold); }
 button.ds-trigger:disabled { background: var(--gray-50); color: var(--gray-400); cursor: not-allowed; }
@@ -46,12 +46,12 @@ button.ds-trigger:disabled { background: var(--gray-50); color: var(--gray-400);
 .ds-list { overflow-y: auto; overscroll-behavior: contain; max-height: 320px; padding: var(--sp-1) 0; }
 .ds-sheet .ds-list { max-height: none; flex: 1; }
 .ds-search { display: flex; align-items: center; gap: var(--sp-2); margin: var(--sp-2); padding: 0 var(--sp-3); height: var(--ctl-h); border: 1px solid var(--gray-300); border-radius: var(--radius-sm); color: var(--gray-500); background: #fff; flex: none; }
-.ds-search:focus-within { border-color: var(--brand); outline: 3px solid var(--teal-100); }
+.ds-search:focus-within { border-color: var(--brand); outline: 3px solid var(--brand-100); }
 .ds-search input { all: unset; flex: 1; min-width: 0; font-size: var(--fs-base); color: var(--gray-800); height: 100%; }
 .ds-group { padding: var(--sp-3) var(--sp-4) var(--sp-1); font-size: var(--fs-sm); font-weight: var(--fw-semibold); color: var(--gray-500); letter-spacing: 0.02em; }
 .ds-opt { display: flex; align-items: center; gap: var(--sp-3); min-height: 48px; padding: var(--sp-2) var(--sp-4); cursor: pointer; font-size: var(--fs-base); color: var(--gray-800); }
-.ds-opt.is-cursor { background: var(--teal-50); }
-.ds-opt.is-selected { color: var(--brand-strong); font-weight: var(--fw-semibold); background: var(--teal-50); }
+.ds-opt.is-cursor { background: var(--brand-50); }
+.ds-opt.is-selected { color: var(--brand-strong); font-weight: var(--fw-semibold); background: var(--brand-50); }
 .ds-opt__main { flex: 1; min-width: 0; }
 .ds-opt__hint { display: block; font-size: var(--fs-sm); font-weight: var(--fw-normal); color: var(--gray-500); }
 .ds-opt__check { color: var(--brand); }
@@ -118,7 +118,7 @@ button.ds-end { display: flex; flex-direction: column; align-items: flex-start; 
 button.ds-end:hover { opacity: 1; }
 button.ds-end small { font-size: var(--fs-sm); font-weight: var(--fw-semibold); color: var(--gray-500); }
 button.ds-end b { font-size: var(--fs-md); font-variant-numeric: tabular-nums; }
-button.ds-end.is-on { border-color: var(--brand); box-shadow: 0 0 0 3px var(--teal-100); }
+button.ds-end.is-on { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-100); }
 button.ds-end.is-empty b { color: var(--gray-400); font-weight: var(--fw-normal); }
 .ds-cal { padding: 0 var(--sp-3); }
 .ds-cal__nav { display: flex; align-items: center; gap: var(--sp-2); }
@@ -134,12 +134,12 @@ button.ds-day:hover { opacity: 1; }
 button.ds-day > span { position: relative; z-index: 1; display: grid; place-items: center; width: 42px; height: 42px; margin: 0 auto; border-radius: var(--radius-pill); }
 button.ds-day.is-cn { color: var(--red-700); }
 button.ds-day.is-today > span { box-shadow: inset 0 0 0 2px var(--brand); font-weight: var(--fw-bold); }
-button.ds-day.is-in::before { content: ''; position: absolute; inset: 2px 0; background: var(--teal-100); }
+button.ds-day.is-in::before { content: ''; position: absolute; inset: 2px 0; background: var(--brand-100); }
 button.ds-day.is-start::before { left: 50%; }
 button.ds-day.is-end::before { right: 50%; }
 button.ds-day.is-start.is-end::before { display: none; }
 button.ds-day.is-start > span, button.ds-day.is-end > span { background: var(--brand); color: #fff; font-weight: var(--fw-bold); box-shadow: none; }
-button.ds-day:not(:disabled):not(.is-start):not(.is-end):hover > span { background: var(--teal-50); }
+button.ds-day:not(:disabled):not(.is-start):not(.is-end):hover > span { background: var(--brand-50); }
 button.ds-day:disabled { color: var(--gray-300); background: none; cursor: not-allowed; opacity: 1; }
 .ds-cal__blank { height: 46px; }
 .ds-cal-hint { font-size: var(--fs-sm); color: var(--gray-600); padding: var(--sp-2) var(--sp-4) 0; min-height: 28px; }
@@ -184,7 +184,7 @@ button.ds-pg__info {
 .ds-pg__info b { color: var(--gray-900); }
 .ds-pg-pick { display: flex; flex-direction: column; gap: var(--sp-3); padding: var(--sp-2) var(--sp-4) var(--sp-4); overflow: hidden; flex: 1; min-height: 0; }
 .ds-pg-pick__dau { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); flex: none; }
-.ds-pg-pick__dau button { height: 48px; min-height: 48px; border-radius: var(--radius-sm); border: 1px solid var(--teal-200); background: var(--teal-50); color: var(--brand-strong); font-weight: var(--fw-bold); font-size: var(--fs-base); }
+.ds-pg-pick__dau button { height: 48px; min-height: 48px; border-radius: var(--radius-sm); border: 1px solid var(--brand-200); background: var(--brand-50); color: var(--brand-strong); font-weight: var(--fw-bold); font-size: var(--fs-base); }
 .ds-pg-pick__luoi { display: grid; grid-template-columns: repeat(5, 1fr); gap: var(--sp-2); overflow-y: auto; overscroll-behavior: contain; }
 .ds-pg-pick__luoi button { height: 48px; min-height: 48px; padding: 0; border-radius: var(--radius-sm); border: 1px solid var(--gray-200); background: #fff; color: var(--gray-800); font-size: var(--fs-md); font-weight: var(--fw-semibold); font-variant-numeric: tabular-nums; }
 .ds-pg-pick__luoi button.is-on { background: var(--brand); border-color: var(--brand); color: #fff; }
@@ -195,7 +195,7 @@ button.ds-pg__info {
    Không nền đặc, viền xanh ngọc mảnh — chủ quán chê bản nút đặc 44px là "quá to". */
 .ds-qty {
   display: inline-flex; align-items: center; flex: none;
-  height: 30px; border: 1px solid var(--teal-200); border-radius: var(--radius-pill);
+  height: 30px; border: 1px solid var(--brand-200); border-radius: var(--radius-pill);
   background: #fff;
 }
 button.ds-qty__btn {
@@ -206,7 +206,7 @@ button.ds-qty__btn {
   cursor: pointer;
 }
 button.ds-qty__btn::after { content: ""; position: absolute; inset: -7px; }
-button.ds-qty__btn:active:not(:disabled) { background: var(--teal-50); }
+button.ds-qty__btn:active:not(:disabled) { background: var(--brand-50); }
 button.ds-qty__btn:disabled { opacity: .35; cursor: default; }
 button.ds-qty__btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
 .ds-qty__val {

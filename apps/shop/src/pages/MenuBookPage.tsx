@@ -13,7 +13,8 @@ import {
 import { z } from 'zod';
 import { PublicMenuGroup, type PublicMenuItem } from '@order/schemas';
 import { useApi } from '../lib/use-api.ts';
-import { MENU_BOOK_TITLE } from '../lib/page-title.ts';
+import { menuBookTitle } from '../lib/page-title.ts';
+import { useThuongHieu } from '../lib/thuong-hieu.ts';
 import {
   computeGrid,
   findFirstPageOfGroup,
@@ -99,6 +100,7 @@ type Turn = { dir: 1 | -1; angle: number; settling: boolean } | null;
 export function MenuBookPage(): JSX.Element {
   const menu = useApi('/api/public/menu-book', MenuBookResponse);
   const groups = useMemo(() => menu.data?.groups ?? [], [menu.data]);
+  const th = useThuongHieu();
 
   const [preview, setPreview] = useState<{ item: PublicMenuItem; from: DOMRect } | null>(null);
 
@@ -113,11 +115,11 @@ export function MenuBookPage(): JSX.Element {
   // nên tiêu đề tab phải sửa ở đây — nếu không khách lưu trang lại thấy chữ "Đặt hàng".
   useEffect(() => {
     const previous = document.title;
-    document.title = MENU_BOOK_TITLE;
+    document.title = menuBookTitle();
     return () => {
       document.title = previous;
     };
-  }, []);
+  }, [th]);
 
   /**
    * Nhuộm tối nền của CẢ TÀI LIỆU, không chỉ khung trang.
@@ -225,7 +227,9 @@ export function MenuBookPage(): JSX.Element {
        * neo theo phần tử đã biến hình chứ không theo màn hình, và ảnh sẽ trượt loạn trong
        * lúc lật trang.
        */
-      "url('/menu-bg.jpg') center / cover no-repeat",
+      // Ảnh nền là ảnh RIÊNG của Bà Lùn, đi cùng bộ linh vật: quán tắt linh vật thì bỏ lớp này —
+      // các lớp đá/vụn vẽ bằng CSS bên dưới hiện ra thay, giống hệt lúc chưa có file ảnh.
+      ...(th.linh_vat ? ["url('/menu-bg.jpg') center / cover no-repeat"] : []),
       /*
        * 4. Lớp phủ tối ĐỀ LÊN ảnh — thứ giữ cho chữ đọc được, và là chỗ phải cân đo:
        *    · quá nhạt: tên món trắng rơi trúng vụn muối hoặc quả cà chua sáng là mất chữ;
@@ -1179,7 +1183,7 @@ const BOOK_PAGE_CSS = `
           chiều sâu — một nguồn duy nhất thì nền vẫn phẳng, chỉ là phẳng có màu. */
     radial-gradient(70% 45% at 104% 4%, rgb(146 170 190 / 9%), transparent 62%),
     /* 4. Vệt đỏ thương hiệu ở góc dưới-phải. */
-    radial-gradient(85% 55% at 108% 106%, rgb(184 42 30 / 15%), transparent 60%),
+    radial-gradient(85% 55% at 108% 106%, rgb(var(--brand-rgb) / 15%), transparent 60%),
     var(--menu-chrome);
 }
 
@@ -1237,7 +1241,7 @@ const BOOK_PAGE_CSS = `
     radial-gradient(circle 1px at 26% 71%, rgb(255 255 255 / 20%), transparent),
     radial-gradient(circle 3px at 68% 16%, rgb(232 163 61 / 14%), transparent),
     radial-gradient(circle 1px at 82% 58%, rgb(255 255 255 / 16%), transparent),
-    radial-gradient(circle 2px at 45% 88%, rgb(184 42 30 / 22%), transparent),
+    radial-gradient(circle 2px at 45% 88%, rgb(var(--brand-rgb) / 22%), transparent),
     radial-gradient(circle 1px at 92% 33%, rgb(232 163 61 / 20%), transparent);
 }
 `;

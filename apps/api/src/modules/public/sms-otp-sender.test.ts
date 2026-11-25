@@ -82,7 +82,10 @@ describe('buildOtpSms', () => {
   });
 
   it('mẫu rỗng/undefined → mẫu mặc định', () => {
-    expect(buildOtpSms('123456', '')).toBe(DEFAULT_OTP_SMS_TEMPLATE.replace('{code}', '123456'));
+    // Mẫu mặc định có chỗ {quan} (2026-11-19) — không truyền tên quán thì ra tên cũ, tin y như trước.
+    expect(buildOtpSms('123456', '')).toBe(
+      DEFAULT_OTP_SMS_TEMPLATE.replace('{code}', '123456').replace('{quan}', 'Quan Ba Lun'),
+    );
     expect(buildOtpSms('123456', undefined)).toContain('123456');
   });
 });

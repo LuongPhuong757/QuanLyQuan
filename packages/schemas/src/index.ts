@@ -12,6 +12,8 @@ export * from './public-top-dishes.js';
 export * from './public-otp.js';
 export * from './admin-online-orders.js';
 export * from './table-ordering.js';
+// Thương hiệu theo quán (2026-11-19): bảng màu, thang màu, tên hiển thị — dùng chung API + 2 app.
+export * from './thuong-hieu.js';
 // Danh mục hành chính — dữ liệu tĩnh, không phải hợp đồng zod như các file trên. Trang khách nên
 // nhập thẳng '@order/schemas/vn-address' để 3.321 dòng dữ liệu không lọt vào bundle của app nào
 // không dùng tới; ở đây chỉ để BE lấy chung một chỗ với phần còn lại.

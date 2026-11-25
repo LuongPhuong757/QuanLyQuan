@@ -595,7 +595,7 @@ export function BulkOrderModal({
         }
         .bulk-mobile-bar .submit {
           flex: 1.5 1 0;  /* rộng hơn nút "Chọn lại" bên cạnh */
-          background: var(--brand, #0f766e);
+          background: var(--brand);
           color: white;
           font-weight: 700;
           padding: 10px 14px;
@@ -616,7 +616,7 @@ export function BulkOrderModal({
         /* Badge đếm số phần đang chọn — trắng trên nền xanh ngọc để đọc được mà không cần nhìn kỹ. */
         .bulk-mobile-bar .submit .bar-count {
           background: white;
-          color: var(--brand, #0f766e);
+          color: var(--brand);
           font-size: 15px;
           font-weight: 800;
           min-width: 28px;
@@ -691,7 +691,7 @@ export function BulkOrderModal({
         }
         .bulk-mobile-sheet-header .bulk-total-row { margin-bottom: 0; }
         /* Tên bàn cùng màu xanh với đầu hộp Gọi món để đọc lướt là khớp được hai màn. */
-        .bulk-sheet-table { color: #0f766e; font-weight: 700; }
+        .bulk-sheet-table { color: var(--brand); font-weight: 700; }
         .bulk-mobile-sheet-header h2 {
           margin: 0;
           font-size: 17px;
@@ -780,15 +780,15 @@ export function BulkOrderModal({
            Viết button.bulk-tab-push chứ không viết trần: .secondary trong styles.css có
            cùng độ ưu tiên và sẽ đè mất màu nền của tab chưa chọn. */
         button.bulk-tab-push {
-          background: var(--brand, #0f766e);
-          border-color: var(--brand, #0f766e);
+          background: var(--brand);
+          border-color: var(--brand);
           color: #fff;
           font-weight: 700;
         }
         button.bulk-tab-push.secondary {
-          background: var(--teal-50, #f0fdfa);
-          border-color: var(--teal-200, #99f6e4);
-          color: var(--teal-800, #115e59);
+          background: var(--brand-50);
+          border-color: var(--brand-200);
+          color: var(--brand-800);
         }
         .bulk-menu-grid {
           flex: 1;
@@ -854,7 +854,7 @@ export function BulkOrderModal({
         .bulk-menu-card-wrap > .bulk-menu-card { flex: 1 1 auto; min-width: 0; }
         /* ══ DÁNG CHUNG / MÁY TÍNH (thẻ lưới) ══
            Món đã chọn: viền xanh ngọc + con số góc phải (cam đổi sang màu hệ thống 2026-11-09). Chừa mép phải thân thẻ cho con số. */
-        .bulk-menu-card-wrap.noted { border: 2px solid var(--brand, #0f766e); }
+        .bulk-menu-card-wrap.noted { border: 2px solid var(--brand); }
         .bulk-menu-card-wrap.noted > button.bulk-menu-card { padding-right: 46px; }
         /* Món hết: viền ĐỨT + tên gạch ngang + chữ xám, không chạm được (nút disabled). Bản
            trước chỉ làm mờ 45% nên trông như thẻ bị lỗi; bản cũ hơn nữa là khối đỏ chói. */
@@ -875,7 +875,7 @@ export function BulkOrderModal({
           height: 30px;
           padding: 0 8px;
           border-radius: 999px;
-          background: var(--brand, #0f766e);
+          background: var(--brand);
           color: white;
           font-size: 16px;
           font-weight: 800;
@@ -943,7 +943,7 @@ export function BulkOrderModal({
             background: transparent;
             contain-intrinsic-size: auto 78px;
           }
-          .bulk-menu-card-wrap.noted { background: linear-gradient(90deg, #f0fdfa, #fff 75%); }
+          .bulk-menu-card-wrap.noted { background: linear-gradient(90deg, var(--brand-50), #fff 75%); }
           .bulk-menu-card-wrap > button.bulk-menu-card,
           .bulk-menu-card-wrap.noted > button.bulk-menu-card {
             flex-direction: row;
@@ -971,7 +971,7 @@ export function BulkOrderModal({
           .bulk-menu-card .thumb-ok {
             position: absolute;
             inset: 0;
-            background: rgba(15, 118, 110, 0.6);
+            background: rgb(var(--brand-rgb) / 0.6);
             color: white;
             display: flex;
             align-items: center;
@@ -981,7 +981,7 @@ export function BulkOrderModal({
           .bulk-menu-card .info { display: flex; flex-direction: column; gap: 2px; flex: 1 1 auto; min-width: 0; }
           .bulk-menu-card .name { font-weight: 700; color: #111827; }
           .bulk-menu-card .price { font-weight: 600; color: #374151; }
-          .bulk-menu-card .price .unit { color: #0f766e; font-weight: 500; }
+          .bulk-menu-card .price .unit { color: var(--brand); font-weight: 500; }
           .bulk-menu-card .note-line { display: block; }
           .bulk-row-right { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex: none; }
           /* Nhìn 38px (44px bị chê to, 2026-11-09), vùng chạm vẫn ~44px nhờ ::after. */
@@ -994,7 +994,7 @@ export function BulkOrderModal({
             border-radius: 12px;
             border: 1px solid #d1d5db;
             background: white;
-            color: #0f766e;
+            color: var(--brand);
             font-size: 22px;
             font-weight: 400;
             line-height: 1;
@@ -1003,22 +1003,22 @@ export function BulkOrderModal({
             justify-content: center;
           }
           button.bulk-add::after { content: ""; position: absolute; inset: -3px; }
-          button.bulk-add:active { background: #f0fdfa; }
+          button.bulk-add:active { background: var(--brand-50); }
           button.bulk-note-btn {
             min-height: 32px;
             padding: 0 2px;
             border: 0;
             background: transparent;
-            color: var(--brand, #0f766e);
+            color: var(--brand);
             font-size: 14px;
             font-weight: 600;
             white-space: nowrap;
           }
-          button.bulk-note-btn.has { color: #0f766e; }
+          button.bulk-note-btn.has { color: var(--brand); }
         }
         .bulk-menu-card .note-line {
           font-size: 14px;
-          color: #0f766e;
+          color: var(--brand);
           font-style: italic;
           white-space: nowrap;
           overflow: hidden;
@@ -1056,7 +1056,7 @@ export function BulkOrderModal({
         }
         .bulk-note-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
         .bulk-note-done {
-          background: #0f766e;
+          background: var(--brand);
           color: white;
           border: none;
           border-radius: 10px;
@@ -1087,7 +1087,7 @@ export function BulkOrderModal({
         .bulk-menu-card-wrap:not(.out):active { transform: scale(0.98); }
         .bulk-menu-card-wrap { transition: transform 0.08s, border-color 0.15s; }
         @media (hover: hover) {
-          .bulk-menu-card-wrap:not(.out):not(.noted):hover { border-color: #0f766e; }
+          .bulk-menu-card-wrap:not(.out):not(.noted):hover { border-color: var(--brand); }
         }
         button.bulk-menu-card:disabled { cursor: not-allowed; background: transparent; color: #1f2937; }
         .bulk-menu-card .name {
@@ -1108,7 +1108,7 @@ export function BulkOrderModal({
         .bulk-menu-card .price {
           font-size: 15px;
           font-weight: 700;
-          color: #0f766e;
+          color: var(--brand);
           /* Giá luôn ở đáy thân thẻ, không bị tên dài đẩy ra ngoài khung */
           flex: 0 0 auto;
           white-space: nowrap;
@@ -1207,7 +1207,7 @@ export function BulkOrderModal({
         .bulk-cart-line .price {
           font-size: 16px;
           font-weight: 700;
-          color: #0f766e;
+          color: var(--brand);
           white-space: nowrap;
           flex-shrink: 0;          /* price không co khi name dài */
         }
@@ -1251,8 +1251,8 @@ export function BulkOrderModal({
         }
         .bulk-cart-note-btn {
           background: transparent;
-          color: #0f766e;
-          border: 1px solid #0f766e;
+          color: var(--brand);
+          border: 1px solid var(--brand);
           padding: 3px 8px;
           font-size: 11px;
           border-radius: 6px;
@@ -1260,8 +1260,8 @@ export function BulkOrderModal({
           min-height: 28px;
         }
         .bulk-cart-note-existing {
-          background: #f0fdfa;
-          color: #0f766e;
+          background: var(--brand-50);
+          color: var(--brand);
           padding: 3px 8px;
           border-radius: 6px;
           font-size: 11px;
@@ -1283,7 +1283,7 @@ export function BulkOrderModal({
           margin-bottom: 10px;
         }
         .bulk-total-label { color: #6b7280; font-size: 13px; }
-        .bulk-total-value { font-size: 22px; font-weight: 700; color: #0f766e; }
+        .bulk-total-value { font-size: 22px; font-weight: 700; color: var(--brand); }
         /* Hàng nút đáy tấm giỏ trên điện thoại: [+ gọi thêm] [Báo bếp].
            Trước đây chỉ có "Báo bếp", muốn chọn thêm món phải bấm ✕ đóng giỏ đi đã —
            mà ✕ đọc ra là "bỏ", không ai đoán nó đưa mình về danh sách món. */
@@ -1295,9 +1295,9 @@ export function BulkOrderModal({
           min-height: 52px;
           padding: 0;
           border-radius: 10px;
-          border: 2px solid #0f766e;
+          border: 2px solid var(--brand);
           background: white;
-          color: #0f766e;
+          color: var(--brand);
           font-size: 30px;
           font-weight: 400;
           line-height: 1;
@@ -1305,7 +1305,7 @@ export function BulkOrderModal({
         }
         .bulk-submit {
           width: 100%;
-          background: var(--brand, #0f766e);
+          background: var(--brand);
           color: white;
           font-size: 16px;
           font-weight: 700;
@@ -1346,7 +1346,7 @@ export function BulkOrderModal({
               ô tìm lên đầu màn cho gần ngón cái và nhường chỗ cho danh sách món. */}
           <h1>
             {!isPhone && <>{onCollect ? 'Chọn món' : 'Gọi món'} ·{' '}</>}
-            <span style={{ color: '#0f766e' }}>{tableLabel}</span>
+            <span style={{ color: 'var(--brand)' }}>{tableLabel}</span>
           </h1>
           {isPhone && oTim}
           <button className="secondary bulk-close" onClick={onClose} aria-label="Đóng">

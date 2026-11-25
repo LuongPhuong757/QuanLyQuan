@@ -35,6 +35,8 @@ const GEO_LOG_PATH = '/api/public/geo-log';
 // ghi: chúng là KẾT QUẢ của một hoá đơn cụ thể, không phải tiếng ồn thăm dò.
 const PRINT_NEXT_PATH = '/print/next';
 
+const THIET_LAP_PREFIX = '/admin/thiet-lap';
+
 // Action-kind resolver — derives audit action from HTTP method + path
 // Override in controller via @AuditAction decorator if needed (future).
 function deriveActionKind(method: string, path: string): string {
@@ -193,6 +195,11 @@ export class AuditInterceptor implements NestInterceptor {
     const path = req.route?.path || req.path;
 
     if (path === TRACK_PATH || path === GEO_LOG_PATH || path === PRINT_NEXT_PATH) {
+      return next.handle();
+    }
+    // Màn "Thiết lập quán" tự ghi nhật ký kèm trước/sau (thiet-lap.controller.ts). Để interceptor
+    // ghi thêm thì mỗi lần lưu ra hai dòng, một dòng chỉ là response thô.
+    if (path.startsWith(THIET_LAP_PREFIX)) {
       return next.handle();
     }
 

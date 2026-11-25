@@ -4,10 +4,15 @@ import { BrowserRouter } from 'react-router-dom';
 import { App } from './App.tsx';
 import { EnvBanner } from './components/EnvBanner.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
+import { khoiDongThuongHieu } from './lib/thuong-hieu.ts';
 // Thứ tự nạp: nền móng dùng chung → màu trang quản lý → styles.css (dùng var() của hai file trên).
 import '../../../packages/ui-tokens/foundation.css';
 import './styles/tokens.css';
 import './styles.css';
+
+// Thương hiệu theo quán (tên/logo/màu) — gọi TRƯỚC render để lần vẽ đầu đã đúng biến màu; dữ liệu
+// mới từ API về sau sẽ tự vẽ lại qua `useThuongHieu()`.
+khoiDongThuongHieu();
 
 const root = document.getElementById('root');
 if (!root) throw new Error('#root not found');

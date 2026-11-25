@@ -13,6 +13,7 @@ import axios from 'axios';
 import { api, extractError } from '../lib/api.ts';
 import { upperUnit } from '../lib/text-case.ts';
 import { Icon } from '../components/ui/Icon.tsx';
+import { tenNgan, useThuongHieu } from '../lib/thuong-hieu.ts';
 
 const TOKEN_KEY = 'ncc_token';
 
@@ -58,16 +59,17 @@ function nccApi(token: string) {
 export function NccPortalPage() {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem(TOKEN_KEY));
   const [name, setName] = useState('');
+  const th = useThuongHieu();
 
-  // `index.html` đặt tiêu đề "Admin · Quán Bà Lùn" cho app nội bộ. NCC mở link trên điện thoại mà
+  // `index.html` đặt tiêu đề "Admin · <tên quán>" cho app nội bộ. NCC mở link trên điện thoại mà
   // thấy chữ "Admin" thì vừa khó hiểu vừa sai — đây là màn của họ, không phải màn quản trị.
   useEffect(() => {
     const prev = document.title;
-    document.title = 'Giao hàng · Quán Bà Lùn';
+    document.title = `Giao hàng · ${tenNgan(th)}`;
     return () => {
       document.title = prev;
     };
-  }, []);
+  }, [th]);
 
   const logout = useCallback(() => {
     localStorage.removeItem(TOKEN_KEY);
@@ -356,7 +358,7 @@ function ComposeScreen({
           <div
             key={l.key}
             className="card"
-            style={{ padding: 14, background: l.qty > 0 ? '#f0fdfa' : undefined }}
+            style={{ padding: 14, background: l.qty > 0 ? 'var(--brand-50)' : undefined }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
               <strong style={{ fontSize: 18 }}>{l.item.ingredient_name}</strong>

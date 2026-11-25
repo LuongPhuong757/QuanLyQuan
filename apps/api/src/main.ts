@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import 'dotenv/config';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import express from 'express';
 import type { Request, Response, NextFunction } from 'express';
@@ -12,6 +12,8 @@ import { AppModule } from './app.module.js';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter.js';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware.js';
 import { CsrfOriginGuard } from './common/middleware/csrf-origin.middleware.js';
+import { SettingsService } from './modules/settings/settings.service.js';
+import { chenThuongHieu, thuongHieuTuCaiDat } from './modules/thiet-lap/html-thuong-hieu.js';
 
 // M2.D-66 (sửa 2026-08-05) — admin.<domain> phục vụ app quản lý (web-dist), MỌI host còn lại
 // phục vụ app khách (shop-dist): apex + www là địa chỉ khách gõ tay / quét QR nên phải là
@@ -75,7 +77,41 @@ async function bootstrap() {
     };
     const webStatic = hasWeb ? express.static(webDist, staticOpts) : null;
     const shopStatic = hasShop ? express.static(shopDist, staticOpts) : null;
+
+    // index.html chèn THƯƠNG HIỆU QUÁN (2026-11-19, spec §8c T-10): tên, favicon, thẻ og:* cho
+    // Facebook/Zalo (chúng không chạy JS) + `window.__THUONG_HIEU__` cho React vẽ đúng ngay lần
+    // đầu. Đọc file một lần (deploy là khởi động lại container); cài đặt có cache 3s trong
+    // SettingsService nên mỗi lần mở trang không thêm truy vấn DB đáng kể. Lỗi đọc cài đặt →
+    // trả bản gốc của build: tên cũ còn hơn trang trắng.
+    const settingsSvc = app.get(SettingsService);
+    const banGoc = new Map<string, string>();
+    const guiTrangChinh = async (req: Request, res: Response, next: NextFunction) => {
+      const laAdmin = isAdminHost(req.headers.host);
+      const dist = laAdmin ? webDist : shopDist;
+      if (!existsSync(dist)) return next();
+      let html = banGoc.get(dist);
+      if (html === undefined) {
+        html = readFileSync(join(dist, 'index.html'), 'utf8');
+        banGoc.set(dist, html);
+      }
+      try {
+        const proto = String(req.headers['x-forwarded-proto'] ?? req.protocol).split(',')[0].trim();
+        html = chenThuongHieu(html, thuongHieuTuCaiDat(await settingsSvc.readAll()), {
+          app: laAdmin ? 'web' : 'shop',
+          origin: `${proto}://${req.headers.host}`,
+        });
+      } catch {
+        /* giữ bản gốc */
+      }
+      res.setHeader('Cache-Control', 'no-cache');
+      res.type('html').send(html);
+    };
+
     app.use((req: Request, res: Response, next: NextFunction) => {
+      // `/` thì express.static tự trả index.html GỐC — chặn trước để đi qua bản có thương hiệu.
+      if (req.method === 'GET' && (req.path === '/' || req.path === '/index.html')) {
+        return void guiTrangChinh(req, res, next);
+      }
       const handler = isAdminHost(req.headers.host) ? webStatic : shopStatic;
       if (!handler) return next();
       return handler(req, res, next);
@@ -106,12 +142,11 @@ async function bootstrap() {
       if (!wantsHtml) return next();  // axios/fetch → luôn để Nest trả lời
       // M2.D-66 — SPA shell phải là index.html của ĐÚNG app tương ứng host,
       // không được trả web-dist/index.html cho khách vào apex.
-      const dist = isAdminHost(req.headers.host) ? webDist : shopDist;
-      if (!existsSync(dist)) return next();
       // Browser navigation (reload, paste URL) — luôn trả SPA shell, kể cả nếu path
       // trùng tên endpoint BE. React Router sẽ tự match route đúng phía client.
-      // `no-cache` cùng lý do với staticOpts ở trên: shell không có hash trong tên.
-      res.sendFile(join(dist, 'index.html'), { headers: { 'Cache-Control': 'no-cache' } });
+      // `no-cache` cùng lý do với staticOpts ở trên: shell không có hash trong tên. Shell đi qua
+      // bản có thương hiệu quán — link `/o/<mã đơn>` dán lên Zalo cũng ra đúng tên quán.
+      return void guiTrangChinh(req, res, next);
     });
   }
 

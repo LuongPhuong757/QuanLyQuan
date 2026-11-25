@@ -2,6 +2,8 @@
 // đúng interface này — đổi SMS_DRIVER (notifications.module.ts) chỉ đổi implementation nào
 // được inject vào SMS_CHANNEL, KHÔNG có dòng logic nào ở nơi gọi (outbox-poller.ts) phải sửa.
 // Bằng chứng: sms-channel.test.ts chạy 1 bộ contract test giống nhau cho cả 2 driver.
+import { boDau } from '@order/schemas';
+
 export interface SmsChannel {
   readonly name: string;
   send(msg: { to: string; message: string }): Promise<{ ok: true } | { ok: false; error: string }>;
@@ -27,8 +29,10 @@ export function isValidSmsRecipient(raw: string): boolean {
  * viên, có thể lọt lên màn hình khoá — giảm bề mặt rò PII và cũng không cần thiết để hành
  * động (nhân viên mở trang Hàng chờ duyệt để xem chi tiết đơn nào).
  */
-export function buildEscalationSms(input: { waitingSeconds: number; pendingCount: number }): string {
+export function buildEscalationSms(input: { waitingSeconds: number; pendingCount: number; tenQuan?: string }): string {
   const { waitingSeconds, pendingCount } = input;
-  const msg = `Quán Ba Lún: có ${pendingCount} đơn online chờ duyệt quá ${waitingSeconds}s. Mở trang Hàng chờ duyệt để xử lý.`;
+  // Tên quán lấy từ cài đặt (2026-11-19), tự bỏ dấu cho rẻ tin; thiếu thì giữ tên cũ.
+  const quan = boDau(input.tenQuan?.trim() || 'Quan Ba Lun');
+  const msg = `${quan}: có ${pendingCount} đơn online chờ duyệt quá ${waitingSeconds}s. Mở trang Hàng chờ duyệt để xử lý.`;
   return msg.length > SMS_MAX_LENGTH ? msg.slice(0, SMS_MAX_LENGTH) : msg;
 }

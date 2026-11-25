@@ -45,6 +45,10 @@
   --brand-700: #8f1d14; /* :hover / :active. Trên nền: 8.38:1 · trắng trên nó: 8.92:1 ✓AAA */
   --brand-100: #fbe4de; /* Nền badge nhạt, nền banner. Chữ --text-strong trên nó: 13.43:1 */
   --brand-050: #fef6f3; /* Nền vùng nhấn rất nhạt */
+  /* Kênh RGB của --brand-600 cho màu có độ trong: `rgb(var(--brand-rgb) / 0.35)`.
+     5 biến --brand-* + biến này bị `ap-thuong-hieu.ts` ghi đè khi quán chọn màu khác đỏ ớt
+     (2026-11-19, màn Thiết lập → Thương hiệu). Màu thương hiệu PHẢI đi qua các biến này. */
+  --brand-rgb: 184 42 30;
 
   /* ── PHỤ: GỖ & HỔ PHÁCH ──────────────────────────────────────────────────
    * Cái tạo ra cảm giác "quán ăn ấm" trong ảnh. CHÚ Ý mức dùng được:
@@ -258,7 +262,7 @@
 
   /* ── VIỀN FOCUS ──────────────────────────────────────────────────────────
    * Không bao giờ outline: none mà không thay bằng dấu hiệu khác. */
-  --focus-ring: 0 0 0 3px rgb(184 42 30 / 35%); /* = --brand-600 ở 35% */
+  --focus-ring: 0 0 0 3px rgb(var(--brand-rgb) / 35%); /* = --brand-600 ở 35% */
   --focus-outline: 2px solid var(--brand-600);
   --focus-offset: 2px;
 

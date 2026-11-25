@@ -5,6 +5,7 @@ import { useAuth, defaultLandingPath, type Role } from '../lib/auth-context.tsx'
 import { useToast } from '../components/Toast.tsx';
 import { PasswordInput } from '../components/PasswordInput.tsx';
 import { Icon } from '../components/ui/Icon.tsx';
+import { logoVuong, tenDayDu, useThuongHieu } from '../lib/thuong-hieu.ts';
 
 /**
  * Màn đăng nhập trang quản trị — làm lại 2026-11-09 (docs/UI-UX/dang-nhap.md, chủ quán duyệt bản
@@ -24,6 +25,7 @@ import { Icon } from '../components/ui/Icon.tsx';
  */
 export function LoginPage() {
   const { refresh } = useAuth();
+  const th = useThuongHieu();
   const toast = useToast();
   const navigate = useNavigate();
   const formRef = useRef<HTMLFormElement>(null);
@@ -75,8 +77,8 @@ export function LoginPage() {
     <div className="login-page">
       <div className="login-card">
         <div className="login-card__head">
-          <img src="/favicon.svg" width={48} height={48} alt="" />
-          <h1>Quán Bà Lùn</h1>
+          <img src={logoVuong(th)} width={48} height={48} alt="" />
+          <h1>{tenDayDu(th)}</h1>
           <p>Trang quản trị · Đăng nhập để quản lý quán</p>
         </div>
 

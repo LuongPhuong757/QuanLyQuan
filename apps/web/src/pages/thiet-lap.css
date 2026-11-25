@@ -1,0 +1,542 @@
+/* Màn "Thiết lập quán" `/thiet-lap` (2026-11-18). Mọi selector gắn `.tl-` để không đè lớp dùng
+   chung. Màu chủ đạo DUY NHẤT `var(--brand)`; cam chỉ cho "còn thiếu", đỏ chỉ cho lỗi (bộ quy tắc
+   --ds-* 2026-11-11). Viền, không đổ bóng. Chữ theo thang 13 · 15 · 16 · 20 · 28. */
+
+.container.tl-page {
+  max-width: 1200px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.tl-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+}
+.tl-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--gray-900);
+}
+.tl-sub {
+  margin: 0;
+  font-size: 15px;
+  color: var(--gray-600);
+}
+.tl-hint {
+  font-size: 13px;
+  color: var(--gray-500);
+}
+.tl-err {
+  margin: 0;
+  font-size: 15px;
+  color: var(--red-700);
+}
+
+.tl-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 600;
+}
+.tl-pill.is-ok {
+  background: var(--green-50);
+  color: var(--green-800);
+}
+.tl-pill.is-warn {
+  background: var(--orange-50);
+  color: var(--orange-800);
+}
+
+/* Rule đụng màu nút phải viết `button.<class>` — không thì `button.secondary`/`button` toàn cục đè
+   mất (CLAUDE.md §5). `.tl-act` dùng cho cả <button>, <a>, <label> nên khai đủ cả ba. */
+button.tl-lock,
+.tl-act,
+button.tl-act,
+a.tl-act,
+label.tl-act {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  background: #fff;
+  color: var(--brand);
+  border: 1px solid var(--gray-300);
+}
+button.tl-lock {
+  margin-left: auto;
+  color: var(--gray-600);
+  font-weight: 500;
+}
+button.tl-act.is-pri,
+a.tl-act.is-pri,
+label.tl-act.is-pri {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
+}
+.tl-act:hover {
+  text-decoration: none;
+  border-color: var(--brand);
+}
+.tl-act:focus-visible,
+.tl-lock:focus-visible,
+.tl-chip:focus-visible {
+  outline: 3px solid var(--brand-100);
+  outline-offset: 1px;
+}
+
+/* ── Bố cục ── */
+.tl-cols {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+}
+@media (min-width: 1000px) {
+  .tl-cols {
+    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  }
+}
+.tl-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.tl-card {
+  background: #fff;
+  border: 1px solid var(--gray-200);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.tl-h {
+  margin: 0;
+  padding: 12px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--gray-500);
+  border-bottom: 1px solid var(--gray-200);
+}
+
+/* ── Dòng mục ── */
+.tl-row {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  grid-template-areas:
+    'dot name act'
+    'dot sum  act';
+  gap: 2px 12px;
+  align-items: center;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--gray-200);
+}
+.tl-row:last-child {
+  border-bottom: 0;
+}
+.tl-dot {
+  grid-area: dot;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 15px;
+  font-weight: 700;
+}
+.tl-dot.is-ok {
+  background: var(--green-50);
+  color: var(--green-700);
+}
+.tl-dot.is-warn {
+  background: var(--orange-50);
+  color: var(--orange-700);
+}
+.tl-dot.is-opt {
+  background: var(--gray-50);
+  color: var(--gray-500);
+  border: 1px solid var(--gray-200);
+}
+.tl-row__name {
+  grid-area: name;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--gray-900);
+}
+.tl-row__sum {
+  grid-area: sum;
+  font-size: 15px;
+  color: var(--gray-600);
+  overflow-wrap: anywhere;
+}
+.tl-row__sum.is-warn {
+  color: var(--orange-700);
+}
+.tl-row > .tl-act {
+  grid-area: act;
+}
+@media (max-width: 480px) {
+  .tl-row {
+    grid-template-columns: 28px minmax(0, 1fr);
+    grid-template-areas:
+      'dot name'
+      'dot sum'
+      '.   act';
+    row-gap: 4px;
+  }
+  .tl-row > .tl-act {
+    justify-self: start;
+    margin-top: 6px;
+  }
+}
+
+/* ── Nhật ký ── */
+.tl-log ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.tl-log li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--gray-200);
+}
+.tl-log li:last-child {
+  border-bottom: 0;
+}
+.tl-log time {
+  font-size: 13px;
+  color: var(--gray-500);
+  font-variant-numeric: tabular-nums;
+}
+.tl-log__what {
+  font-size: 15px;
+  color: var(--gray-800);
+  overflow-wrap: anywhere;
+}
+.tl-log__who {
+  font-size: 13px;
+  color: var(--gray-500);
+}
+.tl-log__empty {
+  margin: 0;
+  padding: 14px 16px;
+  font-size: 15px;
+  color: var(--gray-500);
+}
+
+/* ── Màn khoá ── */
+.tl-lockscreen {
+  align-items: center;
+  padding-top: 32px;
+}
+.tl-unlock {
+  width: 100%;
+  max-width: 420px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* ── Form trong bảng con ── */
+.tl-sheet {
+  padding: 4px 16px 16px;
+  overflow-y: auto;
+}
+.tl-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.tl-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tl-field > label,
+.tl-field > span:first-child {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--gray-800);
+}
+.tl-field input,
+.tl-field select {
+  min-height: 48px;
+  padding: 10px 12px;
+  font-size: 16px; /* < 16px là iPhone tự phóng to khi chạm vào ô */
+  border: 1px solid var(--gray-300);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--gray-900);
+  width: 100%;
+  box-sizing: border-box;
+}
+.tl-field input:focus,
+.tl-field select:focus {
+  outline: 3px solid var(--brand-100);
+  border-color: var(--brand);
+}
+.tl-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.tl-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+  align-items: center;
+}
+.tl-btns__note {
+  margin-right: auto;
+}
+
+.tl-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+button.tl-chip {
+  min-height: 40px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 500;
+  background: #fff;
+  color: var(--gray-800);
+  border: 1px solid var(--gray-300);
+}
+button.tl-chip[aria-pressed='true'] {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
+}
+
+.tl-switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--gray-200);
+}
+.tl-switch-row:last-child {
+  border-bottom: 0;
+}
+
+/* ── Nhập menu Excel ── */
+.tl-file {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+}
+.tl-file__pick input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.tl-file__pick:focus-within {
+  outline: 3px solid var(--brand-100);
+}
+.tl-file__name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--gray-800);
+  overflow-wrap: anywhere;
+}
+button.tl-link {
+  min-height: 44px;
+  padding: 0;
+  background: none;
+  border: 0;
+  color: var(--brand);
+  font-size: 15px;
+  font-weight: 600;
+}
+.tl-counts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.tl-count {
+  display: flex;
+  flex-direction: column;
+  padding: 10px 12px;
+  border: 1px solid var(--gray-200);
+  border-radius: 10px;
+}
+.tl-count b {
+  font-size: 28px;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.tl-count span {
+  font-size: 13px;
+  color: var(--gray-500);
+}
+.tl-count.is-new b {
+  color: var(--brand);
+}
+.tl-count.is-chg b {
+  color: var(--orange-700);
+}
+.tl-count.is-bad b {
+  color: var(--red-700);
+}
+/* Không cho bảng cuộn riêng: tấm trượt đã cuộn, hai thanh cuộn lồng nhau trên điện thoại là kẹt
+   ngón tay. Giá cũ/mới xếp hai dòng (`.tl-moi`) nên bảng vừa 360px mà không phải cuộn ngang. */
+.tl-table {
+  overflow-x: auto;
+  border: 1px solid var(--gray-200);
+  border-radius: 10px;
+}
+.tl-table table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 15px;
+}
+.tl-moi {
+  display: block;
+}
+.tl-table th,
+.tl-table td {
+  text-align: left;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--gray-200);
+  vertical-align: top;
+}
+.tl-table th {
+  background: var(--gray-50);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gray-500);
+}
+.tl-table .num {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.tl-table s {
+  color: var(--gray-500);
+}
+.tl-sect td {
+  background: var(--gray-50);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--gray-500);
+}
+.tl-keep {
+  color: var(--gray-400);
+}
+.tl-err-cell {
+  color: var(--red-700);
+}
+
+/* ── Bảng con Thương hiệu (2026-11-19) ── */
+.th-pal {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+button.th-sw {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  padding: 0;
+  border-radius: 12px;
+  border: 2px solid transparent;
+  position: relative;
+}
+button.th-sw[aria-pressed='true'] {
+  outline: 3px solid var(--gray-900);
+  outline-offset: 2px;
+}
+button.th-sw[aria-pressed='true']::after {
+  content: '✓';
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 700;
+}
+button.th-sw:focus-visible {
+  outline: 3px solid var(--gray-900);
+  outline-offset: 2px;
+}
+.th-logo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.th-logo > img {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  border: 1px solid var(--gray-200);
+  border-radius: 12px;
+  background: var(--gray-50);
+}
+.th-logo__pick input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.th-logo__pick:focus-within {
+  outline: 3px solid var(--brand-100);
+}
+.th-outs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.th-outs figure {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 4px;
+  border: 1px solid var(--gray-200);
+  border-radius: 10px;
+  text-align: center;
+}
+.th-outs img {
+  object-fit: contain;
+  max-width: 100%;
+}
+.th-outs img.th-bo {
+  border-radius: 8px;
+  object-fit: cover;
+}
+.th-outs figcaption {
+  font-size: 13px;
+  color: var(--gray-500);
+  line-height: 1.3;
+}

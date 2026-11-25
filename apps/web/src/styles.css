@@ -43,7 +43,7 @@ button {
   border: none;
   border-radius: 8px;
   padding: 12px 16px;
-  background: var(--teal-700);
+  background: var(--brand);
   color: white;
   font-weight: 600;
   transition: opacity 0.15s ease;
@@ -193,9 +193,9 @@ select {
 }
 
 select:focus {
-  outline: 2px solid var(--teal-700);
+  outline: 2px solid var(--brand);
   outline-offset: -2px;
-  border-color: var(--teal-700);
+  border-color: var(--brand);
 }
 
 /* Ô ngày: Chromium vẽ nút lịch to và đậm hơn hẳn phần còn lại của form. Kéo nó về đúng cỡ
@@ -229,7 +229,7 @@ input[type='checkbox'] {
   margin: 0;
   border-radius: 4px;
   flex: none;
-  accent-color: var(--teal-700);
+  accent-color: var(--brand);
 }
 
 input[type='radio'] {
@@ -238,9 +238,9 @@ input[type='radio'] {
 
 input:focus,
 textarea:focus {
-  outline: 2px solid var(--teal-700);
+  outline: 2px solid var(--brand);
   outline-offset: -2px;
-  border-color: var(--teal-700);
+  border-color: var(--brand);
 }
 
 input[aria-invalid="true"] {
@@ -879,7 +879,7 @@ th {
 /* Bảng giao dịch: dòng đơn bấm được, header ngày, hover trên desktop */
 tr.txn-row { cursor: pointer; }
 @media (min-width: 640px) {
-  tr.txn-row:hover td { background: var(--teal-50); }
+  tr.txn-row:hover td { background: var(--brand-50); }
 }
 td.txn-day {
   background: var(--slate-100);
@@ -943,7 +943,7 @@ td.txn-day {
 }
 
 a {
-  color: var(--teal-700);
+  color: var(--brand);
   text-decoration: none;
 }
 
@@ -987,7 +987,7 @@ a:hover {
 
 .header .brand {
   font-weight: 700;
-  color: var(--teal-700);
+  color: var(--brand);
   font-size: 16px;
   min-width: 0;
   flex: 1;
@@ -1339,7 +1339,7 @@ button.oo-wait-kitchen {
   display: grid;
   place-items: center;
   border-radius: 999px;
-  border: 3px solid var(--teal-200);
+  border: 3px solid var(--brand-200);
   font-weight: var(--ds-fw-num);
   font-size: var(--ds-fs-label);
 }
@@ -1365,8 +1365,8 @@ button.oo-switch {
   min-height: 44px;
   padding: 0 14px 0 6px;
   border-radius: 999px;
-  border: 1px solid var(--teal-100);
-  background: var(--teal-50);
+  border: 1px solid var(--brand-100);
+  background: var(--brand-50);
   color: var(--brand);
   font-size: var(--ds-fs-body2);
   font-weight: var(--ds-fw-num);
@@ -2482,21 +2482,21 @@ button.oo-switch.is-off {
 }
 
 .time-chip:hover:not([aria-pressed='true']) {
-  border-color: var(--teal-700);
-  color: var(--teal-700);
-  background: var(--teal-50);
+  border-color: var(--brand);
+  color: var(--brand);
+  background: var(--brand-50);
 }
 
 .time-chip[aria-pressed='true'] {
-  background: var(--teal-700);
-  border-color: var(--teal-700);
+  background: var(--brand);
+  border-color: var(--brand);
   color: #fff;
   font-weight: 700;
 }
 
 /* Vòng focus phải thấy được cả khi chip đang bật (nền teal đậm) — dùng offset ra ngoài viền. */
 .time-chip:focus-visible {
-  outline: 2px solid var(--teal-700);
+  outline: 2px solid var(--brand);
   outline-offset: 2px;
 }
 
@@ -2516,13 +2516,13 @@ button.oo-switch.is-off {
 }
 
 .time-date:hover {
-  border-color: var(--teal-700);
+  border-color: var(--brand);
 }
 
 .time-date:focus-visible {
-  outline: 2px solid var(--teal-700);
+  outline: 2px solid var(--brand);
   outline-offset: -1px;
-  border-color: var(--teal-700);
+  border-color: var(--brand);
 }
 
 .time-date-sep {
@@ -2648,7 +2648,7 @@ table.stat-grid thead th.stat-th > button:hover {
 }
 
 table.stat-grid thead th.stat-th.active {
-  color: var(--teal-700);
+  color: var(--brand);
 }
 
 /* Mũi tên "↕" mờ trên mọi cột xếp được: không có nó thì chỉ cột ĐANG xếp mới lộ ra là bấm
@@ -2667,7 +2667,7 @@ table.stat-grid tbody tr:nth-child(even) {
 }
 
 table.stat-grid tbody tr:hover {
-  background: var(--teal-50);
+  background: var(--brand-50);
 }
 
 table.stat-grid td {
@@ -2720,8 +2720,8 @@ table.stat-grid .stat-muted {
   min-width: 22px;
   height: 22px;
   border-radius: 999px;
-  background: var(--teal-100);
-  color: var(--teal-700);
+  background: var(--brand-100);
+  color: var(--brand);
   font-size: 12px;
   font-weight: 700;
 }
@@ -2770,7 +2770,7 @@ table.stat-grid .stat-muted {
   display: block;
   height: 100%;
   border-radius: 2px;
-  background: var(--teal-700);
+  background: var(--brand);
 }
 
 /* Tên món trong phiếu: từng viên thay vì một chuỗi ngăn bởi dấu phẩy — mắt tách được "Trâu
@@ -2792,8 +2792,8 @@ table.stat-grid .stat-muted {
 }
 
 .stat-chip.hit {
-  background: var(--teal-100);
-  color: var(--teal-700);
+  background: var(--brand-100);
+  color: var(--brand);
   font-weight: 600;
 }
 
@@ -2918,8 +2918,8 @@ button.pay-mode {
   white-space: nowrap;
 }
 button.pay-mode[aria-pressed='true'] {
-  border: 2px solid var(--teal-600);
-  background: var(--teal-50);
+  border: 2px solid var(--brand-600);
+  background: var(--brand-50);
   font-weight: 700;
 }
 @media (max-width: 560px) {
@@ -3001,7 +3001,7 @@ button.mm-zoom-close {
 }
 
 .mm-money { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
-.mm-money strong { color: var(--teal-700); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.mm-money strong { color: var(--brand); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .mm-pct {
   font-size: 12.5px; font-weight: 700; white-space: nowrap;
   font-variant-numeric: tabular-nums; cursor: help;
@@ -3019,8 +3019,8 @@ button.mm-b {
 }
 button.mm-b-out   { border-color: #fbcfa5; background: #fff8f1; color: var(--amber-700); }
 button.mm-b-out:hover   { border-color: var(--amber-700); background: #fdf0e3; }
-button.mm-b-back  { border-color: #a7d9c9; background: var(--teal-50); color: var(--teal-700); }
-button.mm-b-back:hover  { border-color: var(--teal-700); background: var(--teal-100); }
+button.mm-b-back  { border-color: #a7d9c9; background: var(--brand-50); color: var(--brand); }
+button.mm-b-back:hover  { border-color: var(--brand); background: var(--brand-100); }
 button.mm-b-edit  { border-color: #c7d2e0; background: #f7f9fc; color: var(--slate-700); }
 button.mm-b-edit:hover  { border-color: var(--slate-700); background: #eef2f7; }
 button.mm-b-del   { border-color: #f0c2c2; background: #fdf5f5; color: var(--red-700); }
@@ -3034,11 +3034,11 @@ button.mm-recipe {
   background: #fff; color: var(--slate-500);
   font-size: 13.5px; font-weight: 650; cursor: pointer;
 }
-button.mm-recipe:hover { border-color: var(--teal-700); color: var(--teal-700); background: var(--teal-50); }
+button.mm-recipe:hover { border-color: var(--brand); color: var(--brand); background: var(--brand-50); }
 button.mm-recipe.has {
-  border-style: solid; border-color: #99e2d5; background: var(--teal-50); color: var(--teal-700);
+  border-style: solid; border-color: #99e2d5; background: var(--brand-50); color: var(--brand);
 }
-button.mm-recipe.has:hover { border-color: var(--teal-700); background: var(--teal-100); }
+button.mm-recipe.has:hover { border-color: var(--brand); background: var(--brand-100); }
 
 /* ─── "Đẩy bán" (2026-10-05) ───────────────────────────────────────────────────
    Hàng thứ hai của thẻ món: [🔥 Đẩy bán] [Công thức]. `margin-top` chuyển lên
@@ -3131,7 +3131,7 @@ button.mm-star.on:hover { background: var(--violet-700); border-color: var(--vio
    mắt cộng dọc được "chính + phụ = giá vốn"; dòng tổng ngăn bằng một vạch và chữ to hơn. */
 .rp-sum {
   padding: 10px 14px; margin-bottom: 12px;
-  background: var(--teal-50); border: 1px solid var(--teal-100); border-radius: 10px;
+  background: var(--brand-50); border: 1px solid var(--brand-100); border-radius: 10px;
   font-variant-numeric: tabular-nums;
 }
 .rp-sum-row {
@@ -3141,9 +3141,9 @@ button.mm-star.on:hover { background: var(--violet-700); border-color: var(--vio
 .rp-sum-l { font-size: 14px; font-weight: 600; color: var(--gray-600); }
 .rp-sum-n { font-size: 16px; font-weight: 700; color: var(--gray-700); text-align: right; }
 .rp-sum-p { font-size: 14px; font-weight: 600; color: var(--gray-500); text-align: right; }
-.rp-sum-tong { margin-top: 4px; padding-top: 8px; border-top: 1px dashed var(--teal-200); }
-.rp-sum-tong .rp-sum-l { color: var(--teal-900); font-size: 15px; }
-.rp-sum-v { font-size: 22px; font-weight: 800; color: var(--teal-700); text-align: right; }
+.rp-sum-tong { margin-top: 4px; padding-top: 8px; border-top: 1px dashed var(--brand-200); }
+.rp-sum-tong .rp-sum-l { color: var(--brand-900); font-size: 15px; }
+.rp-sum-v { font-size: 22px; font-weight: 800; color: var(--brand); text-align: right; }
 .rp-sum-tong .rp-sum-p { font-size: 18px; font-weight: 800; }
 .rp-sum-gia { font-size: 13px; color: var(--gray-500); text-align: right; margin-top: 2px; }
 /* Nhãn "Phụ" trên dòng công thức — cùng tông cam với `.ing-kind-tag` ở danh mục nguyên liệu. */
@@ -3267,8 +3267,8 @@ button.mm-recipe:disabled:hover { border-color: #dfe3e6; color: #a6adb4; backgro
 
 /* "Có lại" là hành động DUY NHẤT còn mở — tô đặc để mắt rơi thẳng vào nó. */
 .mm-card.is-out button.mm-b-back {
-  background: var(--teal-700);
-  border-color: var(--teal-700);
+  background: var(--brand);
+  border-color: var(--brand);
   color: #fff;
   font-weight: 700;
 }
@@ -3317,9 +3317,9 @@ button.mm-recipe:disabled:hover { border-color: #dfe3e6; color: #a6adb4; backgro
 }
 .mm-groups button:hover { background: var(--gray-100); }
 .mm-groups button.on {
-  background: var(--teal-50);
-  border-left-color: var(--teal-700);
-  color: var(--teal-700);
+  background: var(--brand-50);
+  border-left-color: var(--brand);
+  color: var(--brand);
   font-weight: 700;
 }
 
@@ -3343,7 +3343,7 @@ button.mm-recipe:disabled:hover { border-color: #dfe3e6; color: #a6adb4; backgro
     border-radius: 8px;
     white-space: nowrap;
   }
-  .mm-groups button.on { border-left: none; border-bottom-color: var(--teal-700); }
+  .mm-groups button.on { border-left: none; border-bottom-color: var(--brand); }
   /* Thẻ món một cột trên điện thoại: hai cột ở 390px làm tên món cắt "…" gần hết. */
   .container.menu-page .mm-main > div[style*="grid"] { grid-template-columns: 1fr !important; }
 }
@@ -3465,7 +3465,7 @@ button.mm-b:disabled:hover { background: #e8eaec; border-color: #d3d7da; color: 
     border-radius: 8px;
     white-space: nowrap;
   }
-  .mm-groups button.on { border-left: none; border-bottom-color: var(--teal-700); }
+  .mm-groups button.on { border-left: none; border-bottom-color: var(--brand); }
 }
 
 @media (max-width: 720px) {
@@ -3619,7 +3619,7 @@ button.stale-banner-chip {
 .kds-guest-foot { margin-top: 10px; font-size: 15px; color: var(--violet-800); }
 .kds-guest-approve {
   width: 100%; min-height: 52px; border: none; border-radius: 8px;
-  background: var(--teal-700); color: #fff; font-size: 19px; font-weight: 800; cursor: pointer;
+  background: var(--brand); color: #fff; font-size: 19px; font-weight: 800; cursor: pointer;
 }
 .kds-guest-approve:disabled { opacity: 0.6; cursor: default; }
 .kds-guest-reject {
@@ -3646,12 +3646,12 @@ button.stale-banner-chip {
 .kds-call-kind { font-size: 14px; font-weight: 700; color: var(--cyan-700); }
 .kds-call-one {
   flex: none; min-width: 44px; min-height: 44px; border-radius: 8px;
-  border: 1px solid var(--teal-200); background: var(--teal-50); color: var(--teal-700);
+  border: 1px solid var(--brand-200); background: var(--brand-50); color: var(--brand);
   font-size: 20px; font-weight: 800; cursor: pointer;
 }
 .kds-call-one:disabled { opacity: 0.5; cursor: default; }
 /* PHẢI khai color ở đây. styles.css có rule chung cho mọi <button> đặt
-   background:#0f766e; color:white. Rule này mạnh hơn nên đè được NỀN về trắng, nhưng
+   background:var(--brand); color:white. Rule này mạnh hơn nên đè được NỀN về trắng, nhưng
    không đụng tới màu CHỮ — nên chữ vẫn trắng, nằm trên nền trắng, đọc không ra. Người
    test báo đúng ca này 2026-10-02. Cùng cái bẫy CLAUDE.md đã ghi về nút secondary.
    Hai nút cũng phải KHÁC MÀU nhau: một bên là huỷ việc đã làm, một bên là thoát ra. */
@@ -4185,8 +4185,8 @@ button.item-next-btn::after { content: ""; position: absolute; inset: -4px; }
   gap: 12px;
   padding: 12px 14px;
   border-radius: 10px;
-  background: var(--teal-50, #f0fdfa);
-  border: 1px solid var(--teal-100, #ccfbf1);
+  background: var(--brand-50);
+  border: 1px solid var(--brand-100);
   font-size: 16px;
   font-weight: 600;
   color: var(--gray-800);
@@ -4213,7 +4213,7 @@ button.item-next-btn::after { content: ""; position: absolute; inset: -4px; }
 button.crp-chip {
   min-height: 32px; padding: 4px 12px; border-radius: 999px;
   display: inline-flex; align-items: center; gap: 4px;
-  background: var(--teal-50); color: var(--brand); border: 0;
+  background: var(--brand-50); color: var(--brand); border: 0;
   font-size: 12px; font-weight: 500;
 }
 .crp-why { margin: -16px 0 0; text-align: center; font-size: 14px; color: var(--gray-500); }
@@ -4349,7 +4349,7 @@ button.an-tab { color: var(--gray-500); font-weight: 500; min-height: 56px; }
   content: ''; position: absolute; top: 0; left: 22%; right: 22%; height: 3px;
   background: var(--brand); border-radius: 0 0 3px 3px;
 }
-.an-tab[aria-current="page"] .an-icon, .an-tab.active .an-icon { background: var(--teal-100); }
+.an-tab[aria-current="page"] .an-icon, .an-tab.active .an-icon { background: var(--brand-100); }
 .an-icon {
   position: relative; display: inline-grid; place-items: center;
   width: 48px; height: 28px; border-radius: 999px;
@@ -4378,7 +4378,7 @@ button.an-tab { color: var(--gray-500); font-weight: 500; min-height: 56px; }
   color: var(--gray-900); text-decoration: none; font-size: 16px;
 }
 .an-more__item:hover { text-decoration: none; background: var(--gray-50, #f9fafb); }
-.an-more__item[aria-current="page"] { background: var(--teal-50); color: var(--brand); font-weight: 600; }
+.an-more__item[aria-current="page"] { background: var(--brand-50); color: var(--brand); font-weight: 600; }
 .an-more__item .an-icon { color: var(--gray-700); }
 .an-more__item .an-badge { left: calc(50% + 8px); }
 
@@ -4417,7 +4417,7 @@ button.an-tab { color: var(--gray-500); font-weight: 500; min-height: 56px; }
   .an-side-item .an-icon { width: 32px; height: 32px; flex: none; }
   .an-side-item .an-badge { left: auto; right: -6px; top: -2px; }
   /* Đang mở: nền nhạt + vạch trái 3px (chủ quán 2026-11-10). */
-  .an-side-item[aria-current="page"] { background: var(--teal-50); color: var(--brand); font-weight: 700; }
+  .an-side-item[aria-current="page"] { background: var(--brand-50); color: var(--brand); font-weight: 700; }
   .an-side-item[aria-current="page"]::before {
     content: ''; position: absolute; left: -8px; top: 8px; bottom: 8px; width: 3px;
     background: var(--brand); border-radius: 0 3px 3px 0;
@@ -4485,7 +4485,7 @@ button.an-btn--vien { background: #fff; color: var(--brand); border: 1px solid v
 
 /* ── Màn "Phiếu đã in" (`.crh-*`, /custom-receipt/history, chủ quán 2026-11-10) ──────────────────
    Cùng hệ với `.crp-*`: một lớp nền trắng, hàng kẻ mảnh, mã phiếu là thông tin chính. */
-.crp-chip--tinh { min-height: 32px; padding: 4px 12px; border-radius: 999px; display: inline-flex; align-items: center; gap: 4px; background: var(--teal-50); color: var(--brand); font-size: 12px; font-weight: 500; }
+.crp-chip--tinh { min-height: 32px; padding: 4px 12px; border-radius: 999px; display: inline-flex; align-items: center; gap: 4px; background: var(--brand-50); color: var(--brand); font-size: 12px; font-weight: 500; }
 .crh { padding-bottom: 24px; }
 .crh-tools { display: flex; flex-direction: column; gap: 8px; margin-top: -12px; }
 .crh-search {
@@ -4513,7 +4513,7 @@ button.crh-row {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   background: transparent; color: inherit; border: 0; border-radius: 0; text-align: left; font-weight: 400;
 }
-button.crh-row:active { background: var(--teal-50); }
+button.crh-row:active { background: var(--brand-50); }
 .crh-row__left, .crh-row__right { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .crh-row__right { align-items: flex-end; flex: none; }
 .crh-row__code { font-size: 16px; font-weight: 700; color: var(--gray-900); font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }

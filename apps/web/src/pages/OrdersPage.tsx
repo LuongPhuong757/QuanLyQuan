@@ -70,7 +70,7 @@ const KIND_RANK: Record<string, number> = { 'dine-in': 0, takeaway: 1, delivery:
 const KIND_BG: Record<string, string> = {
   'dine-in': '#fef3c7',
   'takeaway': '#dbeafe',
-  'delivery': '#ccfbf1', // xanh ngọc nhạt (teal-100) — trước xanh lá #d1fae5, đổi theo màu hệ thống 2026-11-09
+  'delivery': 'var(--brand-100)', // xanh ngọc nhạt (teal-100) — trước xanh lá #d1fae5, đổi theo màu hệ thống 2026-11-09
 };
 
 // Active states (1 row trên card khi bàn có món đang ở state đó)
@@ -339,7 +339,7 @@ export function OrdersPage() {
       : qrWaiting > 0
       ? '#f5f3ff'
       : allServed
-      ? '#f0fdfa' /* teal-50 — trước xanh lá #ecfdf5 */
+      ? 'var(--brand-50)' /* teal-50 — trước xanh lá #ecfdf5 */
       : hasActive
       ? KIND_BG[t.kind] || '#f3f4f6'
       : 'white';
@@ -350,9 +350,9 @@ export function OrdersPage() {
       : qrWaiting > 0
       ? '2px solid #7c3aed'
       : allServed
-      ? '2px solid #0f766e' /* xanh ngọc chủ đạo — trước xanh lá #059669 */
+      ? '2px solid var(--brand)' /* xanh ngọc chủ đạo — trước xanh lá #059669 */
       : hasActive
-      ? '2px solid #0f766e'
+      ? '2px solid var(--brand)'
       : '1px solid #e5e7eb';
 
     return (

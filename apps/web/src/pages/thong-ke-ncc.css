@@ -37,9 +37,9 @@
 .tk-kpi__v { font-size: var(--ds-fs-title); font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -.01em; color: var(--ds-ink); }
 .tk-kpi__s { font-size: var(--ds-fs-label); color: var(--ds-ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tk-kpi.is-up .tk-kpi__v { color: var(--orange-700); }
-.tk-kpi.is-down .tk-kpi__v { color: var(--teal-700); }
-.tk-kpi.is-main { background: var(--teal-700); }
-.tk-kpi.is-main .tk-kpi__l, .tk-kpi.is-main .tk-kpi__s { color: var(--teal-100); }
+.tk-kpi.is-down .tk-kpi__v { color: var(--brand); }
+.tk-kpi.is-main { background: var(--brand); }
+.tk-kpi.is-main .tk-kpi__l, .tk-kpi.is-main .tk-kpi__s { color: var(--brand-100); }
 .tk-kpi.is-main .tk-kpi__v { color: #fff; }
 /* ⓘ nhìn 20px nhưng vùng chạm 44px (giống công tắc: nhỏ để gọn, chạm vẫn dễ). */
 .tk button.tk-i {
@@ -48,7 +48,7 @@
   font-size: 12px; font-weight: 700; line-height: 1; display: inline-grid; place-items: center;
 }
 .tk button.tk-i::after { content: ""; position: absolute; inset: -12px; }
-.tk-note { margin: 0; font-size: var(--ds-fs-body2); color: var(--ds-ink-2); background: var(--teal-50); border-radius: 10px; padding: 10px 12px; }
+.tk-note { margin: 0; font-size: var(--ds-fs-body2); color: var(--ds-ink-2); background: var(--brand-50); border-radius: 10px; padding: 10px 12px; }
 .tk-note strong { color: var(--ds-ink); }
 
 /* ── 4 nút xem ─────────────────────────────────────────────────────────── */
@@ -70,7 +70,7 @@ button.chart-card__info {
   font-size: 12px; font-weight: 700; line-height: 1; display: inline-grid; place-items: center;
 }
 button.chart-card__info::after { content: ""; position: absolute; inset: -11px; }
-button.chart-card__info[aria-expanded="true"] { border-color: var(--teal-700); color: var(--teal-700); background: var(--teal-50); }
+button.chart-card__info[aria-expanded="true"] { border-color: var(--brand); color: var(--brand); background: var(--brand-50); }
 .chart-card__hint { margin: 0; font-size: var(--ds-fs-body2); color: var(--ds-ink-2); background: var(--ds-muted-bg); border-radius: 8px; padding: 8px 10px; }
 
 /* ── Chi tiêu: xếp hạng NCC + khối nguyên liệu ─────────────────────────── */
@@ -87,7 +87,7 @@ button.chart-card__info[aria-expanded="true"] { border-color: var(--teal-700); c
 .tk-rk__b { grid-column: 1 / -1; height: 6px; background: #f1f5f9; border-radius: 999px; overflow: hidden; }
 .tk-rk__b i { display: block; height: 100%; border-radius: 999px; }
 .tk button.tk-more {
-  align-self: flex-start; min-height: 44px; padding: 0; background: transparent; color: var(--teal-700);
+  align-self: flex-start; min-height: 44px; padding: 0; background: transparent; color: var(--brand);
   font-size: var(--ds-fs-body2); font-weight: 600;
 }
 
@@ -113,8 +113,8 @@ button.chart-card__info[aria-expanded="true"] { border-color: var(--teal-700); c
   display: inline-flex; align-items: center; gap: 6px;
 }
 .tk .tk-sub button span { font-size: var(--ds-fs-label); color: var(--ds-ink-3); font-variant-numeric: tabular-nums; }
-.tk .tk-sub button[aria-pressed="true"] { background: var(--teal-50); border-color: var(--teal-700); color: var(--teal-800); }
-.tk .tk-sub button[aria-pressed="true"] span { color: var(--teal-700); }
+.tk .tk-sub button[aria-pressed="true"] { background: var(--brand-50); border-color: var(--brand); color: var(--brand-800); }
+.tk .tk-sub button[aria-pressed="true"] span { color: var(--brand); }
 .tk-tim { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; }
 .tk-tim input { flex: 1 1 220px; min-width: 0; max-width: 420px; }
 .tk-tim span { font-size: var(--ds-fs-label); color: var(--ds-ink-2); }
@@ -194,11 +194,11 @@ button.chart-card__info[aria-expanded="true"] { border-color: var(--teal-700); c
 }
 .ck .ck-seg button small { font-size: var(--ds-fs-label); font-weight: 500; color: var(--ds-ink-3); font-variant-numeric: tabular-nums; }
 .ck .ck-seg button[aria-pressed="true"] { background: #fff; color: var(--ds-ink); box-shadow: 0 1px 3px rgba(0, 0, 0, .1); }
-.ck .ck-seg button[aria-pressed="true"] small { color: var(--teal-700); }
+.ck .ck-seg button[aria-pressed="true"] small { color: var(--brand); }
 .ck-tk { flex: 1 1 200px; min-width: 0; }
 .ck-grow { display: none; }
 .ck button.ck-lnk {
-  min-height: 44px; padding: 0; background: transparent; color: var(--teal-700);
+  min-height: 44px; padding: 0; background: transparent; color: var(--brand);
   font-size: var(--ds-fs-body2); font-weight: 600; display: inline-flex; align-items: center; gap: 2px; white-space: nowrap;
 }
 
